@@ -100,12 +100,11 @@
 
       <!-- FOOTER DA SIDEBAR: BOTÃO DO MENU HAMBÚRGUER & IDLE SUITE -->
       <div class="sidebar-footer" style="padding: 4px 6px">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; position: relative; width: 100%">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 4px; position: relative; width: 100%">
           <button class="sidebar-menu-btn" id="btn-hamburger-menu" onclick="toggleHamburgerMenu(event)" title="Menu de Ações, Ferramentas e Configurações" style="padding: 6px 4px; justify-content: center; gap: 4px">
             <span style="font-size: 13px">☰</span>
             <span style="font-size: 11px; font-weight: 800">Menu</span>
           </button>
-          
 
           <!-- DROPDOWN FLUTUANTE DO MENU HAMBÚRGUER (ABRE PARA CIMA) -->
           <div id="dropdown-hamburger-menu" class="hamburger-dropdown" style="display:none; position:absolute; bottom:42px; left:0; width:235px; background:rgba(15,23,42,0.98); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.18); border-radius:10px; box-shadow:0 12px 35px rgba(0,0,0,0.9); z-index:99999; padding:6px; flex-direction:column; gap:3px" onclick="event.stopPropagation()">
