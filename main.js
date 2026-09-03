@@ -303,7 +303,7 @@ function createWindow() {
         height: 900,
         minWidth: 900,
         minHeight: 600,
-        title: 'Idle Pokémon Electron Client - Multi-Contas',
+        title: 'Idle Pokémon Electron Client - Multi-Contas · idlepokemoon.com.br',
         backgroundColor: '#090d16',
         autoHideMenuBar: true,
         webPreferences: {
