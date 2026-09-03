@@ -1,0 +1,13 @@
+/* =========================================================
+   ESTADO ATIVO DE BOTOES DE MENU / SIDEBAR
+   Regra compartilhada que morava no arquivo do Mini Dashboard v1
+   (removido junto com aquele layout). Fica nesta posicao da ordem
+   de build pra manter a cascata identica a de antes.
+   ========================================================= */
+.sidebar-block-toggle-btn.active,
+.menu-item-btn.active {
+  background: linear-gradient(135deg, rgba(16,185,129,0.45), rgba(5,150,105,0.35)) !important;
+  border-color: rgba(16,185,129,0.6) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(16,185,129,0.4), inset 0 0 6px rgba(255,255,255,0.1) !important;
+}

@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.log
+window-state.json
+__pycache__/

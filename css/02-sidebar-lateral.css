@@ -1,0 +1,957 @@
+/* --- SIDEBAR LATERAL ESQUERDA --- */
+.app-sidebar {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  height: 100vh;
+  background: linear-gradient(180deg, #0f172a 0%, #0b1120 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  user-select: none;
+  transition: width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease;
+}
+
+/* SIDEBAR COLAPSADA */
+.app-sidebar.collapsed {
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+}
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-section-header,
+.app-sidebar.collapsed .sidebar-count-badge,
+.app-sidebar.collapsed .sidebar-add-btn span:last-child,
+.app-sidebar.collapsed .sidebar-pinned-item span:not(:first-child),
+.app-sidebar.collapsed .sidebar-nav-btn span:not(:first-child),
+.app-sidebar.collapsed .nav-btn-title,
+.app-sidebar.collapsed .sidebar-menu-btn > div > span:last-child,
+.app-sidebar.collapsed .sidebar-menu-btn > span:last-child,
+.app-sidebar.collapsed .sidebar-pinned-section .sidebar-section-header,
+.app-sidebar.collapsed .sidebar-section-header,
+.app-sidebar.collapsed .sidebar-brand-text {
+  display: none !important;
+}
+
+/* Contas na sidebar colapsada: centralizar Pokébola e esconder nome e ping */
+.app-sidebar.collapsed .tab-btn {
+  justify-content: center !important;
+  padding: 0 !important;
+  height: 38px !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .tab-title,
+.app-sidebar.collapsed .tab-ping-badge {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .tab-pokeball-icon {
+  margin: 0 auto !important;
+  display: flex !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand {
+  padding: 0;
+  justify-content: center;
+  align-items: center;
+  height: 48px;
+}
+.app-sidebar.collapsed .sidebar-brand .brand-logo-icon {
+  margin: 0;
+}
+.app-sidebar.collapsed .sidebar-add-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  justify-content: center;
+  margin: 4px auto;
+  font-size: 16px;
+}
+.app-sidebar.collapsed .sidebar-nav-btn {
+  justify-content: center;
+  padding: 0;
+  height: 36px;
+  width: 36px;
+  min-width: 36px;
+  margin: 0 auto;
+}
+.app-sidebar.collapsed .sidebar-pinned-item {
+  justify-content: center;
+  padding: 6px;
+  width: 36px;
+  min-width: 36px;
+  margin: 0 auto;
+}
+.app-sidebar.collapsed .sidebar-pinned-item .pinned-unpin {
+  display: none !important;
+}
+.app-sidebar.collapsed .sidebar-menu-btn {
+  justify-content: center;
+  padding: 0;
+  width: 36px;
+  min-width: 36px;
+  margin: 0 auto;
+}
+.app-sidebar.collapsed .sidebar-footer {
+  padding: 10px 6px;
+}
+.app-sidebar.collapsed .sidebar-tabs-container {
+  align-items: center;
+  padding: 0 6px;
+}
+.app-sidebar.collapsed .sidebar-nav-section {
+  align-items: center;
+  padding: 4px 6px;
+}
+.app-sidebar.collapsed .sidebar-pinned-section {
+  align-items: center;
+  padding: 4px 6px;
+}
+.app-sidebar.collapsed .sidebar-pinned-items {
+  align-items: center;
+}
+
+/* --- XP TRACKER NA SIDEBAR COLAPSADA (~56px) --- */
+.app-sidebar.collapsed #sidebar-xp-tracker-container {
+  padding: 4px 2px !important;
+  margin: 4px auto !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.app-sidebar.collapsed #xp-mini-view {
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+  margin: 0 auto !important;
+  padding: 3px 2px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(16,185,129,0.3) !important;
+}
+
+.app-sidebar.collapsed #xpmini-drag-handle {
+  padding: 2px 0 !important;
+  justify-content: center !important;
+  border-bottom: 1px solid rgba(16,185,129,0.2) !important;
+}
+
+.app-sidebar.collapsed #xpmini-drag-handle .xpmini-title-text,
+.app-sidebar.collapsed #xpmini-drag-handle .xpmini-actions-group {
+  display: none !important;
+}
+
+.app-sidebar.collapsed #xp-mini-view-content {
+  padding: 3px 1px !important;
+  gap: 3px !important;
+}
+
+.app-sidebar.collapsed .xpmini-detail-hide {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .xpmini-row-header {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 1px !important;
+  margin-bottom: 1px !important;
+}
+
+.app-sidebar.collapsed #xpmini-poke-pct,
+.app-sidebar.collapsed #xpmini-jog-pct {
+  font-size: 7.5px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+
+/* --- ESTILOS DE BLOCOS MODULARES E ARRASTÁVEIS NA SIDEBAR --- */
+.sidebar-modular-block {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  position: relative;
+}
+
+.sidebar-modular-block.dragging-block {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+/* Linha de destino: mostra ANTES ou DEPOIS conforme a metade do bloco em que
+   o ponteiro está, em vez da borda única de antes (que sempre dizia "acima"). */
+.sidebar-modular-block.drop-antes { box-shadow: inset 0 3px 0 -1px #38bdf8; }
+.sidebar-modular-block.drop-depois { box-shadow: inset 0 -3px 0 -1px #38bdf8; }
+
+/* Realce rápido do bloco recém-movido pelos botões ▲/▼ */
+@keyframes sidebarBlocoMovido {
+  0%   { background: rgba(56,189,248,0.22); }
+  100% { background: transparent; }
+}
+.sidebar-modular-block.bloco-movido { animation: sidebarBlocoMovido 0.6s ease-out; border-radius: 6px; }
+
+/* Barrinha de controle presente em TODO bloco (antes só o de contas tinha algo,
+   e era decorativo). A alça é o único ponto que inicia o arrasto. */
+.sidebar-bloco-ctrl {
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 7px; flex-shrink: 0;
+  font-size: 8.5px; color: #64748b;
+  opacity: 0.45; transition: opacity 0.15s;
+}
+.sidebar-modular-block:hover .sidebar-bloco-ctrl { opacity: 1; }
+.sidebar-bloco-alca { cursor: grab; font-size: 11px; line-height: 1; user-select: none; }
+.sidebar-bloco-alca:active { cursor: grabbing; }
+.sidebar-bloco-nome {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+}
+.sidebar-bloco-acoes { display: inline-flex; gap: 3px; flex-shrink: 0; }
+.sidebar-bloco-btn {
+  width: 16px; height: 15px; padding: 0; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 7.5px; line-height: 1; cursor: pointer; font-family: inherit;
+  color: #cbd5e1; background: rgba(148,163,184,0.10);
+  border: 1px solid rgba(148,163,184,0.20); border-radius: 4px;
+}
+.sidebar-bloco-btn:hover:not(:disabled) { background: rgba(56,189,248,0.22); border-color: rgba(56,189,248,0.45); color: #7dd3fc; }
+.sidebar-bloco-btn:disabled { opacity: 0.25; cursor: default; }
+
+/* Na sidebar recolhida sobra só a alça — nome e setas não cabem. */
+.app-sidebar.collapsed .sidebar-bloco-nome,
+.app-sidebar.collapsed .sidebar-bloco-acoes { display: none; }
+.app-sidebar.collapsed .sidebar-bloco-ctrl { justify-content: center; padding: 2px 0; }
+
+/* Sidebar Auto Toggles hover/active */
+.sidebar-auto-toggle:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,0.3) !important; }
+.sidebar-auto-toggle:active { transform:translateY(0) scale(0.97); }
+
+/* Modo compacto / recolhido do card do XP Tracker */
+#xp-mini-view-content.xpmini-card-collapsed .xpmini-detail-hide {
+  display: none !important;
+}
+
+#xp-mini-view-content.xpmini-card-collapsed {
+  padding: 4px 6px !important;
+  gap: 3px !important;
+}
+
+.sidebar-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  cursor: grab;
+  user-select: none;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-block-header:active {
+  cursor: grabbing;
+}
+
+.sidebar-block-toggle-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 9px;
+  cursor: pointer;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, color 0.15s ease;
+}
+
+.sidebar-block-toggle-btn:hover {
+  color: #f1f5f9;
+}
+
+.sidebar-block-toggle-btn.collapsed-arrow {
+  transform: rotate(-90deg);
+}
+
+.sidebar-pinned-item.dragging-item {
+  opacity: 0.4;
+}
+
+.sidebar-pinned-item.drag-over-item {
+  border-top: 2px solid #a855f7 !important;
+}
+
+/* BOTÃO DE COLAPSAR */
+.sidebar-collapse-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0;
+}
+.sidebar-collapse-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+#sidebar-collapse-icon {
+  display: block;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+}
+
+.app-sidebar.collapsed .sidebar-collapse-btn {
+  margin: 0 auto;
+  width: 32px;
+  height: 32px;
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.app-sidebar.collapsed #sidebar-collapse-icon {
+  transform: rotate(180deg);
+}
+
+/* BRANDING / HEADER DA SIDEBAR */
+.sidebar-brand {
+  height: 52px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.5);
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.brand-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-title {
+  font-size: 13.5px;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: -0.2px;
+}
+
+.brand-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  width: fit-content;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+/* SEÇÃO DE CONTAS ATIVAS */
+.sidebar-section-header {
+  padding: 12px 14px 6px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 900;
+  color: #94a3b8;
+  letter-spacing: 0.8px;
+}
+
+.sidebar-count-badge {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 800;
+  font-family:var(--app-font-num); font-variant-numeric:var(--app-font-num-variant);
+}
+
+.sidebar-tabs-container {
+  flex: 1;
+  overflow-y: hidden;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+.sidebar-tabs-container.scrollable {
+  overflow-y: auto;
+}
+
+.sidebar-tabs-container::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-tabs-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.sidebar-accounts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* BOTÃO DE CADA CONTA NA SIDEBAR (GLASS CLEAN COM DRAG & DROP) */
+.tab-btn {
+  width: 100%;
+  height: 40px;
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Hover so vale pra aba NAO selecionada. Antes o hover pintava borda
+   esmeralda igual a da ativa, entao passar o mouse por cima de qualquer aba
+   dava a mesma leitura visual de "esta e a aba em uso". */
+.tab-btn:not(.active):hover {
+  background: rgba(30, 41, 59, 0.75);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  transform: translateX(2px);
+}
+
+/* Aba em uso: o contraste vinha fraco (fundo 0.18 de alpha + borda 0.5) e
+   ainda por cima o gradiente da cor da conta (`.tab-btn::after`, css/07)
+   passava por cima, entao ativa e inativa ficavam quase iguais. Agora a ativa
+   ganha fundo mais forte, borda cheia, glow, deslocamento fixo e o titulo em
+   branco puro — da pra achar de relance mesmo com 16 contas na lista. */
+.tab-btn.active {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.34), rgba(5, 150, 105, 0.14)) !important;
+  border: 1.5px solid rgba(52, 211, 153, 0.85) !important;
+  color: #ecfdf5;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.28),
+              0 0 18px rgba(16, 185, 129, 0.38),
+              inset 0 0 24px rgba(16, 185, 129, 0.10);
+  transform: translateX(3px);
+}
+
+.tab-btn.active .tab-title {
+  color: #ffffff !important;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+/* Segunda linha (pokemon ativo) tambem clareia, senao a aba ativa fica com
+   metade do texto no mesmo cinza das inativas. */
+.tab-btn.active [id^="tab-poke-"] {
+  color: #a7f3d0 !important;
+}
+
+/* Titulo das inativas fica um tom abaixo, pra a ativa ganhar por diferenca e
+   nao so por cor de fundo. */
+.tab-btn:not(.active) .tab-title { color: #cbd5e1 !important; }
+
+.tab-btn.dragging {
+  opacity: 0.4;
+  border: 1.5px dashed rgba(16, 185, 129, 0.5) !important;
+  transform: scale(0.97);
+  cursor: grabbing;
+}
+
+/* Linha de insercao do arrasto. Antes era sempre `border-top`, ou seja, o
+   indicador dizia "vai entrar aqui em cima" mesmo quando o destino calculado
+   era abaixo — o feedback mentia sobre o resultado. Agora a metade do botao
+   sob o cursor decide o lado, e a linha aparece do lado certo. */
+.tab-btn.drag-over {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+.tab-btn.drag-over.drop-antes  { box-shadow: inset 0 3px 0 0 #10b981; }
+.tab-btn.drag-over.drop-depois { box-shadow: inset 0 -3px 0 0 #10b981; }
+
+.tab-pokeball-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-btn * {
+  pointer-events: none;
+}
+
+.tab-title {
+  max-width: 105px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  flex-shrink: 0;
+}
+
+/* BOTÃO ADICIONAR CONTA NA SIDEBAR */
+.sidebar-add-btn {
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  color: #6ee7b7;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.sidebar-add-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+/* DIVISOR */
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 6px 10px;
+}
+
+/* SEÇÃO DE NAVEGAÇÃO & FERRAMENTAS */
+.sidebar-nav-section {
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-nav-btn {
+  width: 100%;
+  height: 36px;
+  background: rgba(30, 41, 59, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.sidebar-nav-btn:hover {
+  background: rgba(30, 41, 59, 0.65);
+  color: #ffffff;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.sidebar-nav-btn.active {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.12));
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+  border-left: 3px solid #10b981;
+}
+
+.nav-btn-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* FOOTER DA SIDEBAR */
+.sidebar-footer {
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.7);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sidebar-menu-btn {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.sidebar-menu-btn:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+}
+
+
+/* =========================================================
+   SIDEBAR MAIS LEVE — sprite na aba, ping como ponto, blocos sem caixa
+   =========================================================
+   Três queixas: "muitos títulos que não são necessários", "as pokébolas nas
+   abas são ruins, deveria trazer o sprite" e "o botão nova conta poderia estar
+   na aba de contas ativas". */
+
+/* ---- SPRITE DO POKÉMON NA ABA ----
+   As 11 abas tinham a MESMA pokébola e a cor era a única distinção. O sprite
+   dá reconhecimento imediato. A pokébola continua como base: some só quando a
+   imagem carrega de fato (`.tem-sprite`), então uma conta sem Pokémon lido, ou
+   um sprite que não existe, nunca deixa buraco. */
+.tab-pokeball-icon {
+  position: relative;
+  width: 26px; height: 26px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.tab-pokeball-icon.tem-sprite .tab-pokeball-svg { display: none; }
+.tab-sprite-img {
+  width: 26px; height: 26px; object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6));
+}
+
+/* ---- PING COMO PONTO ----
+   Era um badge com o número ("104ms"). Com o sprite entrando, o número passou a
+   disputar a linha do nome — e o que importa é "bem / ruim / caiu", não o valor
+   exato, que ficou no tooltip. */
+.tab-ping-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  margin-left: 4px; background: #475569;
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, .55);
+  position: relative;
+}
+.tab-ping-dot.bom { background: #4ade80; box-shadow: 0 0 5px rgba(74, 222, 128, .7), 0 0 0 2px rgba(15,23,42,.55); }
+.tab-ping-dot.medio { background: #fde047; box-shadow: 0 0 5px rgba(253, 224, 71, .6), 0 0 0 2px rgba(15,23,42,.55); }
+.tab-ping-dot.ruim { background: #fb923c; box-shadow: 0 0 5px rgba(251, 146, 60, .6), 0 0 0 2px rgba(15,23,42,.55); }
+.tab-ping-dot.morto { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, .8), 0 0 0 2px rgba(15,23,42,.55); }
+
+/* Tooltip flutuante do ping (ver JS em 19-monitor-latencia-ping.js): não dá
+   pra usar `title` nativo (Chromium suprime tooltip nativo em descendente de
+   elemento draggable, e `.tab-btn` é draggable="true") nem `::after` preso ao
+   ponto (`.tab-btn` tem overflow:hidden pro degradê da borda, que cortaria o
+   balão). Por isso é um único `<div>` fixo, anexado no `<body>`, posicionado
+   via JS a cada hover — fora de qualquer clipping da sidebar. */
+.ping-tip-flutuante {
+  position: fixed;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 163, 184, .3);
+  white-space: nowrap;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+}
+
+/* A aba fica um pouco mais alta pra caber o sprite sem apertar as duas linhas. */
+.tab-btn { height: 44px; }
+.tab-title { max-width: none; }
+
+/* ---- CABEÇALHO DE BLOCO ENXUTO ----
+   Sem o rótulo em caixa-alta: sobra o ícone (que é a alça de arrasto e a
+   referência do bloco ao reordenar), o contador e as ações. */
+.sidebar-block-header.enxuto {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px 5px;
+  background: none; border: none;
+}
+/* A alca e o icone precisam continuar VISIVEIS: sao a unica referencia de qual
+   bloco se esta arrastando depois que o rotulo saiu. Em .35 de opacidade eles
+   sumiam e a reordenacao virava adivinhacao. */
+.sidebar-block-header.enxuto .sidebar-block-drag-icon {
+  cursor: grab; opacity: .55; font-size: 11px; color: #94a3b8;
+}
+.sidebar-block-header.enxuto:hover .sidebar-block-drag-icon { opacity: .9; }
+.sidebar-block-header.enxuto .sidebar-block-ic { font-size: 13px; opacity: 1; }
+
+/* O "+" com cor de acento: cinza igual aos controles de ordenar/recolher ficaria
+   ambíguo, e ele é a única ação destrutiva-por-engano do cabeçalho. */
+.sidebar-block-toggle-btn.add {
+  color: #4ade80; font-size: 14px; font-weight: 700; line-height: 1;
+}
+.sidebar-block-toggle-btn.add:hover { color: #86efac; background: rgba(34, 197, 94, .14); }
+
+/* ---- BLOCOS SEM CAIXA ----
+   Os blocos eram cards com borda em volta; empilhados, viravam três molduras
+   competindo. Agora é só uma linha de separação entre um assunto e o outro —
+   o "peso" que sobrava era a borda, não o conteúdo. */
+.sidebar-modular-block + .sidebar-modular-block {
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  padding-top: 6px; margin-top: 5px;
+}
+#sidebar-xp-tracker-container > *,
+#sidebar-widget-auto-container > * {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* =========================================================
+   LINGUETA DE RECOLHER — FORA DA SIDEBAR
+   =========================================================
+   Ela morava dentro do cabeçalho da marca: sumia junto com o resto ao recolher,
+   e voltar exigia adivinhar onde clicar. Agora vive no `#app-root`, colada na
+   borda direita da barra e centrada na altura — o mesmo lugar nos dois estados. */
+.sidebar-lingueta {
+  position: fixed;
+  /* 220px e a largura real da .app-sidebar (topo deste arquivo). Fixo aqui
+     porque a lingueta e `position: fixed` e nao herda a largura de ninguem. */
+  left: 220px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1200;
+  width: 15px; height: 46px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; cursor: pointer;
+  color: #94a3b8;
+  background: rgba(30, 41, 59, .97);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, .45);
+  transition: left .2s ease, color .15s, background .15s;
+}
+.sidebar-lingueta:hover { color: #f1f5f9; background: rgba(51, 65, 85, .98); }
+.sidebar-lingueta svg { transition: transform .2s ease; }
+/* Recolhida, a seta aponta pro outro lado — a lingueta diz o que ela FAZ. */
+#app-root:has(.app-sidebar.collapsed) .sidebar-lingueta { left: 56px; }
+#app-root:has(.app-sidebar.collapsed) .sidebar-lingueta svg { transform: rotate(180deg); }
+
+/* =========================================================
+   ESTADO COLAPSADO — nada cortado
+   =========================================================
+   Antes a barra virava 56px e o conteúdo continuava com a largura de dentro:
+   botões, ícones e a lista de contas ficavam cortados pela borda. A regra agora
+   é simples: no colapsado, ou o elemento cabe centrado em 56px, ou não aparece. */
+.app-sidebar.collapsed { overflow-x: hidden; padding-left: 0; padding-right: 0; }
+
+/* Some tudo que é texto ou controle secundário — em 56px não há espaço pra
+   nada além do essencial. */
+.app-sidebar.collapsed .sidebar-brand,
+.app-sidebar.collapsed .sidebar-block-header,
+.app-sidebar.collapsed .sidebar-auto-head,
+.app-sidebar.collapsed .xpmini-head,
+.app-sidebar.collapsed #sidebar-xp-tracker-container,
+.app-sidebar.collapsed #sidebar-widget-auto-container,
+.app-sidebar.collapsed .sidebar-bloco-ctrl { display: none !important; }
+
+/* A lista de contas é a única coisa que sobrevive: é pra ela que se recolhe a
+   barra. Sprite centrado, sem nome e sem faixa de cor lateral. */
+.app-sidebar.collapsed .sidebar-blocks-container,
+.app-sidebar.collapsed #sidebar-blocks-container { padding: 4px 0; gap: 0; }
+.app-sidebar.collapsed .sidebar-accounts-list { gap: 4px; align-items: center; }
+.app-sidebar.collapsed .tab-btn {
+  width: 44px !important; min-width: 44px !important; height: 44px !important;
+  padding: 0 !important; margin: 0 auto !important;
+  justify-content: center !important; border-radius: 10px;
+  transform: none !important;
+}
+.app-sidebar.collapsed .tab-btn::before,
+.app-sidebar.collapsed .tab-btn::after { display: none; }
+.app-sidebar.collapsed .tab-btn > div,
+.app-sidebar.collapsed .tab-title { display: none !important; }
+.app-sidebar.collapsed .tab-pokeball-icon { margin: 0 !important; }
+/* O ponto de ping vira um selo no canto do sprite — cabe, e é a única
+   informação de estado que ainda importa nesse tamanho. */
+.app-sidebar.collapsed .tab-ping-dot {
+  position: absolute; top: 4px; right: 4px; margin: 0;
+}
+.app-sidebar.collapsed .tab-btn { position: relative; }
+
+/* Rodapé: só os ícones, centrados e sem transbordar.
+   `.sidebar-menu-btn` fica de fora daqui de proposito -- ja tem regra
+   propria (36px, igual aos outros botoes-icone do rodape) mais acima;
+   duplicar aqui com 44px so pra brigar com ela e o texto "Menu" ficando
+   torto quando a barra recolhe. */
+.app-sidebar.collapsed .sidebar-pinned-item {
+  width: 44px; min-width: 44px; padding: 0; margin: 0 auto;
+  justify-content: center; gap: 0;
+}
+.app-sidebar.collapsed .sidebar-pinned-item .pinned-unpin { display: none !important; }
+.app-sidebar.collapsed .sidebar-pinned-footer-section { padding: 4px 0; align-items: center; }
+.app-sidebar.collapsed .sidebar-footer-menus { padding: 4px 0; gap: 4px; align-items: center; }
+
+/* ---- barras de título enxutas dos blocos (XP Tracker / Auto Toggles) ----
+   Eram faixas com gradiente verde, borda inferior, emoji e rótulo em caixa-alta.
+   Viraram uma linha só com a alça e as ações que existem apenas ali. */
+.xpmini-head, .sidebar-auto-head {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px 2px;
+  background: none !important;
+  border: none !important;
+}
+.xpmini-head .sidebar-block-drag-icon,
+.sidebar-auto-head .sidebar-block-drag-icon {
+  cursor: grab; opacity: .5; font-size: 11px; color: #94a3b8;
+}
+.xpmini-head:hover .sidebar-block-drag-icon,
+.sidebar-auto-head:hover .sidebar-block-drag-icon { opacity: .9; }
+
+/* A aba ativa tem `transform: translateX(3px)` — 3px que estouravam a largura
+   do container e faziam nascer uma barra de rolagem HORIZONTAL embaixo da lista
+   de contas. O eixo Y é o único que deve rolar aqui. */
+.sidebar-tabs-container,
+#tabs-container { overflow-x: hidden !important; }
+.sidebar-accounts-list { padding-right: 3px; }
+
+/* ---- TÍTULO DOS BLOCOS ----
+   Tirar os títulos foi longe demais: sem eles os blocos perderam identidade e
+   a alça sozinha não diz o que se está arrastando. Voltaram — mas em caixa
+   normal e peso discreto, não no caixa-alta espaçado de antes, que era metade
+   do peso visual da barra. */
+.sidebar-block-titulo {
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbd5e1;
+  letter-spacing: .1px;
+  white-space: nowrap;
+}
+.sidebar-block-header.enxuto .sidebar-block-titulo { color: #e2e8f0; }
+
+/* Os ▲▼ ficam na linha do título, agrupados e discretos. */
+.sidebar-bloco-acoes { display: inline-flex; gap: 2px; flex: none; margin-left: 2px; }
+.sidebar-bloco-btn {
+  background: rgba(148, 163, 184, .08);
+  border: 1px solid rgba(148, 163, 184, .16);
+  color: #94a3b8; border-radius: 5px;
+  font-size: 8px; line-height: 1; padding: 3px 4px;
+  cursor: pointer; font-family: inherit;
+}
+.sidebar-bloco-btn:hover:not(:disabled) { background: rgba(148, 163, 184, .2); color: #f1f5f9; }
+.sidebar-bloco-btn:disabled { opacity: .25; cursor: default; }
+
+/* Colapsada, o título some junto com o resto do cabeçalho. */
+.app-sidebar.collapsed .sidebar-block-titulo { display: none !important; }
+
+/* =========================================================
+   AUTO TOGGLES COMO CHAVE ON/OFF
+   =========================================================
+   Eram botões com um selo "ON"/"OFF" ao lado — dava pra ler, mas exigia ler.
+   Uma chave se entende pela POSIÇÃO do botão antes de qualquer texto.
+   O estado vem da classe `.on` posta pelo JS; toda a aparência mora aqui. */
+.sidebar-auto-toggle {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, .18);
+  background: rgba(148, 163, 184, .06);
+  transition: background .18s, border-color .18s;
+}
+.sat-rotulo {
+  flex: 1; min-width: 0;
+  font-size: 10px; font-weight: 700; color: #64748b;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  transition: color .18s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* O trilho e o botão: 26x14, botão de 10 que desliza 11px. */
+.sat-chave {
+  flex: none; position: relative;
+  width: 26px; height: 14px; border-radius: 999px;
+  background: rgba(100, 116, 139, .35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05);
+  transition: background .18s;
+}
+.sat-botao {
+  position: absolute; top: 2px; left: 2px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #94a3b8;
+  transition: transform .18s ease, background .18s;
+}
+.sidebar-auto-toggle.on .sat-botao { transform: translateX(11px); background: #fff; }
+
+/* LIGADO. Verde pro que caça e captura, âmbar pro que mexe em dinheiro — mesma
+   família de cor que o resto da suíte usa pra essas duas naturezas. */
+.sidebar-auto-toggle.verde.on {
+  background: rgba(34, 197, 94, .16); border-color: rgba(34, 197, 94, .5);
+}
+.sidebar-auto-toggle.verde.on .sat-rotulo { color: #86efac; }
+.sidebar-auto-toggle.verde.on .sat-chave { background: #22c55e; }
+
+.sidebar-auto-toggle.ambar.on {
+  background: rgba(245, 158, 11, .16); border-color: rgba(245, 158, 11, .5);
+}
+.sidebar-auto-toggle.ambar.on .sat-rotulo { color: #fcd34d; }
+.sidebar-auto-toggle.ambar.on .sat-chave { background: #f59e0b; }
+
+.sidebar-auto-toggle:hover { border-color: rgba(255, 255, 255, .28); }
+
+/* =========================================================
+   XP TRACKER: os botões paravam de caber e quebravam linha
+   =========================================================
+   Eram quatro (fixar, fechar, ▲, ▼) numa faixa de ~200px com o título ao lado —
+   o ✕ caía numa segunda linha. Duas medidas: a linha não quebra, e as ações que
+   NÃO são de reordenar só aparecem no hover. Some o ruído sem perder função. */
+.xpmini-head, .sidebar-auto-head, .sidebar-block-header.enxuto { flex-wrap: nowrap; }
+.xpmini-actions-group { display: inline-flex; align-items: center; gap: 3px; flex: none; }
+
+.xpmini-head .xpmini-actions-group,
+.sidebar-auto-head > .sidebar-block-toggle-btn {
+  opacity: 0; transition: opacity .15s;
+}
+.xpmini-head:hover .xpmini-actions-group,
+.sidebar-auto-head:hover > .sidebar-block-toggle-btn { opacity: 1; }
+/* Teclado tem que alcançar o que o mouse alcança. */
+.xpmini-head:focus-within .xpmini-actions-group,
+.sidebar-auto-head:focus-within > .sidebar-block-toggle-btn { opacity: 1; }
+
+.sidebar-block-toggle-btn {
+  background: none; border: none; cursor: pointer;
+  color: #64748b; font-size: 11px; line-height: 1; padding: 2px 3px;
+  font-family: inherit; flex: none; border-radius: 4px;
+}
+.sidebar-block-toggle-btn:hover { color: #e2e8f0; background: rgba(148, 163, 184, .14); }

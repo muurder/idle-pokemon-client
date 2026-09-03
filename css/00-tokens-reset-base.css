@@ -1,0 +1,94 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* A lista aberta de um <select> nativo é desenhada pelo Chromium com fundo
+   BRANCO próprio: ela NÃO herda o background translúcido do campo. Como todos
+   os selects da casca usam `color` claro (#f1f5f9 / #cbd5e1), o texto das
+   opções ficava branco no branco e sumia ao abrir o dropdown. `color-scheme`
+   avisa o motor que o controle é escuro; as regras de option/optgroup cobrem
+   o caso em que ele ignora isso. Uma regra só, para todos os painéis. */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+select option:checked {
+  background-color: #1d4ed8;
+  color: #ffffff;
+}
+
+:root {
+  /* === TIPOGRAFIA — token único de fonte (ver scripts/06b-tipografia.js) ===
+     Nenhum CSS daqui pra frente escreve nome de fonte na mão: tudo usa
+     var(--app-font-ui) para texto de interface e var(--app-font-num) para
+     números/dados. Os valores abaixo são só o PISO — o preset escolhido na
+     aba Config do painel v2 é escrito inline em <html> por
+     shell/45-tipografia-sync.js e sobrescreve estes. */
+  --app-font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --app-font-num: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+  --app-font-num-variant: normal;
+  /* Código e log bruto: mono FIXA, não segue o preset — texto de
+     script em fonte proporcional é ilegível. */
+  --app-font-code: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+
+  /* === DESIGN SYSTEM TOKENS — Protótipo Escuro Premium === */
+  --ds-bg: rgba(15, 23, 42, .92);
+  --ds-bg-solid: #0f172a;
+  --ds-bg-deep: #0a0f1d;
+  --ds-surface: #1e293b;
+  --ds-surface-2: #111827;
+  --ds-surface-3: rgba(30, 41, 59, 0.6);
+  --ds-border: rgba(255, 255, 255, .06);
+  --ds-border-hover: rgba(16, 185, 129, .35);
+  --ds-green: #10b981;
+  --ds-green-2: #059669;
+  --ds-green-soft: rgba(16, 185, 129, .15);
+  --ds-green-glow: rgba(16, 185, 129, .25);
+  --ds-yellow: #f59e0b;
+  --ds-red: #ef4444;
+  --ds-text: #f8fafc;
+  --ds-text-2: #e2e8f0;
+  --ds-muted: #94a3b8;
+  --ds-cyan: #22d3ee;
+  --ds-purple: #a855f7;
+  /* Radius */
+  --ds-radius: 14px;
+  --ds-radius-lg: 16px;
+  --ds-radius-sm: 10px;
+  --ds-radius-xs: 8px;
+  --ds-pill: 9999px;
+  /* Shadows */
+  --ds-shadow: 0 8px 32px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .25);
+  --ds-shadow-lg: 0 16px 48px rgba(0, 0, 0, .55), 0 4px 12px rgba(0, 0, 0, .3);
+  --ds-shadow-green: 0 4px 20px rgba(16, 185, 129, .35);
+  --ds-shadow-drawer: -10px 0 30px -5px rgba(0, 0, 0, .6);
+  --ds-shadow-card: 0 4px 24px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .03) inset;
+  --ds-blur: blur(16px);
+  /* Aliases (consistência shell ↔ suite) */
+  --bs-primary: #10b981;
+  --bs-glow: rgba(16, 185, 129, .30);
+  --bs-border: rgba(255, 255, 255, .06);
+  --bs-surface: rgba(15, 23, 42, .92);
+  --bs-text: #e2e8f0;
+  --bs-text2: #94a3b8;
+  --suite-accent: #10b981;
+  --suite-accent-2: #059669;
+  --suite-radius: 14px;
+  --suite-line: rgba(148, 163, 184, .12);
+}
+
+body {
+  font-family: var(--app-font-ui);
+  background-color: #0a0f1d;
+  color: #f1f5f9;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+

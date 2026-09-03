@@ -1,0 +1,493 @@
+/* ========================================================
+   DASHBOARD 4X COMMAND CENTER & SALA DE TROFÉUS SHINIES
+   ======================================================== */
+.dashboard-view-wrapper {
+  background: #080c14;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-header-bar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 14px 44px 14px 20px; /* folga a direita pro X fixo (.dash-close-x) */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.dash-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-title-group h2 {
+  font-size: 16px;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.dash-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dash-btn {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  border: 1px solid transparent;
+}
+
+.dash-btn:hover {
+  transform: translateY(-1px);
+}
+
+.dash-btn-primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.dash-btn-green {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.dash-btn-yellow {
+  background: linear-gradient(135deg, #ca8a04, #a16207);
+  color: #fff;
+  border-color: #fde047;
+}
+
+.dash-btn-purple {
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  color: #fff;
+  border-color: #c084fc;
+  box-shadow: 0 0 10px rgba(192, 132, 252, 0.3);
+}
+
+.dash-btn-pink {
+  background: linear-gradient(135deg, #db2777, #be185d);
+  color: #fff;
+  border-color: #f472b6;
+}
+
+/* Grid de Cards das 4 Contas */
+.dash-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1300px) {
+  .dash-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dash-acc-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  position: relative;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.dash-acc-card:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 185, 129, 0.12);
+  transform: translateY(-2px);
+}
+
+.dash-acc-card.is-main {
+  border-color: rgba(250, 204, 21, 0.45);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 16px rgba(250, 204, 21, 0.15);
+}
+
+.dash-acc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.dash-acc-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dash-acc-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+.dash-acc-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.dash-acc-badge.main {
+  background: #eab308;
+  color: #020617;
+}
+
+.dash-acc-badge.farm {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.dash-poke-box {
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dash-enemy-box {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dash-poke-sprite {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+}
+
+.dash-hp-bar,
+.dash-progress-track {
+  height: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dash-hp-fill,
+.dash-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-progress-fill.trainer {
+  background: linear-gradient(90deg, #0284c7, #38bdf8, #818cf8);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+
+.dash-progress-fill.poke-xp {
+  background: linear-gradient(90deg, #9333ea, #c084fc, #f43f5e);
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.5);
+}
+
+.dash-level-badge {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.3));
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  color: #fde047;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dash-level-badge.poke {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.35));
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #c084fc;
+}
+
+.dash-pct-pill {
+  font-size: 8.5px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dash-pct-pill.cyan {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.dash-pct-pill.pink {
+  background: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.dash-pct-pill.green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.dash-pct-pill.emerald {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.dash-eta-pill {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #fde047;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dash-eta-pill.poke {
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+}
+
+.dash-progress-fill.poke-dex {
+  background: linear-gradient(90deg, #10b981, #06b6d4, #3b82f6);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.dash-dex-section {
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.dash-stat-pill {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 6px;
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-stat-label {
+  font-size: 9px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.dash-stat-val {
+  font-size: 11.5px;
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+.dash-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* Mochila / Drops no Card da Dashboard */
+.dash-bag-section {
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dash-bag-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dash-bag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 64px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.dash-bag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 9.5px;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.dash-bag-chip-name {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-bag-chip-qty {
+  font-weight: 900;
+  color: #fde047;
+}
+
+.dash-bag-dump-btn {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.4), rgba(79, 70, 229, 0.4));
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #f5d0fe;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.dash-bag-dump-btn:hover {
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  color: #fff;
+  border-color: #c084fc;
+}
+
+/* Sala de Troféus de Shinies */
+.dash-trophies-panel {
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(250, 204, 21, 0.2);
+  border-radius: 16px;
+  padding: 14px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-trophies-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dash-trophies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.dash-shiny-card {
+  background: rgba(2, 6, 23, 0.75);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.dash-shiny-card:hover {
+  transform: translateY(-2px);
+  border-color: #facc15;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.35);
+}
+
+
+/* Fechar Dashboard: X fixo no canto do header.
+   A toolbar de acoes quebra em varias linhas quando ha muitas contas e o
+   antigo botao "Fechar Dashboard" ia junto, saindo do campo de visao. Este X
+   fica ancorado no canto e nao depende do wrap da toolbar. */
+.dash-close-x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  transition: background .15s, color .15s, transform .15s;
+  z-index: 3;
+}
+
+.dash-close-x:hover {
+  background: rgba(239, 68, 68, 0.32);
+  color: #fff;
+  transform: scale(1.08);
+}

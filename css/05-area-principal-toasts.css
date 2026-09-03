@@ -1,0 +1,144 @@
+/* ÁREA PRINCIPAL DAS TELAS */
+.app-main-area {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background: #0a0f1d;
+}
+
+#views-container {
+  width: 100%;
+  height: 100%;
+  background: #0a0f1d;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Isola a pintura de cada conta: mudanças de um webview não recalculam o layout
+   da barra lateral e das demais contas. Também impede que conteúdo interno force
+   uma largura/altura maior que a área disponível. */
+.webview-wrapper {
+  min-width: 0;
+  min-height: 0;
+  contain: layout paint style;
+}
+
+/* MODO ABAS (TAB MODE)
+   As abas inativas continuam carregadas e com background throttling desativado
+   pelo Electron, portanto a hunt segue online. `visibility:hidden` só tira a
+   aba do compositor: evita desenhar jogos que o usuário não está vendo sem
+   descarregar, pausar ou recriar a webview. */
+#views-container.mode-tabs .webview-wrapper {
+  position: absolute; inset: 0;
+  visibility: hidden; opacity: 1; pointer-events: none;
+  width: 100%; height: 100%;
+}
+
+#views-container.mode-tabs .webview-wrapper.active {
+  position: absolute; inset: 0; left: 2px;
+  visibility: visible; opacity: 1; pointer-events: auto;
+  z-index: 2;
+  display: flex;
+  width: 100%; height: 100%;
+}
+
+/* --- TOAST NOTIFICATIONS --- */
+#toast-container {
+  position: fixed;
+  top: 50px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.toast-item {
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 14px;
+  padding: 10px 16px;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 16px rgba(16, 185, 129, 0.15);
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: auto;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-item.toast-success {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 185, 129, 0.25);
+}
+
+/* --- TOAST SHINY INTERATIVO --- */
+.toast-item.toast-shiny {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.98), rgba(88, 28, 135, 0.96));
+  border: 2px solid #facc15;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(250, 204, 21, 0.6);
+  cursor: pointer;
+  animation: shinyToastGlow 1.2s infinite alternate, toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.toast-item.toast-shiny:hover {
+  transform: scale(1.03) translateY(-2px);
+  border-color: #fde047;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.9), 0 0 35px rgba(250, 204, 21, 0.85);
+}
+
+@keyframes shinyToastGlow {
+  from {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(250, 204, 21, 0.4);
+  }
+  to {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 30px rgba(250, 204, 21, 0.8), 0 0 18px rgba(236, 72, 153, 0.6);
+  }
+}
+
+.tab-btn.shiny-flash {
+  animation: tabShinyFlash 0.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes tabShinyFlash {
+  from {
+    border-color: #facc15;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+  }
+  to {
+    border-color: #ec4899;
+    box-shadow: 0 0 22px rgba(236, 72, 153, 0.9), 0 0 12px rgba(250, 204, 21, 0.9);
+  }
+}
+
+.toast-item.fade-out {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(50px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+

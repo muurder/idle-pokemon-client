@@ -1,0 +1,106 @@
+/* --- MENU HAMBÚRGUER FLUTUANTE --- */
+.hamburger-dropdown {
+  animation: fadeInDown 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom left;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menu-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.menu-item-btn > span:first-child,
+.menu-item-btn > .menu-icon {
+  width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.menu-item-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+}
+
+/* MENU ITEM ROW (com botão de fixar) */
+.menu-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 8px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.menu-item-row:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+.menu-item-row:hover .menu-pin-btn {
+  opacity: 1;
+}
+.sidebar-menu-cat-title {
+  font-size: 8.5px;
+  font-weight: 900;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 4px 6px 2px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 3px;
+}
+.sidebar-menu-cat-title:first-of-type {
+  border-top: none;
+  margin-top: 0;
+}
+
+.menu-pin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  flex-shrink: 0;
+}
+.menu-pin-btn:hover {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: rgba(234, 179, 8, 0.4);
+  opacity: 1;
+}
+.menu-pin-btn.pinned {
+  opacity: 1;
+  background: rgba(234, 179, 8, 0.18);
+  border-color: rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.25);
+}
+

@@ -1,0 +1,33 @@
+/* =========================================================
+   BOOTSTRAP 5 DARK THEME OVERRIDES
+   ========================================================= */
+:root {
+  --bs-body-bg: #0a0f1d;
+  --bs-body-color: #f1f5f9;
+  --bs-border-color: rgba(255,255,255,0.06);
+  --bs-card-bg: rgba(30,41,59,0.5);
+  --bs-emphasis-color: #f1f5f9;
+  --bs-secondary-bg: rgba(30,41,59,0.6);
+}
+body { background-color: #0a0f1d !important; color: #f1f5f9 !important; }
+.btn { font-weight: 700; border-radius: 10px; transition: all 0.15s; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.btn-sm { padding: 3px 10px; font-size: 10px; }
+.btn-outline-secondary { border-color: rgba(255,255,255,0.1); color: #94a3b8; }
+.btn-outline-secondary:hover { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.4); color: #f1f5f9; }
+.btn-primary { background: linear-gradient(135deg, #10b981, #059669); border: none; }
+.btn-primary:hover { background: linear-gradient(135deg, #34d399, #10b981); }
+.card { background: rgba(30,41,59,0.5) !important; border: 1px solid rgba(255,255,255,0.06) !important; border-radius: 14px !important; }
+.card-body { color: #f1f5f9; }
+.badge { font-weight: 800; }
+.form-check-input:checked { background-color: #10b981; border-color: #10b981; }
+.form-select, .form-control { background-color: rgba(15,23,42,0.9); border-color: rgba(255,255,255,0.08); color: #f1f5f9; }
+.form-select:focus, .form-control:focus { border-color: #10b981; box-shadow: 0 0 0 0.15rem rgba(16,185,129,0.25); }
+.modal-backdrop { z-index: 1050; }
+
+
+
+
+
+/* Performance: desabilita transições pesadas para melhorar fluidez */
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }

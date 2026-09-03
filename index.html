@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Idle Pokémon Electron Client - Multi-Contas (Trade & Farm 4x)</title>
+  <!-- 🎨 Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 🅱️ Bootstrap 5 CSS + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- ✨ Animate.css -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <!-- 🔤 Fontes: Inter (UI) + JetBrains Mono (código/dados) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:,">
+  <style>
+    @keyframes xpMiniSlideIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    #xp-mini-view {
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    #xp-mini-view:hover {
+      box-shadow: 0 6px 28px rgba(0,0,0,0.7), 0 0 20px rgba(16,185,129,0.18) !important;
+      border-color: rgba(16,185,129,0.45) !important;
+    }
+    #xpmini-drag-handle:active {
+      cursor: grabbing;
+      background: rgba(16,185,129,0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-root">
+    
+    <!-- SIDEBAR LATERAL ESQUERDA -->
+    <aside id="app-sidebar" class="app-sidebar">
+      
+      <!-- LOGO / BRANDING.
+           A lingueta de recolher saiu daqui: ela vive FORA da sidebar agora
+           (ver #btn-sidebar-collapse logo depois do </aside>), colada na borda
+           e centrada na altura. Dentro do cabeçalho ela sumia junto com o
+           resto quando a barra recolhia, e voltar exigia adivinhar onde
+           clicar. -->
+      <div class="sidebar-brand">
+        <div class="brand-text-group sidebar-brand-text">
+          <span class="brand-title">Idle Pokémon</span>
+        </div>
+      </div>
+
+      <!-- CONTAINER MODULAR DE BLOCOS ARRASTÁVEIS NA SIDEBAR -->
+      <div id="sidebar-blocks-container" style="display:flex; flex-direction:column; overflow:hidden; overflow-x:hidden; flex:1; min-height:0; padding:2px 0; gap:3px">
+
+        <!-- BLOCO: CONTAS ATIVAS -->
+        <div class="sidebar-modular-block" id="block-accounts" data-block-id="accounts" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden">
+          <!-- Cabeçalho sem o rótulo "CONTAS ATIVAS": a lista de contas é
+               auto-evidente, e o texto só gastava altura. Sobra o ícone (que é
+               a alça de arrasto e a referência do bloco ao reordenar), o
+               contador, o "+" e o recolher. -->
+          <div class="sidebar-section-header sidebar-block-header enxuto" style="flex-shrink:0">
+            <span class="sidebar-block-drag-icon" title="Arraste para reordenar bloco">⠿</span>
+            <span class="sidebar-block-titulo">Contas</span>
+            <span id="sidebar-accounts-count" class="sidebar-count-badge">4</span>
+            <span style="flex:1"></span>
+            <!-- O "+" ganha cor de acento pra não se confundir com os controles
+                 de ordenar/recolher, que são cinza. -->
+            <button class="sidebar-block-toggle-btn add" id="btn-add-tab" onclick="adicionarNovaAba()" title="Adicionar nova conta (sessão isolada)">＋</button>
+            <!-- Sem o botão de recolher o BLOCO: ele ficava colado no ▼ e
+                 recolher a lista de contas a fazia sumir e voltar, o que de
+                 fora parecia a lista "girando". A barra inteira já recolhe
+                 pela lingueta da borda. -->
+          </div>
+          <div class="sidebar-tabs-container" id="tabs-container" style="overflow-y:auto; flex:1; min-height:0">
+            <div id="account-tabs-wrapper" class="sidebar-accounts-list">
+              <!-- Renderizado dinamicamente via renderizarAbasClient() -->
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOCO: XP TRACKER -->
+        <div class="sidebar-modular-block" id="block-xp-tracker" data-block-id="xp-tracker">
+          <div id="sidebar-xp-tracker-container" style="display:none; padding:2px 6px"></div>
+        </div>
+
+
+      </div>
+
+      <!-- SEÇÃO FIXA DE ATALHOS NO RODAPÉ DA SIDEBAR (Acima do Menu) -->
+      <div id="sidebar-pinned-section" class="sidebar-pinned-footer-section" style="display:none; padding:4px 6px; margin-top:auto; border-top:1px solid rgba(255,255,255,0.06); flex-direction:column; gap:2px">
+        <div id="sidebar-pinned-items" style="display:flex; flex-direction:column; gap:2px">
+          <!-- Renderizado dinamicamente via renderizarFixadosSidebar() -->
+        </div>
+      </div>
+
+      <!-- FOOTER DA SIDEBAR: BOTÃO DO MENU HAMBÚRGUER & IDLE SUITE -->
+      <div class="sidebar-footer" style="padding: 4px 6px">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; position: relative; width: 100%">
+          <button class="sidebar-menu-btn" id="btn-hamburger-menu" onclick="toggleHamburgerMenu(event)" title="Menu de Ações, Ferramentas e Configurações" style="padding: 6px 4px; justify-content: center; gap: 4px">
+            <span style="font-size: 13px">☰</span>
+            <span style="font-size: 11px; font-weight: 800">Menu</span>
+          </button>
+          
+
+          <!-- DROPDOWN FLUTUANTE DO MENU HAMBÚRGUER (ABRE PARA CIMA) -->
+          <div id="dropdown-hamburger-menu" class="hamburger-dropdown" style="display:none; position:absolute; bottom:42px; left:0; width:235px; background:rgba(15,23,42,0.98); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.18); border-radius:10px; box-shadow:0 12px 35px rgba(0,0,0,0.9); z-index:99999; padding:6px; flex-direction:column; gap:3px" onclick="event.stopPropagation()">
+            
+            <!-- SELETOR DE ZOOM -->
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:5px 8px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08); margin-bottom:2px">
+              <span style="font-size:11px; font-weight:700; color:#cbd5e1" title="Vale para o modo Abas">🔍 Escala (Abas):</span>
+              <select id="select-zoom" style="background:rgba(30,41,59,0.95); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#f8fafc; font-size:10.5px; font-weight:800; padding:2px 6px; outline:none; cursor:pointer" onchange="alterarZoomManual()" title="Escala do modo Abas. No modo Grid quem define o zoom é o seletor de colunas abaixo.">
+                <option value="auto">Zoom Auto</option>
+                <option value="0.55">55%</option>
+                <option value="0.65">65%</option>
+                <option value="0.75">75%</option>
+                <option value="0.85">85%</option>
+                <option value="1.0">100%</option>
+              </select>
+            </div>
+
+            <!-- COLUNAS DO MODO GRID -->
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:5px 8px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08); margin-bottom:2px">
+              <span style="font-size:11px; font-weight:700; color:#cbd5e1">🪟 Colunas do Grid:</span>
+              <select id="select-grid-cols" style="background:rgba(30,41,59,0.95); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#f8fafc; font-size:10.5px; font-weight:800; padding:2px 6px; outline:none; cursor:pointer" onchange="alterarColunasGrid(this.value)" title="Quantas contas por linha no Grid Multi-Contas (as demais entram no scroll)">
+                <option value="2">2 por linha</option>
+                <option value="3">3 por linha</option>
+                <option value="4">4 por linha</option>
+                <option value="5">5 por linha</option>
+                <option value="6">6 por linha</option>
+              </select>
+            </div>
+
+            <!-- As linhas saem de MENU_ITEMS (shell/04), via renderizarMenusDeFerramentas() -->
+            <div id="menu-itens-geral" style="display:flex; flex-direction:column; gap:3px"></div>
+
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- LINGUETA DE RECOLHER — fora da sidebar, colada na borda e centrada na
+         altura. Fica sempre no mesmo lugar, recolhida ou não, e é o único
+         controle que precisa sobreviver ao estado colapsado. -->
+    <button class="sidebar-lingueta" id="btn-sidebar-collapse" onclick="toggleSidebarColapso()" title="Recolher ou expandir a barra lateral">
+      <svg id="sidebar-collapse-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+
+    <!-- ÁREA PRINCIPAL DAS TELAS -->
+    <main id="app-main-area" class="app-main-area">
+      <!-- CONTAINER DE WEBVIEWS (SESSÕES ISOLADAS) -->
+      <div id="views-container" class="mode-tabs">
+        <!-- Webviews de Contas geradas dinamicamente via renderizarWebviewsClient() -->
+        <div id="webviews-dynamic-container" style="display:contents"></div>
+
+        <!-- ABA DASHBOARD & SALA DE TROFÉUS SHINIES -->
+        <div class="webview-wrapper dashboard-view-wrapper" id="wrap-dash" style="background:#080c14; overflow-y:auto">
+          <!-- HEADER TOOLBAR GERAL -->
+          <div class="dash-header-bar">
+        <div class="dash-title-group">
+          <span style="font-size:20px">👑</span>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px">
+              <h2>Dashboard 4x Command Center</h2>
+              <span style="display:inline-flex; align-items:center; gap:5px; font-size:9.5px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.35); color:#4ade80; padding:2px 8px; border-radius:12px; font-weight:800; letter-spacing:0.5px">
+                <span style="width:6px; height:6px; border-radius:50%; background:#22c55e; box-shadow:0 0 6px #22c55e"></span>
+                <span>AO VIVO 1s</span>
+              </span>
+            </div>
+            <div style="font-size:11px; color:#94a3b8">Monitoramento ao vivo sincronizado automaticamente a cada segundo</div>
+          </div>
+        </div>
+        <button class="dash-close-x" onclick="fecharDashboardCentral()" title="Fechar Dashboard (Esc) e voltar ao jogo">✕</button>
+        <div class="dash-toolbar-actions" id="dash-toolbar-actions">
+          <div class="menu-item-row" data-dash-id="atualizar-tudo" style="display:inline-flex">
+            <button class="dash-btn dash-btn-primary" onclick="atualizarDashboardCompleta()" title="Sincronizar dados das 4 contas">
+              <span>🔄</span> <span>Atualizar Tudo</span>
+            </button>
+            <button class="menu-pin-btn" style="font-size:10px; width:22px; height:22px; opacity:0.4" onclick="event.stopPropagation(); toggleFixarDash('atualizar-tudo')" title="Fixar no Menu Lateral">📌</button>
+          </div>
+          <div class="menu-item-row" data-dash-id="iniciar-hunts" style="display:inline-flex">
+            <button class="dash-btn dash-btn-green" onclick="iniciarTodasHunts()" title="Iniciar Auto-Hunt nas 4 contas ao mesmo tempo">
+              <span>⚔️</span> <span>Iniciar Hunts</span>
+            </button>
+            <button class="menu-pin-btn" style="font-size:10px; width:22px; height:22px; opacity:0.4" onclick="event.stopPropagation(); toggleFixarDash('iniciar-hunts')" title="Fixar no Menu Lateral">📌</button>
+          </div>
+          <div class="menu-item-row" data-dash-id="pausar-hunts" style="display:inline-flex">
+            <button class="dash-btn dash-btn-yellow" onclick="pausarTodasHunts()" title="Pausar Auto-Hunt em todas as contas">
+            <span>⏸</span> <span>Pausar Hunts</span>
+          </button>
+            <button class="menu-pin-btn" style="font-size:10px; width:22px; height:22px; opacity:0.4" onclick="event.stopPropagation(); toggleFixarDash('pausar-hunts')" title="Fixar no Menu Lateral">📌</button>
+          </div>
+          <div class="menu-item-row" data-dash-id="curar-contas" style="display:inline-flex">
+            <button class="dash-btn dash-btn-pink" onclick="curarTodasContas()" title="Usar poção e curar o Pokémon ativo nas 4 contas">
+              <span>💊</span> <span>Curar Contas</span>
+            </button>
+            <button class="menu-pin-btn" style="font-size:10px; width:22px; height:22px; opacity:0.4" onclick="event.stopPropagation(); toggleFixarDash('curar-contas')" title="Fixar no Menu Lateral">📌</button>
+          </div>
+          <div class="menu-item-row" data-dash-id="central-trade" style="display:inline-flex">
+          </div>
+          <div class="menu-item-row" data-dash-id="avaliador-meta" style="display:inline-flex">
+            <button class="dash-btn" style="background:linear-gradient(135deg,rgba(168,85,247,0.35),rgba(6,182,212,0.35)); border:1px solid rgba(168,85,247,0.6); color:#f8fafc; font-weight:900" onclick="abrirModalAvaliadorMeta()" title="Avaliar IVs, potencial e builds recomendadas para Pokémon">
+              <span>🧬</span> <span>Avaliador Meta</span>
+            </button>
+            <button class="menu-pin-btn" style="font-size:10px; width:22px; height:22px; opacity:0.4" onclick="event.stopPropagation(); toggleFixarDash('avaliador-meta')" title="Fixar no Menu Lateral">📌</button>
+          </div>
+          <button class="dash-btn btn-cancel" onclick="fecharDashboardCentral()" style="background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.5); color:#fca5a5; font-weight:800; padding:6px 14px" title="Fechar Dashboard e voltar à visualização do jogo">
+            <span>✕</span> <span>Fechar Dashboard</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- GRID DOS CARDS DAS 4 CONTAS -->
+      <div class="dash-cards-grid" id="dashboard-cards-grid">
+        <div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748b; font-size:12px">
+          🔄 Carregando status das 4 contas...
+        </div>
+      </div>
+
+      <!-- SALA DE TROFÉUS & HISTÓRICO DE SHINIES -->
+      <div class="dash-trophies-panel">
+        <div class="dash-trophies-head">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+            <span style="font-size:18px">🏆</span>
+            <span style="font-size:13.5px; font-weight:900; color:#fde047">Sala de Troféus 4x</span>
+            <span id="dash-shiny-total-badge" style="font-size:10px; background:rgba(250,204,21,0.2); color:#fde047; padding:2px 8px; border-radius:10px; border:1px solid rgba(250,204,21,0.4); font-weight:900">0 Troféus</span>
+            <div style="display:flex; gap:4px; margin-left:4px">
+              <span id="trophy-counter-shiny" style="font-size:9.5px; background:rgba(253,224,71,0.15); color:#fde047; padding:2px 6px; border-radius:8px; border:1px solid rgba(253,224,71,0.3); font-weight:800">✨ 0</span>
+              <span id="trophy-counter-boss" style="font-size:9.5px; background:rgba(239,68,68,0.15); color:#fca5a5; padding:2px 6px; border-radius:8px; border:1px solid rgba(239,68,68,0.3); font-weight:800">💀 0</span>
+              <span id="trophy-counter-mythic" style="font-size:9.5px; background:rgba(167,139,250,0.15); color:#c4b5fd; padding:2px 6px; border-radius:8px; border:1px solid rgba(167,139,250,0.3); font-weight:800">🔮 0</span>
+              <span id="trophy-counter-legendary" style="font-size:9.5px; background:rgba(251,191,36,0.15); color:#fbbf24; padding:2px 6px; border-radius:8px; border:1px solid rgba(251,191,36,0.3); font-weight:800">👑 0</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px">
+            <button class="dash-btn dash-btn-primary" onclick="copiarRelatorioShiniesDiscord()" style="padding:4px 9px; font-size:10px">
+              <span>📋</span> <span>Copiar Relatório Discord</span>
+            </button>
+            <button class="dash-btn" onclick="limparHistoricoShinies()" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); padding:4px 9px; font-size:10px">
+              <span>🧹</span> <span>Limpar</span>
+            </button>
+          </div>
+        </div>
+        <div class="dash-trophies-grid" id="dashboard-shinies-grid">
+          <!-- Renderizado via renderizarGaleriaShiniesDashboard() -->
+        </div>
+      </div>
+    </div>
+    </div>
+    </main>
+  </div>
+
+  <!-- MODAL PARA GERENCIAR / RENOMEAR / EXCLUIR ABA -->
+  <div id="modal-rename" class="modal-backdrop" onclick="fecharModalSeFora(event, 'modal-rename')">
+    <div class="modal-box modal-conta" onclick="event.stopPropagation()">
+
+      <div class="modal-conta-head" id="modal-rename-title" onmousedown="iniciarArrastoModalRenomear(event)">
+        <div class="modal-conta-ident">
+          <span class="modal-conta-ball" id="modal-conta-ball"></span>
+          <div class="modal-conta-txt">
+            <div class="modal-conta-nome" id="modal-rename-header">Gerenciar Conta</div>
+            <div class="modal-conta-sub" id="modal-conta-sub">—</div>
+          </div>
+        </div>
+        <button class="modal-conta-x" onclick="fecharModalRenomear()" onmousedown="event.stopPropagation()" title="Fechar">✕</button>
+      </div>
+
+      <div class="modal-conta-body">
+        <label class="modal-conta-label" for="modal-rename-input">Nome da conta</label>
+        <input type="text" id="modal-rename-input" class="modal-input" placeholder="Ex: Principal, Farm 2..." maxlength="25" />
+
+        <div class="modal-conta-label" style="margin-top:2px">Cor da aba</div>
+        <div class="modal-conta-cores" id="modal-conta-cores"></div>
+
+        <!-- Posicao na lista: o arrasto continua valendo, mas com 11 contas
+             empilhadas ele erra facil. Aqui o movimento e de uma em uma. -->
+        <div class="modal-conta-secao">
+          <span class="modal-conta-secao-t">Posição na lista</span>
+          <div class="modal-conta-ordem">
+            <button class="modal-conta-btn" id="btn-conta-subir" onclick="moverContaPeloModal(-1)" title="Mover uma posição para cima">↑ Subir</button>
+            <span class="modal-conta-pos" id="modal-conta-pos">—</span>
+            <button class="modal-conta-btn" id="btn-conta-descer" onclick="moverContaPeloModal(1)" title="Mover uma posição para baixo">↓ Descer</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-conta-foot">
+        <div class="modal-conta-foot-perigo">
+          <button id="btn-modal-delete-acc" class="modal-conta-btn perigo" onclick="excluirContaPeloModal()">🗑️ Fechar conta</button>
+          <button class="modal-conta-btn aviso" onclick="forcarRefreshPeloModal()">🔄 Recarregar</button>
+        </div>
+        <div class="modal-conta-foot-acoes">
+          <button class="modal-conta-btn" onclick="fecharModalRenomear()">Cancelar</button>
+          <button class="modal-conta-btn ok" onclick="confirmarRenomear()">💾 Salvar</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MINI DASHBOARD — CONTAS ATIVAS
+       Tela única (o antigo layout v1 `.md-*` foi removido). Janela em
+       shell/40-mini-dashboard.js, coleta/render em shell/13. -->
+  <div id="mini-dashboard" class="mini-dash" style="display:none">
+    <div class="mini-dash-window" id="mini-dash-window">
+      <div class="mini-dash-header" id="mini-dash-header" onmousedown="iniciarArrastoMiniDash(event)">
+        <span class="mini-dash-drag">⠿⠿</span>
+        <span class="mini-dash-title">Mini Dashboard — Contas Ativas</span>
+        <div style="display:flex; gap:6px; align-items:center; margin-left:auto">
+          <button class="mini-dash-btn" id="btn-md-toggle-view" title="Alternar Lista/Cards" onmousedown="event.stopPropagation()" onclick="toggleMiniDashViewMode()">📋</button>
+          <button class="mini-dash-btn" id="btn-md-pin" title="Fixar no Menu Lateral" onmousedown="event.stopPropagation()" onclick="toggleMiniDashPin()">📌</button>
+          <button class="mini-dash-btn" title="Atualizar agora" onmousedown="event.stopPropagation()" onclick="atualizarMiniDashboard()">🔄</button>
+          <button class="mini-dash-btn mini-dash-close" title="Fechar" onmousedown="event.stopPropagation()" onclick="fecharMiniDashboard()">✕</button>
+        </div>
+      </div>
+      <div class="mini-dash-body">
+        <div class="mini-dash-summary" id="mini-dash-summary"></div>
+        <div class="mini-dash-cards" id="mini-dash-cards"></div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <!-- MODAL: AVALIADOR DE POKÉMON & META INSPECTOR -->
+  <div id="modal-avaliador-meta" class="modal-backdrop" onclick="fecharModalSeFora(event, 'modal-avaliador-meta')">
+    <div class="modal-eval-box" onclick="event.stopPropagation()">
+      
+      <!-- CABEÇALHO DO AVALIADOR -->
+      <div class="eval-header-bar">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🧬</span>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px">
+              <span style="font-size:15px; font-weight:900; color:#f8fafc">Avaliador de Pokémon & Meta Inspector</span>
+              <span id="eval-header-multicontas-badge" style="font-size:9.5px; background:rgba(168,85,247,0.25); color:#c084fc; padding:2px 8px; border-radius:10px; border:1px solid rgba(168,85,247,0.4); font-weight:800">MULTI-CONTAS</span>
+            </div>
+            <span style="font-size:11px; color:#94a3b8">Análise de IVs, Tier Score %, Builds Recomendadas (Helds/TMs) e Comparador de Duplicatas</span>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px">
+          <span id="eval-stat-total" style="font-size:11px; font-weight:800; color:#38bdf8; background:rgba(15,23,42,0.7); padding:4px 10px; border-radius:6px; border:1px solid rgba(56,189,248,0.25)">0 Pokémon Analisados</span>
+          <button class="dash-btn" onclick="copiarInventarioPokes4ContasJSON()" style="padding:5px 12px; font-size:11px; background:rgba(168,85,247,0.25); border-color:rgba(168,85,247,0.5); color:#d8b4fe" title="Copiar todos os dados dos Pokémon das contas em formato JSON">
+            <span>📋</span> <span>Copiar JSON</span>
+          </button>
+          <button class="dash-btn dash-btn-primary" onclick="atualizarAvaliadorMeta(true)" style="padding:5px 12px; font-size:11px">
+            <span>🔄</span> <span>Atualizar Dados</span>
+          </button>
+          <button class="btn-cancel" onclick="fecharModalAvaliadorMeta()" style="padding:5px 12px; font-size:11px">✕ Fechar</button>
+        </div>
+      </div>
+
+      <!-- BARRA DE FILTROS E BUSCA -->
+      <div class="eval-filters-bar">
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:#94a3b8; font-weight:800">Conta:</span>
+          <select id="eval-filter-conta" class="eval-select" onchange="renderizarAvaliadorMeta()">
+            <option value="all">⭐ Todas as Contas</option>
+          </select>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:#94a3b8; font-weight:800">Origem:</span>
+          <select id="eval-filter-origem" class="eval-select" onchange="renderizarAvaliadorMeta()">
+            <option value="all">Todos (Time + Box)</option>
+            <option value="team">⚔️ Time Ativo</option>
+            <option value="box">📦 Box Armazenada</option>
+          </select>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:#94a3b8; font-weight:800">Tier / Categoria:</span>
+          <select id="eval-filter-tier" class="eval-select" onchange="renderizarAvaliadorMeta()">
+            <option value="all">Todos os Tiers</option>
+            <option value="best_copies">👑 Apenas o Melhor de Cada Espécie</option>
+            <option value="inferior_copies">🔄 Cópias Inferiores / Duplicatas</option>
+            <option value="s">⚡ Tier S (poder da espécie)</option>
+            <option value="a">⚔️ Tier A (poder da espécie)</option>
+            <option value="b">🛡️ Tier B (poder da espécie)</option>
+            <option value="c">📦 Tier C (poder da espécie)</option>
+            <option value="descarte">🗑️ Descarte Rápido (&lt;60% ou Duplicata)</option>
+            <option value="duplicates">👥 Todas as Duplicatas</option>
+            <option value="shiny">✨ Shinies</option>
+            <option value="legendary">🌟 Lendários</option>
+          </select>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:#94a3b8; font-weight:800">Ordenar:</span>
+          <select id="eval-filter-ordem" class="eval-select" onchange="renderizarAvaliadorMeta()">
+            <option value="score_desc">Ficha % (Maior ➔ Menor)</option>
+            <option value="score_asc">Ficha % (Menor ➔ Maior) 📉</option>
+            <option value="dps_desc">⚡ DPS agora (Maior ➔ Menor)</option>
+            <option value="power_desc">💪 Power (Maior ➔ Menor)</option>
+            <option value="iv_desc">🎲 IV / Raridade (Maior ➔ Menor)</option>
+            <option value="growth_desc">🧬 Growth % (Maior ➔ Menor)</option>
+            <option value="level_desc">Nível (Maior ➔ Menor)</option>
+            <option value="level_asc">Nível (Menor ➔ Maior)</option>
+            <option value="sell_desc">Valor de Venda $ (Maior ➔ Menor)</option>
+            <option value="name_asc">Nome (A ➔ Z)</option>
+          </select>
+        </div>
+
+        <!-- SELETOR DE MODO DE VISUALIZAÇÃO (CARDS VS TABELA) -->
+        <div style="display:flex; align-items:center; background:rgba(15,23,42,0.85); border:1px solid rgba(148,163,184,0.25); border-radius:6px; padding:2px">
+          <button id="btn-eval-view-cards" class="eval-view-btn active" onclick="alterarModoVisualizacaoAvaliador('cards')" title="Visualização em Cards Amplos">
+            <span>🎴</span> <span>Cards</span>
+          </button>
+          <button id="btn-eval-view-list" class="eval-view-btn" onclick="alterarModoVisualizacaoAvaliador('list')" title="Visualização em Tabela / Lista Detalhada">
+            <span>📑</span> <span>Tabela / Lista</span>
+          </button>
+        </div>
+
+        <div style="flex:1; min-width:180px; display:flex; justify-content:flex-end">
+          <input type="text" id="eval-search-input" class="eval-search-input" placeholder="🔍 Buscar Pokémon por nome ou tipo..." style="width:100%; max-width:280px" oninput="renderizarAvaliadorMeta()" />
+        </div>
+      </div>
+
+      <!-- BARRA DE SELEÇÃO E AÇÕES EM MASSA (BATCH BAR) -->
+      <div id="eval-batch-bar" class="eval-batch-bar">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+          <label style="display:flex; align-items:center; gap:5px; font-size:11px; font-weight:800; color:#f8fafc; cursor:pointer">
+            <input type="checkbox" id="eval-select-all-chk" onchange="aoAlternarSelecionarTodos(this.checked)" style="accent-color:#a855f7; cursor:pointer; width:15px; height:15px" />
+            <span>Selecionar Todos Visíveis</span>
+          </label>
+          <span style="color:rgba(148,163,184,0.3)">|</span>
+          <button class="eval-batch-quick-btn" onclick="selecionarPorCriterio('inferior_copies')" title="Seleciona apenas as cópias com IVs/Score piores de cada espécie">
+            🔄 Duplicatas Piores
+          </button>
+          <button class="eval-batch-quick-btn" onclick="selecionarPorCriterio('tier_c')" title="Seleciona todos os Pokémon com Score < 60%">
+            🗑️ Tier C (&lt;60%)
+          </button>
+          <span style="color:rgba(148,163,184,0.3)">|</span>
+          <div style="display:flex; align-items:center; gap:4px">
+            <select id="eval-threshold-select" style="background:#0f172a; border:1px solid rgba(234,179,8,0.4); border-radius:5px; color:#fde047; font-size:10px; font-weight:800; padding:3px 6px; cursor:pointer">
+              <option value="30">≤ 30%</option>
+              <option value="40">≤ 40%</option>
+              <option value="50" selected>≤ 50%</option>
+              <option value="60">≤ 60%</option>
+              <option value="70">≤ 70%</option>
+              <option value="80">≤ 80%</option>
+            </select>
+            <button class="eval-batch-quick-btn" onclick="selecionarPorThreshold()" title="Seleciona todos com Score ≤ ao threshold escolhido">
+              🎯 Selecionar Abaixo
+            </button>
+          </div>
+          <button class="eval-batch-quick-btn" onclick="limparSelecaoMeta()" title="Desmarcar todos">
+            🧹 Limpar
+          </button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+          <span id="eval-selected-summary" style="font-size:11px; font-weight:900; color:#38bdf8; background:rgba(15,23,42,0.8); padding:3px 8px; border-radius:4px; border:1px solid rgba(56,189,248,0.25)">0 selecionados</span>
+          <button onclick="toggleEvalSidePanel()" title="Abrir/Fechar painel de análise rápida" style="font-size:10px; font-weight:800; color:#c084fc; background:rgba(168,85,247,0.2); border:1px solid rgba(168,85,247,0.4); border-radius:5px; padding:3px 8px; cursor:pointer">📋 Painel</button>
+          <button class="eval-batch-btn eval-batch-lock" onclick="executarAcaoEmMassa('lock')" title="Travar / Bloquear todos os selecionados contra venda acidental">
+            <span>🔒 Bloquear</span>
+          </button>
+          <button class="eval-batch-btn eval-batch-unlock" onclick="executarAcaoEmMassa('unlock')" title="Destravar todos os selecionados">
+            <span>🔓 Desbloquear</span>
+          </button>
+          <button class="eval-batch-btn eval-batch-sell" onclick="executarVendaEmMassa()" title="Vender todos os Pokémon selecionados (não travados)">
+            <span>💰 Vender Selecionados</span>
+          </button>
+          <button class="eval-batch-btn eval-batch-trade" onclick="executarAcaoEmMassa('trade')" title="Enviar Pokémon selecionados para o Trade Hub">
+            <span>🤝 Enviar p/ Trade</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- WRAPPER: CONTEÚDO PRINCIPAL + PAINEL LATERAL -->
+      <div class="eval-content-wrapper" style="display:flex; flex:1; overflow:hidden; position:relative">
+        <!-- GRID PRINCIPAL DE CARDS DE POKÉMON AVALIADOS -->
+        <div class="eval-main-content" id="eval-cards-grid">
+          <div style="grid-column:1/-1; text-align:center; color:#64748b; padding:60px; font-size:12px">
+            🔄 Carregando dados e calculando scores de Pokémon das 4 contas...
+          </div>
+        </div>
+
+        <!-- PAINEL LATERAL: POKÉMON SELECIONADOS -->
+        <div id="eval-side-panel" class="eval-side-panel" style="background:rgba(2,6,23,0.95); border-left:1px solid rgba(168,85,247,0.3); flex-direction:column">
+          <div style="padding:12px 14px; background:rgba(15,23,42,0.9); border-bottom:1px solid rgba(168,85,247,0.25); display:flex; align-items:center; justify-content:space-between; flex-shrink:0">
+            <div style="display:flex; align-items:center; gap:6px">
+              <span style="font-size:14px">📋</span>
+              <span id="eval-side-panel-title" style="font-size:12px; font-weight:900; color:#f8fafc">Análise Rápida</span>
+              <span id="eval-side-panel-count" style="font-size:10px; font-weight:800; color:#c084fc; background:rgba(168,85,247,0.25); padding:2px 7px; border-radius:8px">0</span>
+            </div>
+            <div style="display:flex; gap:4px">
+              <button onclick="toggleEvalSidePanel()" title="Fechar painel" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); border-radius:5px; color:#f87171; cursor:pointer; padding:3px 8px; font-size:11px; font-weight:800">✕</button>
+            </div>
+          </div>
+          <!-- STATS DO PAINEL -->
+          <div id="eval-side-panel-stats" style="padding:10px 14px; background:rgba(30,41,59,0.5); border-bottom:1px solid rgba(148,163,184,0.1); display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0"></div>
+          <!-- LISTA DE POKÉMON SELECIONADOS -->
+          <div id="eval-side-panel-list" style="flex:1; overflow-y:auto; padding:8px 10px"></div>
+          <!-- BOTÕES DE AÇÃO -->
+          <div style="padding:10px 14px; background:rgba(15,23,42,0.9); border-top:1px solid rgba(168,85,247,0.25); display:flex; gap:6px; flex-shrink:0">
+            <button onclick="executarAcaoEmMassaTrade('sell')" style="flex:1; background:linear-gradient(135deg,rgba(234,179,8,0.3),rgba(245,158,11,0.2)); border:1px solid rgba(245,158,11,0.5); border-radius:6px; color:#fbbf24; font-size:10px; font-weight:800; padding:8px 4px; cursor:pointer">💰 Vender</button>
+            <button onclick="executarAcaoEmMassaTrade('lock')" style="flex:1; background:linear-gradient(135deg,rgba(34,197,94,0.3),rgba(22,163,74,0.2)); border:1px solid rgba(34,197,94,0.5); border-radius:6px; color:#4ade80; font-size:10px; font-weight:800; padding:8px 4px; cursor:pointer">🔒 Bloquear</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AVALIADOR DE METAS v2 (Beta) — mesma base de dados/lógica do v1
+       (avaliadorPokesCache, pokesSelecionadosMeta, obterPokesVisiveisFiltrados
+       e as funções de ação em shell/32-35), casca visual em vidro/v2 -->
+  <div id="modal-avaliador-meta-v2" class="modal-backdrop" onclick="fecharModalSeFora(event, 'modal-avaliador-meta-v2')">
+    <div class="v2eval-box" onclick="event.stopPropagation()">
+      <div class="v2eval-header">
+        <div class="v2eval-title">
+          <span>🧬</span>
+          <div>
+            <div class="v2eval-title-row"><b>Avaliador de Metas</b><span class="v2eval-badge" id="v2-eval-header-multicontas-badge">--</span></div>
+            <span class="v2eval-sub">Beta — mesmos dados do v1, visual em vidro</span>
+          </div>
+        </div>
+        <div class="v2eval-header-actions">
+          <span class="v2eval-stat-total" id="v2-eval-stat-total">0 Pokémon</span>
+          <button class="v2eval-btn-ghost" onclick="copiarInventarioPokes4ContasJSON()">📋 JSON</button>
+          <button class="v2eval-btn-sec" onclick="atualizarAvaliadorMeta(true)">🔄 Atualizar</button>
+          <button class="v2eval-btn-close" onclick="fecharModalAvaliadorMetaV2()">✕</button>
+        </div>
+      </div>
+
+      <div class="v2eval-toolbar">
+        <select id="v2-eval-filter-conta" class="v2eval-select" onchange="v2AvaliadorSincronizarFiltro('eval-filter-conta','v2-eval-filter-conta')"><option value="all">Todas as contas</option></select>
+        <select id="v2-eval-filter-origem" class="v2eval-select" onchange="v2AvaliadorSincronizarFiltro('eval-filter-origem','v2-eval-filter-origem')">
+          <option value="all">Time + Box</option><option value="team">⚔️ Time</option><option value="box">📦 Box</option>
+        </select>
+        <select id="v2-eval-filter-tier" class="v2eval-select" onchange="v2AvaliadorSincronizarFiltro('eval-filter-tier','v2-eval-filter-tier')">
+          <option value="all">Todos os tiers</option>
+          <option value="best_copies">👑 Melhor de cada espécie</option>
+          <option value="inferior_copies">🔄 Cópias inferiores</option>
+          <option value="s">⚡ Tier S (espécie)</option>
+          <option value="a">⚔️ Tier A (espécie)</option><option value="b">🛡️ Tier B (espécie)</option>
+          <option value="c">📦 Tier C (espécie)</option><option value="descarte">🗑️ Descarte rápido</option>
+          <option value="duplicates">👥 Duplicatas</option><option value="shiny">✨ Shinies</option><option value="legendary">🌟 Lendários</option>
+        </select>
+        <select id="v2-eval-filter-ordem" class="v2eval-select" onchange="v2AvaliadorSincronizarFiltro('eval-filter-ordem','v2-eval-filter-ordem')">
+          <option value="score_desc">Ficha ↓</option><option value="score_asc">Ficha ↑</option>
+          <option value="dps_desc">⚡ DPS ↓</option><option value="power_desc">💪 Power ↓</option>
+          <option value="iv_desc">🎲 IV ↓</option><option value="growth_desc">🧬 Growth ↓</option>
+          <option value="level_desc">Nível ↓</option>
+          <option value="level_asc">Nível ↑</option><option value="sell_desc">Venda $ ↓</option><option value="name_asc">Nome A-Z</option>
+        </select>
+        <div class="v2eval-viewtoggle">
+          <button id="v2-btn-eval-view-cards" class="active" onclick="alterarModoVisualizacaoAvaliador('cards')">🎴 Cards</button>
+          <button id="v2-btn-eval-view-list" onclick="alterarModoVisualizacaoAvaliador('list')">📑 Lista</button>
+        </div>
+        <input type="text" id="v2-eval-search-input" class="v2eval-search" placeholder="🔍 Buscar..." oninput="v2AvaliadorSincronizarFiltro('eval-search-input','v2-eval-search-input')" />
+      </div>
+
+      <div class="v2eval-batchbar">
+        <label class="v2eval-chklabel"><input type="checkbox" id="v2-eval-select-all-chk" onchange="aoAlternarSelecionarTodos(this.checked)" /> Selecionar visíveis</label>
+        <button class="v2eval-btn-tert" onclick="selecionarPorCriterio('inferior_copies')">🔄 Duplicatas piores</button>
+        <button class="v2eval-btn-tert" onclick="selecionarPorCriterio('tier_c')">🗑️ Tier C</button>
+        <select id="v2-eval-threshold-select" class="v2eval-select" style="width:auto;" onchange="v2AvaliadorSincronizarFiltro('eval-threshold-select','v2-eval-threshold-select')">
+          <option value="30">≤30%</option><option value="40">≤40%</option><option value="50" selected>≤50%</option><option value="60">≤60%</option><option value="70">≤70%</option><option value="80">≤80%</option>
+        </select>
+        <button class="v2eval-btn-tert" onclick="selecionarPorThreshold()">🎯 Abaixo</button>
+        <button class="v2eval-btn-tert" onclick="limparSelecaoMeta()">🧹 Limpar</button>
+        <span class="v2eval-summary" id="v2-eval-selected-summary">0 selecionados</span>
+        <button class="v2eval-btn-tert" onclick="toggleEvalSidePanelV2()">📋 Painel</button>
+        <button class="v2eval-btn v2eval-btn-lock" onclick="executarAcaoEmMassa('lock')">🔒 Bloquear</button>
+        <button class="v2eval-btn v2eval-btn-unlock" onclick="executarAcaoEmMassa('unlock')">🔓 Desbloquear</button>
+        <button class="v2eval-btn v2eval-btn-sell" onclick="executarVendaEmMassa()">💰 Vender</button>
+        <button class="v2eval-btn v2eval-btn-trade" onclick="executarAcaoEmMassa('trade')">🤝 Trade</button>
+      </div>
+
+      <div class="v2eval-content">
+        <div class="v2eval-grid view-cards" id="v2-eval-cards-grid">
+          <div style="grid-column:1/-1; text-align:center; color:#64748b; padding:40px; font-size:11px">Abra pelo menos uma vez e clique em 🔄 Atualizar.</div>
+        </div>
+        <div id="v2-eval-side-panel" class="v2eval-side-panel">
+          <div class="v2eval-side-head">
+            <span>📋 Análise Rápida</span><span class="v2eval-badge" id="v2-eval-side-panel-count">0</span>
+            <button onclick="toggleEvalSidePanelV2()">✕</button>
+          </div>
+          <div id="v2-eval-side-panel-stats" class="v2eval-side-stats"></div>
+          <div id="v2-eval-side-panel-list" class="v2eval-side-list"></div>
+          <div class="v2eval-side-actions">
+            <button onclick="executarAcaoEmMassaTrade('sell')">💰 Vender</button>
+            <button onclick="executarAcaoEmMassaTrade('lock')">🔒 Bloquear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NAVEGADOR DE POPUP INTERNO NO CLIENT -->
+  <div id="modal-internal-popup" class="modal-backdrop" onclick="fecharModalSeFora(event, 'modal-internal-popup')">
+    <div class="modal-popup-box" onclick="event.stopPropagation()">
+      
+      <div class="popup-header-bar">
+        <div style="display:flex; align-items:center; gap:8px; overflow:hidden; flex:1">
+          <span style="font-size:16px">🌐</span>
+          <span id="internal-popup-title" style="font-size:12px; font-weight:800; color:#f8fafc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">Navegador Interno</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <button class="ctrl-btn" onclick="abrirPopupNoNavegadorExterno()" title="Abrir link no seu navegador padrão (Chrome/Edge/Brave)">
+            <span>↗️</span> <span>Abrir no Navegador</span>
+          </button>
+          <button class="ctrl-btn" onclick="recarregarPopupInterno()" title="Recarregar esta página">
+            <span>🔄</span>
+          </button>
+          <button class="btn-cancel" onclick="fecharPopupInterno()" style="padding:4px 10px; font-size:11px">✕ Fechar</button>
+        </div>
+      </div>
+
+      <div class="popup-webview-container">
+        <webview id="internal-popup-webview" partition="persist:global_popup" allowpopups style="width:100%; height:100%; border:none"></webview>
+      </div>
+
+    </div>
+  </div>
+
+
+
+  <!-- CONTAINER DE NOTIFICAÇÕES TOAST -->
+  <div id="toast-container"></div>
+
+  <script src="shell/shell.gerado.js"></script>
+  <!-- 🅱️ Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,688 @@
+/* =====================================================
+   MODAL: AVALIADOR DE POKÉMON & META INSPECTOR
+   ===================================================== */
+.modal-eval-box {
+  width: 96vw;
+  max-width: 1540px;
+  height: 92vh;
+  background: linear-gradient(135deg, rgba(10, 15, 29, 0.98), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.eval-header-bar {
+  padding: 14px 20px;
+  background: rgba(15, 23, 42, 0.85);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.35);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.eval-filters-bar {
+  padding: 10px 20px;
+  background: rgba(2, 6, 23, 0.7);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.eval-batch-bar {
+  padding: 8px 20px;
+  background: linear-gradient(90deg, rgba(88, 28, 135, 0.35), rgba(15, 23, 42, 0.9));
+  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.eval-batch-quick-btn {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.eval-batch-quick-btn:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #f8fafc;
+  border-color: #a855f7;
+}
+
+.eval-batch-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  border: 1px solid transparent;
+}
+
+.eval-batch-lock {
+  background: rgba(234, 179, 8, 0.18);
+  border-color: rgba(234, 179, 8, 0.5);
+  color: #fde047;
+}
+
+.eval-batch-lock:hover {
+  background: rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+}
+
+.eval-batch-unlock {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #7dd3fc;
+}
+
+.eval-batch-unlock:hover {
+  background: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.eval-batch-sell {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-color: rgba(110, 231, 183, 0.4);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+.eval-batch-sell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+}
+
+.eval-batch-trade {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border-color: rgba(216, 180, 254, 0.4);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+
+.eval-batch-trade:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.5);
+}
+
+.eval-list-row.row-selected {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+}
+
+.eval-card.card-selected {
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4) !important;
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.98)) !important;
+}
+
+.eval-select, .eval-search-input {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  outline: none;
+  font-weight: 700;
+}
+
+.eval-select:focus, .eval-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.eval-view-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.eval-view-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.eval-view-btn.active {
+  background: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+
+.eval-main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  min-width: 0;
+}
+
+/* PAINEL LATERAL DE SELEÇÃO */
+.eval-side-panel {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
+}
+.eval-side-panel.open {
+  width: 340px;
+  min-width: 340px;
+  opacity: 1;
+  display: flex;
+  flex-direction: column;
+}
+.eval-side-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148,163,184,0.12);
+  background: rgba(15,23,42,0.6);
+  transition: background 0.12s, border-color 0.12s;
+  cursor: default;
+}
+.eval-side-panel-item:hover {
+  background: rgba(30,41,59,0.8);
+  border-color: rgba(168,85,247,0.4);
+}
+.eval-side-panel-item .pokemon-sprite {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+.eval-side-panel-item .poke-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+.eval-side-panel-item .poke-meta {
+  font-size: 9px;
+  color: #94a3b8;
+}
+.eval-side-panel-item .poke-score {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.eval-side-panel-item .poke-remove {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.12s, background 0.12s;
+}
+.eval-side-panel-item .poke-remove:hover {
+  color: #ef4444;
+  background: rgba(239,68,68,0.15);
+}
+
+/* ==========================================================================
+   ATENÇÃO: NÃO ALTERAR OU REDUZIR A ALTURA DOS CARDS DO AVALIADOR META!
+   ESTES CARDS PRECISAM MANTER FORMATO DE CARD ALTO E AMPLO (MIN-HEIGHT: 380PX)
+   ========================================================================== */
+.eval-main-content.view-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 22px;
+  align-items: stretch;
+}
+
+.eval-card {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 380px !important;
+  box-sizing: border-box;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  position: relative;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+.eval-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(16, 185, 129, 0.2);
+}
+
+.eval-card.best-copy {
+  border: 2px solid #eab308 !important;
+  box-shadow: 0 0 22px rgba(234, 179, 8, 0.4);
+}
+
+.eval-card.best-copy::before {
+  content: '👑 MELHOR CÓPIA';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 9.5px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #000;
+  padding: 3px 9px;
+  border-radius: 5px;
+  z-index: 2;
+}
+
+.eval-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.eval-sprite-frame {
+  width: 54px;
+  height: 54px;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eval-sprite {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+}
+
+.eval-tier-badge {
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.eval-tier-badge.tier-s-plus {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.eval-tier-badge.tier-s {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+
+.eval-tier-badge.tier-a {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+}
+
+.eval-tier-badge.tier-b {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+
+.eval-tier-badge.tier-c {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.eval-ivs-box {
+  background: rgba(2, 6, 23, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.eval-meta-build-box {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eval-held-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fde047;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.eval-moves-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.eval-move-pill {
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eval-move-pill.stab {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.1);
+  color: #86efac;
+}
+
+/* Grupo de Botões de Ação do Pokémon */
+.eval-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.eval-btn-action {
+  flex: 1;
+  min-width: 60px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  border: 1px solid transparent;
+}
+
+.eval-btn-lock {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.4);
+  color: #fde047;
+}
+
+.eval-btn-lock:hover {
+  background: rgba(234, 179, 8, 0.3);
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+}
+
+.eval-btn-lock.locked {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}
+
+.eval-btn-swap {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.eval-btn-swap:hover {
+  background: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.eval-btn-sell {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.eval-btn-sell:hover {
+  background: rgba(34, 197, 94, 0.3);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.eval-btn-sell:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.eval-btn-aura {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.eval-btn-aura:hover {
+  background: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+.eval-btn-trade {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.25));
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.eval-btn-trade:hover {
+  background: rgba(56, 189, 248, 0.35);
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+.eval-nature-pill {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.eval-nature-plus {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.eval-nature-minus {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.eval-rarity-badge {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(147, 51, 234, 0.25);
+  border: 1px solid rgba(147, 51, 234, 0.5);
+  color: #d8b4fe;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+.eval-rarity-badge[title*='Mítico'], .eval-rarity-badge[title*='mythic'] { background: rgba(244,114,182,0.25); border-color: rgba(244,114,182,0.5); color: #f9a8d4; }
+.eval-rarity-badge[title*='Lendário'], .eval-rarity-badge[title*='legendary'] { background: rgba(251,191,36,0.25); border-color: rgba(251,191,36,0.5); color: #fde047; }
+.eval-rarity-badge[title*='Épico'], .eval-rarity-badge[title*='epic'] { background: rgba(192,132,252,0.25); border-color: rgba(192,132,252,0.5); color: #d8b4fe; }
+.eval-rarity-badge[title*='Raro'], .eval-rarity-badge[title*='rare'] { background: rgba(96,165,250,0.2); border-color: rgba(96,165,250,0.4); color: #93c5fd; }
+.eval-rarity-badge[title*='Incomum'], .eval-rarity-badge[title*='uncommon'] { background: rgba(74,222,128,0.2); border-color: rgba(74,222,128,0.4); color: #86efac; }
+.eval-rarity-badge[title*='Comum'], .eval-rarity-badge[title*='common'] { background: rgba(148,163,184,0.15); border-color: rgba(148,163,184,0.3); color: #cbd5e1; }
+
+/* === MODO 2: TABELA / LISTA COMPACTA DETALHADA === */
+.eval-main-content.view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eval-list-row {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.eval-list-row:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(168, 85, 247, 0.5);
+  transform: translateX(2px);
+}
+
+.eval-list-row.best-copy {
+  border-left: 4px solid #eab308;
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.1), rgba(15, 23, 42, 0.85));
+}
+
+/* =====================================================
+   MODAL: POPUP INTERNO NO CLIENT
+   ===================================================== */
+.modal-popup-box {
+  width: 90vw;
+  max-width: 1300px;
+  height: 88vh;
+  background: linear-gradient(135deg, rgba(10, 15, 29, 0.98), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.popup-header-bar {
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.popup-webview-container {
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 46px);
+  background: #090d16;
+  position: relative;
+}
+
+/* =====================================================
+   MODAL RÁPIDO DE QUANTIDADE DE ITENS NO TRADE
+   ===================================================== */
+.modal-trade-qty-box {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95));
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+  border-radius: 16px;
+  padding: 16px 20px;
+  width: 360px;
+  max-width: 90vw;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(16, 185, 129, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.trade-qty-preset-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  text-align: center;
+}
+
+.trade-qty-preset-btn:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #34d399;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.trade-qty-preset-btn.max-btn {
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #000;
+  border-color: #fde047;
+  font-weight: 900;
+}
+
+.trade-qty-preset-btn.max-btn:hover {
+  background: linear-gradient(135deg, #facc15, #eab308);
+  color: #000;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+}
+

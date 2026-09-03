@@ -1,0 +1,5019 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* A lista aberta de um <select> nativo é desenhada pelo Chromium com fundo
+   BRANCO próprio: ela NÃO herda o background translúcido do campo. Como todos
+   os selects da casca usam `color` claro (#f1f5f9 / #cbd5e1), o texto das
+   opções ficava branco no branco e sumia ao abrir o dropdown. `color-scheme`
+   avisa o motor que o controle é escuro; as regras de option/optgroup cobrem
+   o caso em que ele ignora isso. Uma regra só, para todos os painéis. */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+select option:checked {
+  background-color: #1d4ed8;
+  color: #ffffff;
+}
+
+:root {
+  /* === TIPOGRAFIA — token único de fonte (ver scripts/06b-tipografia.js) ===
+     Nenhum CSS daqui pra frente escreve nome de fonte na mão: tudo usa
+     var(--app-font-ui) para texto de interface e var(--app-font-num) para
+     números/dados. Os valores abaixo são só o PISO — o preset escolhido na
+     aba Config do painel v2 é escrito inline em <html> por
+     shell/45-tipografia-sync.js e sobrescreve estes. */
+  --app-font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --app-font-num: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+  --app-font-num-variant: normal;
+  /* Código e log bruto: mono FIXA, não segue o preset — texto de
+     script em fonte proporcional é ilegível. */
+  --app-font-code: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+
+  /* === DESIGN SYSTEM TOKENS — Protótipo Escuro Premium === */
+  --ds-bg: rgba(15, 23, 42, .92);
+  --ds-bg-solid: #0f172a;
+  --ds-bg-deep: #0a0f1d;
+  --ds-surface: #1e293b;
+  --ds-surface-2: #111827;
+  --ds-surface-3: rgba(30, 41, 59, 0.6);
+  --ds-border: rgba(255, 255, 255, .06);
+  --ds-border-hover: rgba(16, 185, 129, .35);
+  --ds-green: #10b981;
+  --ds-green-2: #059669;
+  --ds-green-soft: rgba(16, 185, 129, .15);
+  --ds-green-glow: rgba(16, 185, 129, .25);
+  --ds-yellow: #f59e0b;
+  --ds-red: #ef4444;
+  --ds-text: #f8fafc;
+  --ds-text-2: #e2e8f0;
+  --ds-muted: #94a3b8;
+  --ds-cyan: #22d3ee;
+  --ds-purple: #a855f7;
+  /* Radius */
+  --ds-radius: 14px;
+  --ds-radius-lg: 16px;
+  --ds-radius-sm: 10px;
+  --ds-radius-xs: 8px;
+  --ds-pill: 9999px;
+  /* Shadows */
+  --ds-shadow: 0 8px 32px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .25);
+  --ds-shadow-lg: 0 16px 48px rgba(0, 0, 0, .55), 0 4px 12px rgba(0, 0, 0, .3);
+  --ds-shadow-green: 0 4px 20px rgba(16, 185, 129, .35);
+  --ds-shadow-drawer: -10px 0 30px -5px rgba(0, 0, 0, .6);
+  --ds-shadow-card: 0 4px 24px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .03) inset;
+  --ds-blur: blur(16px);
+  /* Aliases (consistência shell ↔ suite) */
+  --bs-primary: #10b981;
+  --bs-glow: rgba(16, 185, 129, .30);
+  --bs-border: rgba(255, 255, 255, .06);
+  --bs-surface: rgba(15, 23, 42, .92);
+  --bs-text: #e2e8f0;
+  --bs-text2: #94a3b8;
+  --suite-accent: #10b981;
+  --suite-accent-2: #059669;
+  --suite-radius: 14px;
+  --suite-line: rgba(148, 163, 184, .12);
+}
+
+body {
+  font-family: var(--app-font-ui);
+  background-color: #0a0f1d;
+  color: #f1f5f9;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* --- LAYOUT GLOBAL COM SIDEBAR LATERAL --- */
+#app-root {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #0a0f1d;
+}
+
+/* --- SIDEBAR LATERAL ESQUERDA --- */
+.app-sidebar {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  height: 100vh;
+  background: linear-gradient(180deg, #0f172a 0%, #0b1120 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  user-select: none;
+  transition: width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease;
+}
+
+/* SIDEBAR COLAPSADA */
+.app-sidebar.collapsed {
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+}
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-section-header,
+.app-sidebar.collapsed .sidebar-count-badge,
+.app-sidebar.collapsed .sidebar-add-btn span:last-child,
+.app-sidebar.collapsed .sidebar-pinned-item span:not(:first-child),
+.app-sidebar.collapsed .sidebar-nav-btn span:not(:first-child),
+.app-sidebar.collapsed .nav-btn-title,
+.app-sidebar.collapsed .sidebar-menu-btn > div > span:last-child,
+.app-sidebar.collapsed .sidebar-menu-btn > span,
+.app-sidebar.collapsed .sidebar-pinned-section .sidebar-section-header,
+.app-sidebar.collapsed .sidebar-section-header,
+.app-sidebar.collapsed .sidebar-brand-text {
+  display: none !important;
+}
+
+/* Contas na sidebar colapsada: centralizar Pokébola e esconder nome e ping */
+.app-sidebar.collapsed .tab-btn {
+  justify-content: center !important;
+  padding: 0 !important;
+  height: 38px !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .tab-title,
+.app-sidebar.collapsed .tab-ping-badge {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .tab-pokeball-icon {
+  margin: 0 auto !important;
+  display: flex !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand {
+  padding: 0;
+  justify-content: center;
+  align-items: center;
+  height: 48px;
+}
+.app-sidebar.collapsed .sidebar-brand .brand-logo-icon {
+  margin: 0;
+}
+.app-sidebar.collapsed .sidebar-add-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  justify-content: center;
+  margin: 4px auto;
+  font-size: 16px;
+}
+.app-sidebar.collapsed .sidebar-nav-btn {
+  justify-content: center;
+  padding: 0;
+  height: 36px;
+  width: 36px;
+  min-width: 36px;
+  margin: 0 auto;
+}
+.app-sidebar.collapsed .sidebar-pinned-item {
+  justify-content: center;
+  padding: 6px;
+  width: 36px;
+  min-width: 36px;
+  margin: 0 auto;
+}
+.app-sidebar.collapsed .sidebar-pinned-item .pinned-unpin {
+  display: none !important;
+}
+.app-sidebar.collapsed .sidebar-menu-btn {
+  justify-content: center;
+  padding: 0;
+  width: 36px;
+  min-width: 36px;
+  margin: 0 auto;
+}
+.app-sidebar.collapsed .sidebar-footer {
+  padding: 10px 6px;
+}
+.app-sidebar.collapsed .sidebar-tabs-container {
+  align-items: center;
+  padding: 0 6px;
+}
+.app-sidebar.collapsed .sidebar-nav-section {
+  align-items: center;
+  padding: 4px 6px;
+}
+.app-sidebar.collapsed .sidebar-pinned-section {
+  align-items: center;
+  padding: 4px 6px;
+}
+.app-sidebar.collapsed .sidebar-pinned-items {
+  align-items: center;
+}
+
+/* --- XP TRACKER NA SIDEBAR COLAPSADA (~56px) --- */
+.app-sidebar.collapsed #sidebar-xp-tracker-container {
+  padding: 4px 2px !important;
+  margin: 4px auto !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.app-sidebar.collapsed #xp-mini-view {
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+  margin: 0 auto !important;
+  padding: 3px 2px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(16,185,129,0.3) !important;
+}
+
+.app-sidebar.collapsed #xpmini-drag-handle {
+  padding: 2px 0 !important;
+  justify-content: center !important;
+  border-bottom: 1px solid rgba(16,185,129,0.2) !important;
+}
+
+.app-sidebar.collapsed #xpmini-drag-handle .xpmini-title-text,
+.app-sidebar.collapsed #xpmini-drag-handle .xpmini-actions-group {
+  display: none !important;
+}
+
+.app-sidebar.collapsed #xp-mini-view-content {
+  padding: 3px 1px !important;
+  gap: 3px !important;
+}
+
+.app-sidebar.collapsed .xpmini-detail-hide {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .xpmini-row-header {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 1px !important;
+  margin-bottom: 1px !important;
+}
+
+.app-sidebar.collapsed #xpmini-poke-pct,
+.app-sidebar.collapsed #xpmini-jog-pct {
+  font-size: 7.5px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+
+/* --- ESTILOS DE BLOCOS MODULARES E ARRASTÁVEIS NA SIDEBAR --- */
+.sidebar-modular-block {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  position: relative;
+}
+
+.sidebar-modular-block.dragging-block {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+/* Linha de destino: mostra ANTES ou DEPOIS conforme a metade do bloco em que
+   o ponteiro está, em vez da borda única de antes (que sempre dizia "acima"). */
+.sidebar-modular-block.drop-antes { box-shadow: inset 0 3px 0 -1px #38bdf8; }
+.sidebar-modular-block.drop-depois { box-shadow: inset 0 -3px 0 -1px #38bdf8; }
+
+/* Realce rápido do bloco recém-movido pelos botões ▲/▼ */
+@keyframes sidebarBlocoMovido {
+  0%   { background: rgba(56,189,248,0.22); }
+  100% { background: transparent; }
+}
+.sidebar-modular-block.bloco-movido { animation: sidebarBlocoMovido 0.6s ease-out; border-radius: 6px; }
+
+/* Barrinha de controle presente em TODO bloco (antes só o de contas tinha algo,
+   e era decorativo). A alça é o único ponto que inicia o arrasto. */
+.sidebar-bloco-ctrl {
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 7px; flex-shrink: 0;
+  font-size: 8.5px; color: #64748b;
+  opacity: 0.45; transition: opacity 0.15s;
+}
+.sidebar-modular-block:hover .sidebar-bloco-ctrl { opacity: 1; }
+.sidebar-bloco-alca { cursor: grab; font-size: 11px; line-height: 1; user-select: none; }
+.sidebar-bloco-alca:active { cursor: grabbing; }
+.sidebar-bloco-nome {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+}
+.sidebar-bloco-acoes { display: inline-flex; gap: 3px; flex-shrink: 0; }
+.sidebar-bloco-btn {
+  width: 16px; height: 15px; padding: 0; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 7.5px; line-height: 1; cursor: pointer; font-family: inherit;
+  color: #cbd5e1; background: rgba(148,163,184,0.10);
+  border: 1px solid rgba(148,163,184,0.20); border-radius: 4px;
+}
+.sidebar-bloco-btn:hover:not(:disabled) { background: rgba(56,189,248,0.22); border-color: rgba(56,189,248,0.45); color: #7dd3fc; }
+.sidebar-bloco-btn:disabled { opacity: 0.25; cursor: default; }
+
+/* Na sidebar recolhida sobra só a alça — nome e setas não cabem. */
+.app-sidebar.collapsed .sidebar-bloco-nome,
+.app-sidebar.collapsed .sidebar-bloco-acoes { display: none; }
+.app-sidebar.collapsed .sidebar-bloco-ctrl { justify-content: center; padding: 2px 0; }
+
+/* Sidebar Auto Toggles hover/active */
+.sidebar-auto-toggle:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,0.3) !important; }
+.sidebar-auto-toggle:active { transform:translateY(0) scale(0.97); }
+
+/* Modo compacto / recolhido do card do XP Tracker */
+#xp-mini-view-content.xpmini-card-collapsed .xpmini-detail-hide {
+  display: none !important;
+}
+
+#xp-mini-view-content.xpmini-card-collapsed {
+  padding: 4px 6px !important;
+  gap: 3px !important;
+}
+
+.sidebar-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  cursor: grab;
+  user-select: none;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-block-header:active {
+  cursor: grabbing;
+}
+
+.sidebar-block-toggle-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 9px;
+  cursor: pointer;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, color 0.15s ease;
+}
+
+.sidebar-block-toggle-btn:hover {
+  color: #f1f5f9;
+}
+
+.sidebar-block-toggle-btn.collapsed-arrow {
+  transform: rotate(-90deg);
+}
+
+.sidebar-pinned-item.dragging-item {
+  opacity: 0.4;
+}
+
+.sidebar-pinned-item.drag-over-item {
+  border-top: 2px solid #a855f7 !important;
+}
+
+/* BOTÃO DE COLAPSAR */
+.sidebar-collapse-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0;
+}
+.sidebar-collapse-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+#sidebar-collapse-icon {
+  display: block;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+}
+
+.app-sidebar.collapsed .sidebar-collapse-btn {
+  margin: 0 auto;
+  width: 32px;
+  height: 32px;
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.app-sidebar.collapsed #sidebar-collapse-icon {
+  transform: rotate(180deg);
+}
+
+/* BRANDING / HEADER DA SIDEBAR */
+.sidebar-brand {
+  height: 52px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.5);
+  overflow: visible;
+}
+
+.brand-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-title {
+  font-size: 13.5px;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: -0.2px;
+}
+
+.brand-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  width: fit-content;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+/* SEÇÃO DE CONTAS ATIVAS */
+.sidebar-section-header {
+  padding: 12px 14px 6px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 900;
+  color: #94a3b8;
+  letter-spacing: 0.8px;
+}
+
+.sidebar-count-badge {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 800;
+  font-family:var(--app-font-num); font-variant-numeric:var(--app-font-num-variant);
+}
+
+.sidebar-tabs-container {
+  flex: 1;
+  overflow-y: hidden;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+.sidebar-tabs-container.scrollable {
+  overflow-y: auto;
+}
+
+.sidebar-tabs-container::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-tabs-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.sidebar-accounts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* BOTÃO DE CADA CONTA NA SIDEBAR (GLASS CLEAN COM DRAG & DROP) */
+.tab-btn {
+  width: 100%;
+  height: 40px;
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Hover so vale pra aba NAO selecionada. Antes o hover pintava borda
+   esmeralda igual a da ativa, entao passar o mouse por cima de qualquer aba
+   dava a mesma leitura visual de "esta e a aba em uso". */
+.tab-btn:not(.active):hover {
+  background: rgba(30, 41, 59, 0.75);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  transform: translateX(2px);
+}
+
+/* Aba em uso: o contraste vinha fraco (fundo 0.18 de alpha + borda 0.5) e
+   ainda por cima o gradiente da cor da conta (`.tab-btn::after`, css/07)
+   passava por cima, entao ativa e inativa ficavam quase iguais. Agora a ativa
+   ganha fundo mais forte, borda cheia, glow, deslocamento fixo e o titulo em
+   branco puro — da pra achar de relance mesmo com 16 contas na lista. */
+.tab-btn.active {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.34), rgba(5, 150, 105, 0.14)) !important;
+  border: 1.5px solid rgba(52, 211, 153, 0.85) !important;
+  color: #ecfdf5;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.28),
+              0 0 18px rgba(16, 185, 129, 0.38),
+              inset 0 0 24px rgba(16, 185, 129, 0.10);
+  transform: translateX(3px);
+}
+
+.tab-btn.active .tab-title {
+  color: #ffffff !important;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+/* Segunda linha (pokemon ativo) tambem clareia, senao a aba ativa fica com
+   metade do texto no mesmo cinza das inativas. */
+.tab-btn.active [id^="tab-poke-"] {
+  color: #a7f3d0 !important;
+}
+
+/* Titulo das inativas fica um tom abaixo, pra a ativa ganhar por diferenca e
+   nao so por cor de fundo. */
+.tab-btn:not(.active) .tab-title { color: #cbd5e1 !important; }
+
+.tab-btn.dragging {
+  opacity: 0.4;
+  border: 1.5px dashed rgba(16, 185, 129, 0.5) !important;
+  transform: scale(0.97);
+  cursor: grabbing;
+}
+
+/* Linha de insercao do arrasto. Antes era sempre `border-top`, ou seja, o
+   indicador dizia "vai entrar aqui em cima" mesmo quando o destino calculado
+   era abaixo — o feedback mentia sobre o resultado. Agora a metade do botao
+   sob o cursor decide o lado, e a linha aparece do lado certo. */
+.tab-btn.drag-over {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+.tab-btn.drag-over.drop-antes  { box-shadow: inset 0 3px 0 0 #10b981; }
+.tab-btn.drag-over.drop-depois { box-shadow: inset 0 -3px 0 0 #10b981; }
+
+.tab-pokeball-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-btn * {
+  pointer-events: none;
+}
+
+.tab-title {
+  max-width: 105px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  flex-shrink: 0;
+}
+
+/* BOTÃO ADICIONAR CONTA NA SIDEBAR */
+.sidebar-add-btn {
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  color: #6ee7b7;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.sidebar-add-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+/* DIVISOR */
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 6px 10px;
+}
+
+/* SEÇÃO DE NAVEGAÇÃO & FERRAMENTAS */
+.sidebar-nav-section {
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-nav-btn {
+  width: 100%;
+  height: 36px;
+  background: rgba(30, 41, 59, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.sidebar-nav-btn:hover {
+  background: rgba(30, 41, 59, 0.65);
+  color: #ffffff;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.sidebar-nav-btn.active {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.12));
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+  border-left: 3px solid #10b981;
+}
+
+.nav-btn-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* FOOTER DA SIDEBAR */
+.sidebar-footer {
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.7);
+  position: relative;
+}
+
+.sidebar-menu-btn {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.sidebar-menu-btn:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+}
+
+
+/* =========================================================
+   SIDEBAR MAIS LEVE — sprite na aba, ping como ponto, blocos sem caixa
+   =========================================================
+   Três queixas: "muitos títulos que não são necessários", "as pokébolas nas
+   abas são ruins, deveria trazer o sprite" e "o botão nova conta poderia estar
+   na aba de contas ativas". */
+
+/* ---- SPRITE DO POKÉMON NA ABA ----
+   As 11 abas tinham a MESMA pokébola e a cor era a única distinção. O sprite
+   dá reconhecimento imediato. A pokébola continua como base: some só quando a
+   imagem carrega de fato (`.tem-sprite`), então uma conta sem Pokémon lido, ou
+   um sprite que não existe, nunca deixa buraco. */
+.tab-pokeball-icon {
+  position: relative;
+  width: 26px; height: 26px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.tab-pokeball-icon.tem-sprite .tab-pokeball-svg { display: none; }
+.tab-sprite-img {
+  width: 26px; height: 26px; object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6));
+}
+
+/* ---- PING COMO PONTO ----
+   Era um badge com o número ("104ms"). Com o sprite entrando, o número passou a
+   disputar a linha do nome — e o que importa é "bem / ruim / caiu", não o valor
+   exato, que ficou no tooltip. */
+.tab-ping-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  margin-left: 4px; background: #475569;
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, .55);
+  position: relative;
+}
+.tab-ping-dot.bom { background: #4ade80; box-shadow: 0 0 5px rgba(74, 222, 128, .7), 0 0 0 2px rgba(15,23,42,.55); }
+.tab-ping-dot.medio { background: #fde047; box-shadow: 0 0 5px rgba(253, 224, 71, .6), 0 0 0 2px rgba(15,23,42,.55); }
+.tab-ping-dot.ruim { background: #fb923c; box-shadow: 0 0 5px rgba(251, 146, 60, .6), 0 0 0 2px rgba(15,23,42,.55); }
+.tab-ping-dot.morto { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, .8), 0 0 0 2px rgba(15,23,42,.55); }
+
+/* Tooltip flutuante do ping (ver JS em 19-monitor-latencia-ping.js): não dá
+   pra usar `title` nativo (Chromium suprime tooltip nativo em descendente de
+   elemento draggable, e `.tab-btn` é draggable="true") nem `::after` preso ao
+   ponto (`.tab-btn` tem overflow:hidden pro degradê da borda, que cortaria o
+   balão). Por isso é um único `<div>` fixo, anexado no `<body>`, posicionado
+   via JS a cada hover — fora de qualquer clipping da sidebar. */
+.ping-tip-flutuante {
+  position: fixed;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 163, 184, .3);
+  white-space: nowrap;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+}
+
+/* A aba fica um pouco mais alta pra caber o sprite sem apertar as duas linhas. */
+.tab-btn { height: 44px; }
+.tab-title { max-width: none; }
+
+/* ---- CABEÇALHO DE BLOCO ENXUTO ----
+   Sem o rótulo em caixa-alta: sobra o ícone (que é a alça de arrasto e a
+   referência do bloco ao reordenar), o contador e as ações. */
+.sidebar-block-header.enxuto {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px 5px;
+  background: none; border: none;
+}
+/* A alca e o icone precisam continuar VISIVEIS: sao a unica referencia de qual
+   bloco se esta arrastando depois que o rotulo saiu. Em .35 de opacidade eles
+   sumiam e a reordenacao virava adivinhacao. */
+.sidebar-block-header.enxuto .sidebar-block-drag-icon {
+  cursor: grab; opacity: .55; font-size: 11px; color: #94a3b8;
+}
+.sidebar-block-header.enxuto:hover .sidebar-block-drag-icon { opacity: .9; }
+.sidebar-block-header.enxuto .sidebar-block-ic { font-size: 13px; opacity: 1; }
+
+/* O "+" com cor de acento: cinza igual aos controles de ordenar/recolher ficaria
+   ambíguo, e ele é a única ação destrutiva-por-engano do cabeçalho. */
+.sidebar-block-toggle-btn.add {
+  color: #4ade80; font-size: 14px; font-weight: 700; line-height: 1;
+}
+.sidebar-block-toggle-btn.add:hover { color: #86efac; background: rgba(34, 197, 94, .14); }
+
+/* ---- BLOCOS SEM CAIXA ----
+   Os blocos eram cards com borda em volta; empilhados, viravam três molduras
+   competindo. Agora é só uma linha de separação entre um assunto e o outro —
+   o "peso" que sobrava era a borda, não o conteúdo. */
+.sidebar-modular-block + .sidebar-modular-block {
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  padding-top: 6px; margin-top: 5px;
+}
+#sidebar-xp-tracker-container > *,
+#sidebar-widget-auto-container > * {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* =========================================================
+   LINGUETA DE RECOLHER — FORA DA SIDEBAR
+   =========================================================
+   Ela morava dentro do cabeçalho da marca: sumia junto com o resto ao recolher,
+   e voltar exigia adivinhar onde clicar. Agora vive no `#app-root`, colada na
+   borda direita da barra e centrada na altura — o mesmo lugar nos dois estados. */
+.sidebar-lingueta {
+  position: fixed;
+  /* 220px e a largura real da .app-sidebar (topo deste arquivo). Fixo aqui
+     porque a lingueta e `position: fixed` e nao herda a largura de ninguem. */
+  left: 220px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1200;
+  width: 15px; height: 46px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; cursor: pointer;
+  color: #94a3b8;
+  background: rgba(30, 41, 59, .97);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, .45);
+  transition: left .2s ease, color .15s, background .15s;
+}
+.sidebar-lingueta:hover { color: #f1f5f9; background: rgba(51, 65, 85, .98); }
+.sidebar-lingueta svg { transition: transform .2s ease; }
+/* Recolhida, a seta aponta pro outro lado — a lingueta diz o que ela FAZ. */
+#app-root:has(.app-sidebar.collapsed) .sidebar-lingueta { left: 56px; }
+#app-root:has(.app-sidebar.collapsed) .sidebar-lingueta svg { transform: rotate(180deg); }
+
+/* =========================================================
+   ESTADO COLAPSADO — nada cortado
+   =========================================================
+   Antes a barra virava 56px e o conteúdo continuava com a largura de dentro:
+   botões, ícones e a lista de contas ficavam cortados pela borda. A regra agora
+   é simples: no colapsado, ou o elemento cabe centrado em 56px, ou não aparece. */
+.app-sidebar.collapsed { overflow-x: hidden; padding-left: 0; padding-right: 0; }
+
+/* Some tudo que é texto ou controle secundário — em 56px não há espaço pra
+   nada além do essencial. */
+.app-sidebar.collapsed .sidebar-brand,
+.app-sidebar.collapsed .sidebar-block-header,
+.app-sidebar.collapsed .sidebar-auto-head,
+.app-sidebar.collapsed .xpmini-head,
+.app-sidebar.collapsed #sidebar-xp-tracker-container,
+.app-sidebar.collapsed #sidebar-widget-auto-container,
+.app-sidebar.collapsed .sidebar-bloco-ctrl { display: none !important; }
+
+/* A lista de contas é a única coisa que sobrevive: é pra ela que se recolhe a
+   barra. Sprite centrado, sem nome e sem faixa de cor lateral. */
+.app-sidebar.collapsed .sidebar-blocks-container,
+.app-sidebar.collapsed #sidebar-blocks-container { padding: 4px 0; gap: 0; }
+.app-sidebar.collapsed .sidebar-accounts-list { gap: 4px; align-items: center; }
+.app-sidebar.collapsed .tab-btn {
+  width: 44px !important; min-width: 44px !important; height: 44px !important;
+  padding: 0 !important; margin: 0 auto !important;
+  justify-content: center !important; border-radius: 10px;
+  transform: none !important;
+}
+.app-sidebar.collapsed .tab-btn::before,
+.app-sidebar.collapsed .tab-btn::after { display: none; }
+.app-sidebar.collapsed .tab-btn > div,
+.app-sidebar.collapsed .tab-title { display: none !important; }
+.app-sidebar.collapsed .tab-pokeball-icon { margin: 0 !important; }
+/* O ponto de ping vira um selo no canto do sprite — cabe, e é a única
+   informação de estado que ainda importa nesse tamanho. */
+.app-sidebar.collapsed .tab-ping-dot {
+  position: absolute; top: 4px; right: 4px; margin: 0;
+}
+.app-sidebar.collapsed .tab-btn { position: relative; }
+
+/* Rodapé: só os ícones, centrados e sem transbordar. */
+.app-sidebar.collapsed .sidebar-pinned-item,
+.app-sidebar.collapsed .sidebar-menu-btn {
+  width: 44px; min-width: 44px; padding: 0; margin: 0 auto;
+  justify-content: center; gap: 0;
+}
+.app-sidebar.collapsed .sidebar-pinned-item .pinned-unpin { display: none !important; }
+.app-sidebar.collapsed .sidebar-pinned-footer-section { padding: 4px 0; align-items: center; }
+.app-sidebar.collapsed .sidebar-footer-menus { padding: 4px 0; gap: 4px; align-items: center; }
+
+/* ---- barras de título enxutas dos blocos (XP Tracker / Auto Toggles) ----
+   Eram faixas com gradiente verde, borda inferior, emoji e rótulo em caixa-alta.
+   Viraram uma linha só com a alça e as ações que existem apenas ali. */
+.xpmini-head, .sidebar-auto-head {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px 2px;
+  background: none !important;
+  border: none !important;
+}
+.xpmini-head .sidebar-block-drag-icon,
+.sidebar-auto-head .sidebar-block-drag-icon {
+  cursor: grab; opacity: .5; font-size: 11px; color: #94a3b8;
+}
+.xpmini-head:hover .sidebar-block-drag-icon,
+.sidebar-auto-head:hover .sidebar-block-drag-icon { opacity: .9; }
+
+/* A aba ativa tem `transform: translateX(3px)` — 3px que estouravam a largura
+   do container e faziam nascer uma barra de rolagem HORIZONTAL embaixo da lista
+   de contas. O eixo Y é o único que deve rolar aqui. */
+.sidebar-tabs-container,
+#tabs-container { overflow-x: hidden !important; }
+.sidebar-accounts-list { padding-right: 3px; }
+
+/* ---- TÍTULO DOS BLOCOS ----
+   Tirar os títulos foi longe demais: sem eles os blocos perderam identidade e
+   a alça sozinha não diz o que se está arrastando. Voltaram — mas em caixa
+   normal e peso discreto, não no caixa-alta espaçado de antes, que era metade
+   do peso visual da barra. */
+.sidebar-block-titulo {
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbd5e1;
+  letter-spacing: .1px;
+  white-space: nowrap;
+}
+.sidebar-block-header.enxuto .sidebar-block-titulo { color: #e2e8f0; }
+
+/* Os ▲▼ ficam na linha do título, agrupados e discretos. */
+.sidebar-bloco-acoes { display: inline-flex; gap: 2px; flex: none; margin-left: 2px; }
+.sidebar-bloco-btn {
+  background: rgba(148, 163, 184, .08);
+  border: 1px solid rgba(148, 163, 184, .16);
+  color: #94a3b8; border-radius: 5px;
+  font-size: 8px; line-height: 1; padding: 3px 4px;
+  cursor: pointer; font-family: inherit;
+}
+.sidebar-bloco-btn:hover:not(:disabled) { background: rgba(148, 163, 184, .2); color: #f1f5f9; }
+.sidebar-bloco-btn:disabled { opacity: .25; cursor: default; }
+
+/* Colapsada, o título some junto com o resto do cabeçalho. */
+.app-sidebar.collapsed .sidebar-block-titulo { display: none !important; }
+
+/* =========================================================
+   AUTO TOGGLES COMO CHAVE ON/OFF
+   =========================================================
+   Eram botões com um selo "ON"/"OFF" ao lado — dava pra ler, mas exigia ler.
+   Uma chave se entende pela POSIÇÃO do botão antes de qualquer texto.
+   O estado vem da classe `.on` posta pelo JS; toda a aparência mora aqui. */
+.sidebar-auto-toggle {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, .18);
+  background: rgba(148, 163, 184, .06);
+  transition: background .18s, border-color .18s;
+}
+.sat-rotulo {
+  flex: 1; min-width: 0;
+  font-size: 10px; font-weight: 700; color: #64748b;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  transition: color .18s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* O trilho e o botão: 26x14, botão de 10 que desliza 11px. */
+.sat-chave {
+  flex: none; position: relative;
+  width: 26px; height: 14px; border-radius: 999px;
+  background: rgba(100, 116, 139, .35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05);
+  transition: background .18s;
+}
+.sat-botao {
+  position: absolute; top: 2px; left: 2px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #94a3b8;
+  transition: transform .18s ease, background .18s;
+}
+.sidebar-auto-toggle.on .sat-botao { transform: translateX(11px); background: #fff; }
+
+/* LIGADO. Verde pro que caça e captura, âmbar pro que mexe em dinheiro — mesma
+   família de cor que o resto da suíte usa pra essas duas naturezas. */
+.sidebar-auto-toggle.verde.on {
+  background: rgba(34, 197, 94, .16); border-color: rgba(34, 197, 94, .5);
+}
+.sidebar-auto-toggle.verde.on .sat-rotulo { color: #86efac; }
+.sidebar-auto-toggle.verde.on .sat-chave { background: #22c55e; }
+
+.sidebar-auto-toggle.ambar.on {
+  background: rgba(245, 158, 11, .16); border-color: rgba(245, 158, 11, .5);
+}
+.sidebar-auto-toggle.ambar.on .sat-rotulo { color: #fcd34d; }
+.sidebar-auto-toggle.ambar.on .sat-chave { background: #f59e0b; }
+
+.sidebar-auto-toggle:hover { border-color: rgba(255, 255, 255, .28); }
+
+/* =========================================================
+   XP TRACKER: os botões paravam de caber e quebravam linha
+   =========================================================
+   Eram quatro (fixar, fechar, ▲, ▼) numa faixa de ~200px com o título ao lado —
+   o ✕ caía numa segunda linha. Duas medidas: a linha não quebra, e as ações que
+   NÃO são de reordenar só aparecem no hover. Some o ruído sem perder função. */
+.xpmini-head, .sidebar-auto-head, .sidebar-block-header.enxuto { flex-wrap: nowrap; }
+.xpmini-actions-group { display: inline-flex; align-items: center; gap: 3px; flex: none; }
+
+.xpmini-head .xpmini-actions-group,
+.sidebar-auto-head > .sidebar-block-toggle-btn {
+  opacity: 0; transition: opacity .15s;
+}
+.xpmini-head:hover .xpmini-actions-group,
+.sidebar-auto-head:hover > .sidebar-block-toggle-btn { opacity: 1; }
+/* Teclado tem que alcançar o que o mouse alcança. */
+.xpmini-head:focus-within .xpmini-actions-group,
+.sidebar-auto-head:focus-within > .sidebar-block-toggle-btn { opacity: 1; }
+
+.sidebar-block-toggle-btn {
+  background: none; border: none; cursor: pointer;
+  color: #64748b; font-size: 11px; line-height: 1; padding: 2px 3px;
+  font-family: inherit; flex: none; border-radius: 4px;
+}
+.sidebar-block-toggle-btn:hover { color: #e2e8f0; background: rgba(148, 163, 184, .14); }
+/* --- MENU HAMBÚRGUER FLUTUANTE --- */
+.hamburger-dropdown {
+  animation: fadeInDown 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom left;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menu-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.menu-item-btn > span:first-child,
+.menu-item-btn > .menu-icon {
+  width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.menu-item-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+}
+
+/* MENU ITEM ROW (com botão de fixar) */
+.menu-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 8px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.menu-item-row:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+.menu-item-row:hover .menu-pin-btn {
+  opacity: 1;
+}
+.sidebar-menu-cat-title {
+  font-size: 8.5px;
+  font-weight: 900;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 4px 6px 2px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 3px;
+}
+.sidebar-menu-cat-title:first-of-type {
+  border-top: none;
+  margin-top: 0;
+}
+
+.menu-pin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  flex-shrink: 0;
+}
+.menu-pin-btn:hover {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: rgba(234, 179, 8, 0.4);
+  opacity: 1;
+}
+.menu-pin-btn.pinned {
+  opacity: 1;
+  background: rgba(234, 179, 8, 0.18);
+  border-color: rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.25);
+}
+
+/* SIDEBAR PINNED ITEM */
+.sidebar-pinned-footer-section {
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-pinned-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  position: relative;
+}
+.sidebar-pinned-item:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #ffffff;
+}
+.sidebar-pinned-item .pinned-unpin {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  border-radius: 3px;
+  font-size: 9px;
+  color: #94a3b8;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+  margin-left: 4px;
+}
+.sidebar-pinned-item:hover .pinned-unpin {
+  opacity: 1;
+}
+.sidebar-pinned-item .pinned-unpin:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+
+/* Atalho de teclado ao lado do rotulo no dropdown. O texto vem de
+   MENU_ITEMS[].hotkey (shell/04) — e so rotulo: quem registra a tecla de
+   verdade e o main.js. Ficar no registro serve pra o menu parar de ser o
+   unico lugar onde da pra descobrir que o atalho existe. */
+.menu-item-hotkey {
+  margin-left: auto;
+  font-size: 8px;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 4px;
+  padding: 1px 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.menu-item-btn:hover .menu-item-hotkey { color: #cbd5e1; border-color: rgba(148,163,184,0.32); }
+/* ÁREA PRINCIPAL DAS TELAS */
+.app-main-area {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background: #0a0f1d;
+}
+
+#views-container {
+  width: 100%;
+  height: 100%;
+  background: #0a0f1d;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Isola a pintura de cada conta: mudanças de um webview não recalculam o layout
+   da barra lateral e das demais contas. Também impede que conteúdo interno force
+   uma largura/altura maior que a área disponível. */
+.webview-wrapper {
+  min-width: 0;
+  min-height: 0;
+  contain: layout paint style;
+}
+
+/* MODO ABAS (TAB MODE)
+   As abas inativas continuam carregadas e com background throttling desativado
+   pelo Electron, portanto a hunt segue online. `visibility:hidden` só tira a
+   aba do compositor: evita desenhar jogos que o usuário não está vendo sem
+   descarregar, pausar ou recriar a webview. */
+#views-container.mode-tabs .webview-wrapper {
+  position: absolute; inset: 0;
+  visibility: hidden; opacity: 1; pointer-events: none;
+  width: 100%; height: 100%;
+}
+
+#views-container.mode-tabs .webview-wrapper.active {
+  position: absolute; inset: 0; left: 2px;
+  visibility: visible; opacity: 1; pointer-events: auto;
+  z-index: 2;
+  display: flex;
+  width: 100%; height: 100%;
+}
+
+/* --- TOAST NOTIFICATIONS --- */
+#toast-container {
+  position: fixed;
+  top: 50px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.toast-item {
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 14px;
+  padding: 10px 16px;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 16px rgba(16, 185, 129, 0.15);
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: auto;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-item.toast-success {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 185, 129, 0.25);
+}
+
+/* --- TOAST SHINY INTERATIVO --- */
+.toast-item.toast-shiny {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.98), rgba(88, 28, 135, 0.96));
+  border: 2px solid #facc15;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(250, 204, 21, 0.6);
+  cursor: pointer;
+  animation: shinyToastGlow 1.2s infinite alternate, toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.toast-item.toast-shiny:hover {
+  transform: scale(1.03) translateY(-2px);
+  border-color: #fde047;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.9), 0 0 35px rgba(250, 204, 21, 0.85);
+}
+
+@keyframes shinyToastGlow {
+  from {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(250, 204, 21, 0.4);
+  }
+  to {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 30px rgba(250, 204, 21, 0.8), 0 0 18px rgba(236, 72, 153, 0.6);
+  }
+}
+
+.tab-btn.shiny-flash {
+  animation: tabShinyFlash 0.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes tabShinyFlash {
+  from {
+    border-color: #facc15;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+  }
+  to {
+    border-color: #ec4899;
+    box-shadow: 0 0 22px rgba(236, 72, 153, 0.9), 0 0 12px rgba(250, 204, 21, 0.9);
+  }
+}
+
+.toast-item.fade-out {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(50px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* MODO GRID MULTI-CONTAS
+   Cards DEITADOS e grandes: nº fixo de colunas (--grid-cols, ajustável no menu
+   "Colunas do Grid") + `aspect-ratio` no card, então a ALTURA da linha sai da
+   largura da coluna e o formato paisagem se mantém em qualquer largura de tela.
+   O que não couber na altura entra no scroll — é isso que permite 4 em cima,
+   4 embaixo e rolar até o resto.
+
+   Antes: `grid-template-columns: repeat(auto-fit, minmax(280px,1fr))` +
+   `grid-auto-rows: minmax(220px,1fr)`. O auto-fit espremia 7-8 contas por linha
+   em telas largas e o `1fr` das linhas esticava cada card até preencher a
+   viewport — daí os cards altos e estreitos. */
+#views-container.mode-grid {
+  --grid-cols: 4;
+  --grid-aspect: 16 / 10;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
+  grid-template-rows: none;
+  grid-auto-rows: auto;
+  align-content: start;
+  gap: 6px;
+  padding: 6px;
+  background: #090d16;
+  height: calc(100vh - 42px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#views-container.mode-grid .webview-wrapper {
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--grid-aspect);
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0a0f1d;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Garante que o Dashboard 4x fique 100% oculto no modo Grid 2x2 para nao esmagar os 4 quadrantes */
+#views-container.mode-grid .dashboard-view-wrapper,
+#views-container.mode-grid #wrap-4 {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  grid-column: unset !important;
+  grid-row: unset !important;
+  height: 0 !important;
+  width: 0 !important;
+  opacity: 0 !important;
+}
+
+#views-container.mode-grid .webview-wrapper.focused {
+  border-color: #10b981;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+}
+
+.webview-header {
+  height: 22px;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+#views-container.mode-grid .webview-header {
+  display: flex;
+  height: 18px;
+  font-size: 9px;
+  padding: 0 6px;
+}
+
+webview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  background: #020617;
+}
+
+#views-container.mode-grid webview {
+  height: calc(100% - 18px);
+}
+
+/* --- MODAL DE RENOMEAR ABA --- */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.modal-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-box {
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(16, 185, 129, 0.15);
+  border-radius: 16px;
+  padding: 18px 22px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: animate__animated animate__fadeInDown 0.25s ease-out;
+}
+
+.modal-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-input {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.modal-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.btn-confirm:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-cancel {
+  background: rgba(51, 65, 85, 0.7);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background: rgba(71, 85, 105, 0.9);
+  color: #ffffff;
+}
+
+.btn-danger-modal {
+  flex: 1;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.btn-danger-modal:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.btn-warning-modal {
+  flex: 1;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.btn-warning-modal:hover {
+  background: rgba(251, 191, 36, 0.25);
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+
+
+/* =========================================================================
+   MODAL "GERENCIAR CONTA" — redesenho
+   O anterior empilhava título, rótulo solto, input e 4 botões de pesos
+   visuais parecidos, sem hierarquia: dava pra clicar em "Fechar Conta"
+   achando que era "fechar a janela". Agora: cabeçalho com identidade da
+   conta, corpo com os campos e rodapé separando ações destrutivas das
+   de confirmação.
+   ========================================================================= */
+.modal-box.modal-conta {
+  width: 380px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.modal-conta-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 13px 16px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.5));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  cursor: move;
+}
+.modal-conta-ident { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.modal-conta-ball {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.45);
+}
+.modal-conta-txt { min-width: 0; }
+.modal-conta-nome {
+  font-size: 13.5px; font-weight: 800; color: #f1f5f9;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.modal-conta-sub {
+  font-size: 9.5px; color: #94a3b8; margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.modal-conta-x {
+  background: none; border: none; color: #64748b; font-size: 14px;
+  cursor: pointer; padding: 2px 4px; line-height: 1; flex-shrink: 0;
+}
+.modal-conta-x:hover { color: #fca5a5; }
+
+.modal-conta-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 7px; }
+.modal-conta-label {
+  font-size: 9px; font-weight: 800; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.modal-conta-cores { display: flex; flex-wrap: wrap; gap: 5px; }
+.modal-cor-opt {
+  width: 20px; height: 20px; border-radius: 50%; cursor: pointer; padding: 0;
+  border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s;
+}
+.modal-cor-opt:hover { transform: scale(1.15); }
+.modal-cor-opt.ativa { border-color: #f1f5f9; box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9), 0 0 8px rgba(255, 255, 255, 0.35); }
+.modal-cor-reset {
+  width: 20px; height: 20px; border-radius: 50%; cursor: pointer; padding: 0;
+  font-size: 11px; line-height: 1; color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1); border: 1px dashed rgba(148, 163, 184, 0.4);
+}
+.modal-cor-reset:hover { color: #f1f5f9; border-color: rgba(241, 245, 249, 0.6); }
+
+.modal-conta-foot {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 12px 16px 14px;
+  background: rgba(2, 6, 23, 0.45);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+.modal-conta-foot-perigo { display: flex; gap: 7px; }
+.modal-conta-foot-acoes { display: flex; gap: 7px; justify-content: flex-end; }
+
+.modal-conta-btn {
+  font-size: 11px; font-weight: 700; font-family: inherit;
+  padding: 7px 13px; border-radius: 8px; cursor: pointer;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
+  transition: background 0.15s, border-color 0.15s;
+}
+.modal-conta-btn:hover { background: rgba(148, 163, 184, 0.18); }
+/* As ações destrutivas ficam discretas por padrão e só "acendem" no hover —
+   antes competiam visualmente com o Salvar. */
+.modal-conta-btn.perigo { flex: 1; color: #f87171; border-color: rgba(239, 68, 68, 0.28); background: rgba(239, 68, 68, 0.07); }
+.modal-conta-btn.perigo:hover { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); }
+.modal-conta-btn.aviso { flex: 1; color: #fcd34d; border-color: rgba(245, 158, 11, 0.28); background: rgba(245, 158, 11, 0.07); }
+.modal-conta-btn.aviso:hover { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.5); }
+.modal-conta-btn.ok {
+  color: #ffffff; border-color: transparent;
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+.modal-conta-btn.ok:hover { background: linear-gradient(135deg, #34d399, #10b981); }
+
+/* Cor escolhida tinge a aba SEMPRE, nao so quando selecionada.
+   `.tab-btn` declara `border: ... !important` e `.tab-btn.active` refaz o
+   border-left tambem com !important — nenhuma regra de borda minha sobrevive
+   a isso. A faixa vira um pseudo-elemento (o botao ja e position:relative e
+   overflow:hidden), que nenhum !important de borda alcanca. */
+.tab-btn::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; border-radius: 10px 0 0 10px;
+  background: var(--cor-aba, transparent);
+  z-index: 2;
+}
+.tab-btn::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--cor-aba, transparent) 13%, transparent),
+      transparent 55%);
+}
+/* Na aba ativa o esmeralda do estado precisa ganhar do lavado da cor da
+   conta — antes o wash subia pra 32% e cobria justamente o sinal de "esta e a
+   aba selecionada". Agora o wash da ativa CAI (a identidade da conta migra pra
+   faixa lateral, que engorda e ganha brilho) e o esmeralda do fundo aparece. */
+.tab-btn.active::before {
+  width: 7px;
+  box-shadow: 0 0 10px var(--cor-aba, transparent);
+}
+.tab-btn.active::after {
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--cor-aba, transparent) 14%, transparent),
+      transparent 45%);
+}
+/* O conteudo precisa ficar acima do overlay */
+.tab-btn > * { position: relative; z-index: 1; }
+
+/* Bloco "Posição na lista" do modal de gerenciar conta. O arrasto na sidebar
+   continua valendo; estes botões são o caminho previsível quando são 11 contas
+   empilhadas e o alvo do drop fica com poucos pixels de altura. */
+.modal-conta-secao {
+  display: flex; flex-direction: column; gap: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 9px; margin-top: 2px;
+}
+.modal-conta-secao-t {
+  font-size: 9px; font-weight: 800; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.modal-conta-ordem { display: flex; align-items: center; gap: 7px; }
+.modal-conta-ordem .modal-conta-btn { flex: 1; }
+.modal-conta-ordem .modal-conta-btn:disabled {
+  opacity: 0.35; cursor: not-allowed;
+}
+.modal-conta-pos {
+  font-size: 10px; font-weight: 800; color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px; padding: 4px 9px; white-space: nowrap;
+}
+/* --- MODAL DE PROXIES / REDE AMPLO E ESPAÇOSO --- */
+.modal-box-large {
+  width: 960px !important;
+  max-width: 95vw !important;
+  max-height: 90vh !important;
+  padding: 20px 24px !important;
+  gap: 14px !important;
+  border-radius: 16px !important;
+  overflow-y: auto;
+}
+
+/* --- POOL GRID (tabela compacta de proxies) --- */
+.proxy-pool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 5px;
+  max-height: 110px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.proxy-pool-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #cbd5e1;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.proxy-pool-item.in-use {
+  background: rgba(34,197,94,0.12);
+  border-color: rgba(34,197,94,0.35);
+  color: #86efac;
+}
+
+.proxy-pool-item .pool-idx {
+  font-weight: 800;
+  color: #fde047;
+  min-width: 18px;
+}
+
+.proxy-pool-item .pool-ip {
+  font-family:var(--app-font-num); font-variant-numeric:var(--app-font-num-variant);
+  font-size: 9.5px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proxy-pool-item .pool-status {
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 800;
+  background: rgba(255,255,255,0.07);
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.proxy-pool-item.in-use .pool-status {
+  background: #16a34a;
+  color: #fff;
+}
+
+/* --- ACCOUNTS GRID (2 colunas) --- */
+.proxy-accounts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+@media (max-width: 700px) {
+  .proxy-accounts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.proxy-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proxy-card {
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.5));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.proxy-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #94a3b8, #64748b);
+  border-radius: 10px 0 0 10px;
+  opacity: 0.5;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.proxy-card:hover {
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.proxy-card.has-proxy {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(8, 145, 178, 0.12));
+}
+.proxy-card.has-proxy::before {
+  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+  opacity: 1;
+}
+.proxy-card.disabled-proxy {
+  opacity: 0.45;
+  filter: grayscale(0.5);
+}
+.proxy-card.disabled-proxy::before {
+  background: linear-gradient(180deg, #475569, #334155);
+  opacity: 0.4;
+}
+
+.proxy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.proxy-card-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+}
+.proxy-card-check input[type="checkbox"] {
+  accent-color: #38bdf8;
+  width: 14px; height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.proxy-card-check span {
+  font-size: 11px; font-weight: 800; color: #cbd5e1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.proxy-status-tag {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.proxy-card.has-proxy .proxy-status-tag {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.proxy-inputs-grid {
+  display: grid;
+  grid-template-columns: 85px 1fr 85px auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.proxy-select {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 5px;
+  padding: 5px 6px;
+  color: #f1f5f9;
+  font-size: 10px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+}
+
+.proxy-input-field {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 600;
+  outline: none;
+  font-family:var(--app-font-num); font-variant-numeric:var(--app-font-num-variant);
+}
+
+.proxy-input-field:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.3);
+}
+
+.btn-proxy-clear {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 5px;
+  padding: 4px 6px;
+  font-size: 9px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  line-height: 1;
+}
+
+.btn-proxy-clear:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.proxy-hint {
+  font-size: 10.5px;
+  color: #94a3b8;
+  line-height: 1.4;
+  background: rgba(2, 6, 23, 0.6);
+  padding: 8px 10px;
+  border-radius: 6px;
+  border-left: 3px solid #38bdf8;
+}
+
+/* BOTÃO DE CONTROLE GENÉRICO */
+.ctrl-btn {
+  background: rgba(30, 41, 59, 0.5);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.ctrl-btn:hover {
+  background: rgba(30, 41, 59, 0.8);
+  color: #ffffff;
+  border-color: rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Efeito de pulso no botão recarregar e aplicar */
+.ctrl-btn-highlight {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.2)) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #6ee7b7 !important;
+}
+
+.ctrl-btn-highlight:hover {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+}
+
+.ctrl-btn-restart {
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.25), rgba(220, 38, 38, 0.25)) !important;
+  border-color: #fb923c !important;
+  color: #fdba74 !important;
+}
+
+.ctrl-btn-restart:hover {
+  background: linear-gradient(135deg, #ea580c, #dc2626) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(251, 146, 60, 0.4);
+}
+
+/* MODAL DO EDITOR DE SCRIPT (TELA CHEIA) */
+.modal-editor-container {
+  width: 95vw;
+  max-width: 1500px;
+  height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #0b1120;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 30px rgba(16, 185, 129, 0.15);
+  overflow: hidden;
+  padding: 0;
+}
+
+.editor-header {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.editor-textarea {
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  background: #090d16;
+  color: #e2e8f0;
+  border: none;
+  padding: 14px 18px;
+  font-family:var(--app-font-code);
+  font-size: 13px;
+  line-height: 1.55;
+  resize: none;
+  outline: none;
+  tab-size: 4;
+  white-space: pre;
+  overflow: auto;
+}
+
+.editor-status-bar {
+  padding: 6px 16px;
+  background: #070a12;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #94a3b8;
+  font-family:var(--app-font-num); font-variant-numeric:var(--app-font-num-variant);
+}
+
+/* =====================================================
+   === ESTILOS DA CENTRAL DE TRADE 4X DIRETO (MODAL) ===
+   ===================================================== */
+.modal-trade-container {
+  width: 98%;
+  max-width: 1800px;
+  height: 95vh;
+  max-height: 1080px;
+  background: rgba(15, 23, 42, 0.97);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.85), 0 0 30px rgba(16, 185, 129, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleIn 0.22s ease-out;
+}
+
+.trade-hub-header {
+  padding: 10px 18px;
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trade-quick-banner {
+  padding: 8px 18px;
+  background: linear-gradient(90deg, rgba(147, 51, 234, 0.15), rgba(30, 41, 59, 0.8));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trade-dump-btn {
+  padding: 5px 12px;
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  color: #fff;
+  border: 1px solid rgba(216, 180, 254, 0.4);
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  box-shadow: 0 2px 10px rgba(147, 51, 234, 0.35);
+}
+
+.trade-dump-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(147, 51, 234, 0.55);
+}
+
+.trade-dump-btn.trade-dump-gold {
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  border-color: rgba(254, 240, 138, 0.4);
+  color: #0f172a;
+  box-shadow: 0 2px 10px rgba(234, 179, 8, 0.35);
+}
+
+.trade-dump-btn.trade-dump-gold:hover {
+  box-shadow: 0 4px 15px rgba(234, 179, 8, 0.55);
+}
+
+.trade-progress-box {
+  padding: 6px 18px;
+  background: rgba(2, 6, 23, 0.85);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.trade-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.trade-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #a855f7);
+  transition: width 0.25s ease;
+}
+
+.trade-grid-workspace {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  padding: 10px 16px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.trade-col {
+  flex: 1.2;
+  min-width: 0;
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.trade-subcard {
+  flex: 1;
+  min-height: 0;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.trade-subcard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #e2e8f0;
+}
+
+.trade-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+  color: #a855f7;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.trade-section-divider::before,
+.trade-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.4), transparent);
+}
+
+.trade-col-center {
+  flex: 0 0 380px;
+  min-width: 340px;
+  background: rgba(2, 6, 23, 0.88);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow: hidden;
+  box-shadow: 0 0 25px rgba(147, 51, 234, 0.2);
+}
+
+.trade-exchange-side {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.trade-exchange-side.origem {
+  border-left: 3px solid #38bdf8;
+}
+
+.trade-exchange-side.destino {
+  border-left: 3px solid #4ade80;
+}
+
+.trade-divider-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  color: #a855f7;
+  padding: 0 2px;
+  user-select: none;
+}
+
+.trade-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.trade-account-select {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 5px;
+  color: #f8fafc;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.trade-account-stats-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 5px;
+  padding: 4px 8px;
+}
+
+.trade-category-tabs {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.trade-cat-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  white-space: nowrap;
+}
+
+.trade-cat-btn:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #f8fafc;
+}
+
+.trade-cat-btn.active {
+  background: linear-gradient(135deg, #7e22ce, #9333ea);
+  border-color: rgba(216, 180, 254, 0.5);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 1px 6px rgba(147, 51, 234, 0.35);
+}
+
+.trade-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #f8fafc;
+  outline: none;
+}
+
+.trade-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.25);
+}
+
+.trade-view-toggle-group {
+  display: flex;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 5px;
+  padding: 1px;
+  gap: 1px;
+}
+
+.trade-view-toggle-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.trade-view-toggle-btn:hover {
+  color: #f8fafc;
+  background: rgba(51, 65, 85, 0.5);
+}
+
+.trade-view-toggle-btn.active {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35);
+}
+
+.trade-inventory-grid {
+  flex: 1;
+  min-height: 120px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 5px;
+  padding: 2px 2px 4px 2px;
+}
+
+.trade-inventory-grid.view-list {
+  grid-template-columns: 1fr !important;
+  gap: 3px !important;
+}
+
+.trade-pokes-grid {
+  flex: 1;
+  min-height: 180px;
+  max-height: 350px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 5px;
+  padding: 2px 2px 4px 2px;
+}
+
+.trade-pokes-grid.view-list {
+  grid-template-columns: 1fr !important;
+  gap: 3px !important;
+}
+
+.trade-item-pill {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+.trade-item-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Modo Lista (Row) */
+.trade-item-pill.view-list-row {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 5px 10px !important;
+  min-height: 32px !important;
+}
+
+/* Destaque Especial Luminoso para Stones, Helds e Diamond */
+.trade-item-pill.stone-highlight {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.16), rgba(147, 51, 234, 0.2)) !important;
+  border: 1px solid rgba(56, 189, 248, 0.6) !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25), inset 0 0 12px rgba(147, 51, 234, 0.12);
+}
+
+.trade-item-pill.diamond-highlight {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(34, 211, 238, 0.2)) !important;
+  border: 1px solid rgba(56, 189, 248, 0.65) !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3), inset 0 0 12px rgba(34, 211, 238, 0.12);
+}
+
+.trade-item-pill.stone-highlight:hover {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+}
+
+.trade-item-pill.held-highlight {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(234, 179, 8, 0.2)) !important;
+  border: 1px solid rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.trade-item-pill.selected {
+  border-color: #22c55e !important;
+  background: rgba(34, 197, 94, 0.25) !important;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35) !important;
+}
+
+.trade-gold-transfer-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 5px;
+  padding: 4px 7px;
+}
+
+.trade-gold-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 10.5px;
+  color: #4ade80;
+  font-weight: 800;
+  outline: none;
+}
+
+.trade-gold-quick-btn {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fde047;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.trade-gold-quick-btn:hover {
+  background: #ca8a04;
+  color: #0f172a;
+}
+
+.trade-offer-queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 4px;
+  overflow-y: auto;
+  padding: 4px;
+  background: rgba(2, 6, 23, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.trade-queue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 9.5px;
+  color: #f8fafc;
+  animation: modalScaleIn 0.15s ease-out;
+}
+
+.trade-queue-chip.gold {
+  border-color: rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.12);
+  color: #fde047;
+  font-weight: 800;
+}
+
+.trade-queue-chip.poke {
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  font-weight: 800;
+}
+
+.trade-queue-chip button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0 1px;
+  line-height: 1;
+}
+
+.trade-queue-chip button:hover {
+  color: #f87171;
+  transform: scale(1.2);
+}
+
+.trade-btn-execute {
+  width: 100%;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: 1px solid rgba(110, 231, 183, 0.4);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.trade-btn-execute:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.5);
+}
+
+.trade-btn-execute:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.trade-log-console {
+  background: rgba(2, 6, 23, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 4px;
+  padding: 6px;
+  font-family:var(--app-font-num); font-variant-numeric:var(--app-font-num-variant);
+  font-size: 9px;
+  line-height: 1.35;
+  overflow-y: auto;
+}
+
+.trade-account-select {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 5px;
+  color: #f8fafc;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.trade-account-stats-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.trade-category-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.trade-cat-btn {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 5px;
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.trade-cat-btn.active {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.4), rgba(79, 70, 229, 0.3));
+  border-color: #a855f7;
+  color: #f5d0fe;
+  font-weight: 900;
+}
+
+.trade-search-input {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.trade-inventory-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 5px;
+  overflow-y: auto;
+  padding-right: 4px;
+  min-height: 160px;
+}
+
+.trade-item-pill {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  user-select: none;
+}
+
+.trade-item-pill:hover {
+  background: rgba(147, 51, 234, 0.2);
+  border-color: #c084fc;
+  transform: translateY(-1px);
+}
+
+.trade-item-pill.selected {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: #22c55e;
+}
+
+.trade-item-pill.diamond-highlight {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(34, 211, 238, 0.2));
+  border: 1px solid rgba(56, 189, 248, 0.65);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.trade-gold-transfer-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+.trade-gold-input {
+  flex: 1;
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 4px;
+  color: #fde047;
+  font-size: 10.5px;
+  font-weight: bold;
+  padding: 3px 6px;
+  outline: none;
+}
+
+.trade-gold-quick-btn {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fde047;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.trade-offer-queue {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 6px;
+  padding: 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 5px;
+  min-height: 140px;
+}
+
+.trade-queue-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(147, 51, 234, 0.25);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #f5d0fe;
+}
+
+.trade-queue-chip.gold {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: rgba(234, 179, 8, 0.5);
+  color: #fde047;
+}
+
+.trade-queue-chip.poke {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+}
+
+.trade-queue-chip button {
+  background: none;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 0 2px;
+}
+
+.trade-footer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.trade-btn-execute {
+  flex: 2;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  color: #fff;
+  border: 1px solid rgba(216, 180, 254, 0.4);
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 0 15px rgba(147, 51, 234, 0.4);
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.trade-btn-execute:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.6);
+}
+
+.trade-btn-execute:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trade-log-console {
+  height: 80px;
+  background: #020617;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 6px;
+  padding: 6px 10px;
+  overflow-y: auto;
+  font-family:var(--app-font-num); font-variant-numeric:var(--app-font-num-variant);
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+
+/* ========================================================
+   DASHBOARD 4X COMMAND CENTER & SALA DE TROFÉUS SHINIES
+   ======================================================== */
+.dashboard-view-wrapper {
+  background: #080c14;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-header-bar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 14px 44px 14px 20px; /* folga a direita pro X fixo (.dash-close-x) */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.dash-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-title-group h2 {
+  font-size: 16px;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.dash-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dash-btn {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  border: 1px solid transparent;
+}
+
+.dash-btn:hover {
+  transform: translateY(-1px);
+}
+
+.dash-btn-primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.dash-btn-green {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.dash-btn-yellow {
+  background: linear-gradient(135deg, #ca8a04, #a16207);
+  color: #fff;
+  border-color: #fde047;
+}
+
+.dash-btn-purple {
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  color: #fff;
+  border-color: #c084fc;
+  box-shadow: 0 0 10px rgba(192, 132, 252, 0.3);
+}
+
+.dash-btn-pink {
+  background: linear-gradient(135deg, #db2777, #be185d);
+  color: #fff;
+  border-color: #f472b6;
+}
+
+/* Grid de Cards das 4 Contas */
+.dash-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1300px) {
+  .dash-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dash-acc-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  position: relative;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.dash-acc-card:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 185, 129, 0.12);
+  transform: translateY(-2px);
+}
+
+.dash-acc-card.is-main {
+  border-color: rgba(250, 204, 21, 0.45);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 16px rgba(250, 204, 21, 0.15);
+}
+
+.dash-acc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.dash-acc-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dash-acc-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+.dash-acc-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.dash-acc-badge.main {
+  background: #eab308;
+  color: #020617;
+}
+
+.dash-acc-badge.farm {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.dash-poke-box {
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dash-enemy-box {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dash-poke-sprite {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+}
+
+.dash-hp-bar,
+.dash-progress-track {
+  height: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dash-hp-fill,
+.dash-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-progress-fill.trainer {
+  background: linear-gradient(90deg, #0284c7, #38bdf8, #818cf8);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+
+.dash-progress-fill.poke-xp {
+  background: linear-gradient(90deg, #9333ea, #c084fc, #f43f5e);
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.5);
+}
+
+.dash-level-badge {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.3));
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  color: #fde047;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dash-level-badge.poke {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.35));
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #c084fc;
+}
+
+.dash-pct-pill {
+  font-size: 8.5px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dash-pct-pill.cyan {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.dash-pct-pill.pink {
+  background: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.dash-pct-pill.green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.dash-pct-pill.emerald {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.dash-eta-pill {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #fde047;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dash-eta-pill.poke {
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+}
+
+.dash-progress-fill.poke-dex {
+  background: linear-gradient(90deg, #10b981, #06b6d4, #3b82f6);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.dash-dex-section {
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.dash-stat-pill {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 6px;
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-stat-label {
+  font-size: 9px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.dash-stat-val {
+  font-size: 11.5px;
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+.dash-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* Mochila / Drops no Card da Dashboard */
+.dash-bag-section {
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dash-bag-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dash-bag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 64px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.dash-bag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 9.5px;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.dash-bag-chip-name {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-bag-chip-qty {
+  font-weight: 900;
+  color: #fde047;
+}
+
+.dash-bag-dump-btn {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.4), rgba(79, 70, 229, 0.4));
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #f5d0fe;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.dash-bag-dump-btn:hover {
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  color: #fff;
+  border-color: #c084fc;
+}
+
+/* Sala de Troféus de Shinies */
+.dash-trophies-panel {
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(250, 204, 21, 0.2);
+  border-radius: 16px;
+  padding: 14px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-trophies-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dash-trophies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.dash-shiny-card {
+  background: rgba(2, 6, 23, 0.75);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.dash-shiny-card:hover {
+  transform: translateY(-2px);
+  border-color: #facc15;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.35);
+}
+
+
+/* Fechar Dashboard: X fixo no canto do header.
+   A toolbar de acoes quebra em varias linhas quando ha muitas contas e o
+   antigo botao "Fechar Dashboard" ia junto, saindo do campo de visao. Este X
+   fica ancorado no canto e nao depende do wrap da toolbar. */
+.dash-close-x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  transition: background .15s, color .15s, transform .15s;
+  z-index: 3;
+}
+
+.dash-close-x:hover {
+  background: rgba(239, 68, 68, 0.32);
+  color: #fff;
+  transform: scale(1.08);
+}
+/* =====================================================
+   WATCHDOG DE RECONEXÃO & BADGE DE ALERTA DE CONEXÃO
+   ===================================================== */
+.tab-reconnecting {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: #ef4444 !important;
+  animation: pulse-reconnect 1s infinite alternate;
+}
+
+@keyframes pulse-reconnect {
+  0% { box-shadow: 0 0 4px rgba(239, 68, 68, 0.3); }
+  100% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.8); }
+}
+
+.reconnect-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  padding: 12px 18px;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(239, 68, 68, 0.4);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* =====================================================
+   MODAL: AVALIADOR DE POKÉMON & META INSPECTOR
+   ===================================================== */
+.modal-eval-box {
+  width: 96vw;
+  max-width: 1540px;
+  height: 92vh;
+  background: linear-gradient(135deg, rgba(10, 15, 29, 0.98), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.eval-header-bar {
+  padding: 14px 20px;
+  background: rgba(15, 23, 42, 0.85);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.35);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.eval-filters-bar {
+  padding: 10px 20px;
+  background: rgba(2, 6, 23, 0.7);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.eval-batch-bar {
+  padding: 8px 20px;
+  background: linear-gradient(90deg, rgba(88, 28, 135, 0.35), rgba(15, 23, 42, 0.9));
+  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.eval-batch-quick-btn {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.eval-batch-quick-btn:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #f8fafc;
+  border-color: #a855f7;
+}
+
+.eval-batch-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  border: 1px solid transparent;
+}
+
+.eval-batch-lock {
+  background: rgba(234, 179, 8, 0.18);
+  border-color: rgba(234, 179, 8, 0.5);
+  color: #fde047;
+}
+
+.eval-batch-lock:hover {
+  background: rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+}
+
+.eval-batch-unlock {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #7dd3fc;
+}
+
+.eval-batch-unlock:hover {
+  background: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.eval-batch-sell {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-color: rgba(110, 231, 183, 0.4);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+.eval-batch-sell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+}
+
+.eval-batch-trade {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border-color: rgba(216, 180, 254, 0.4);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+
+.eval-batch-trade:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.5);
+}
+
+.eval-list-row.row-selected {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+}
+
+.eval-card.card-selected {
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4) !important;
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.98)) !important;
+}
+
+.eval-select, .eval-search-input {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  outline: none;
+  font-weight: 700;
+}
+
+.eval-select:focus, .eval-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.eval-view-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.eval-view-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.eval-view-btn.active {
+  background: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+
+.eval-main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  min-width: 0;
+}
+
+/* PAINEL LATERAL DE SELEÇÃO */
+.eval-side-panel {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
+}
+.eval-side-panel.open {
+  width: 340px;
+  min-width: 340px;
+  opacity: 1;
+  display: flex;
+  flex-direction: column;
+}
+.eval-side-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148,163,184,0.12);
+  background: rgba(15,23,42,0.6);
+  transition: background 0.12s, border-color 0.12s;
+  cursor: default;
+}
+.eval-side-panel-item:hover {
+  background: rgba(30,41,59,0.8);
+  border-color: rgba(168,85,247,0.4);
+}
+.eval-side-panel-item .pokemon-sprite {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+.eval-side-panel-item .poke-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+.eval-side-panel-item .poke-meta {
+  font-size: 9px;
+  color: #94a3b8;
+}
+.eval-side-panel-item .poke-score {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.eval-side-panel-item .poke-remove {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.12s, background 0.12s;
+}
+.eval-side-panel-item .poke-remove:hover {
+  color: #ef4444;
+  background: rgba(239,68,68,0.15);
+}
+
+/* ==========================================================================
+   ATENÇÃO: NÃO ALTERAR OU REDUZIR A ALTURA DOS CARDS DO AVALIADOR META!
+   ESTES CARDS PRECISAM MANTER FORMATO DE CARD ALTO E AMPLO (MIN-HEIGHT: 380PX)
+   ========================================================================== */
+.eval-main-content.view-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 22px;
+  align-items: stretch;
+}
+
+.eval-card {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 380px !important;
+  box-sizing: border-box;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  position: relative;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+.eval-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(16, 185, 129, 0.2);
+}
+
+.eval-card.best-copy {
+  border: 2px solid #eab308 !important;
+  box-shadow: 0 0 22px rgba(234, 179, 8, 0.4);
+}
+
+.eval-card.best-copy::before {
+  content: '👑 MELHOR CÓPIA';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 9.5px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #000;
+  padding: 3px 9px;
+  border-radius: 5px;
+  z-index: 2;
+}
+
+.eval-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.eval-sprite-frame {
+  width: 54px;
+  height: 54px;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eval-sprite {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+}
+
+.eval-tier-badge {
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.eval-tier-badge.tier-s-plus {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.eval-tier-badge.tier-s {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+
+.eval-tier-badge.tier-a {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+}
+
+.eval-tier-badge.tier-b {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+
+.eval-tier-badge.tier-c {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.eval-ivs-box {
+  background: rgba(2, 6, 23, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.eval-meta-build-box {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eval-held-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fde047;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.eval-moves-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.eval-move-pill {
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eval-move-pill.stab {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.1);
+  color: #86efac;
+}
+
+/* Grupo de Botões de Ação do Pokémon */
+.eval-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.eval-btn-action {
+  flex: 1;
+  min-width: 60px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  border: 1px solid transparent;
+}
+
+.eval-btn-lock {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.4);
+  color: #fde047;
+}
+
+.eval-btn-lock:hover {
+  background: rgba(234, 179, 8, 0.3);
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+}
+
+.eval-btn-lock.locked {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}
+
+.eval-btn-swap {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.eval-btn-swap:hover {
+  background: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.eval-btn-sell {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.eval-btn-sell:hover {
+  background: rgba(34, 197, 94, 0.3);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.eval-btn-sell:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.eval-btn-aura {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.eval-btn-aura:hover {
+  background: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+.eval-btn-trade {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.25));
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.eval-btn-trade:hover {
+  background: rgba(56, 189, 248, 0.35);
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+.eval-nature-pill {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.eval-nature-plus {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.eval-nature-minus {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.eval-rarity-badge {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(147, 51, 234, 0.25);
+  border: 1px solid rgba(147, 51, 234, 0.5);
+  color: #d8b4fe;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+.eval-rarity-badge[title*='Mítico'], .eval-rarity-badge[title*='mythic'] { background: rgba(244,114,182,0.25); border-color: rgba(244,114,182,0.5); color: #f9a8d4; }
+.eval-rarity-badge[title*='Lendário'], .eval-rarity-badge[title*='legendary'] { background: rgba(251,191,36,0.25); border-color: rgba(251,191,36,0.5); color: #fde047; }
+.eval-rarity-badge[title*='Épico'], .eval-rarity-badge[title*='epic'] { background: rgba(192,132,252,0.25); border-color: rgba(192,132,252,0.5); color: #d8b4fe; }
+.eval-rarity-badge[title*='Raro'], .eval-rarity-badge[title*='rare'] { background: rgba(96,165,250,0.2); border-color: rgba(96,165,250,0.4); color: #93c5fd; }
+.eval-rarity-badge[title*='Incomum'], .eval-rarity-badge[title*='uncommon'] { background: rgba(74,222,128,0.2); border-color: rgba(74,222,128,0.4); color: #86efac; }
+.eval-rarity-badge[title*='Comum'], .eval-rarity-badge[title*='common'] { background: rgba(148,163,184,0.15); border-color: rgba(148,163,184,0.3); color: #cbd5e1; }
+
+/* === MODO 2: TABELA / LISTA COMPACTA DETALHADA === */
+.eval-main-content.view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eval-list-row {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.eval-list-row:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(168, 85, 247, 0.5);
+  transform: translateX(2px);
+}
+
+.eval-list-row.best-copy {
+  border-left: 4px solid #eab308;
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.1), rgba(15, 23, 42, 0.85));
+}
+
+/* =====================================================
+   MODAL: POPUP INTERNO NO CLIENT
+   ===================================================== */
+.modal-popup-box {
+  width: 90vw;
+  max-width: 1300px;
+  height: 88vh;
+  background: linear-gradient(135deg, rgba(10, 15, 29, 0.98), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.popup-header-bar {
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.popup-webview-container {
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 46px);
+  background: #090d16;
+  position: relative;
+}
+
+/* =====================================================
+   MODAL RÁPIDO DE QUANTIDADE DE ITENS NO TRADE
+   ===================================================== */
+.modal-trade-qty-box {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95));
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+  border-radius: 16px;
+  padding: 16px 20px;
+  width: 360px;
+  max-width: 90vw;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(16, 185, 129, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.trade-qty-preset-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  text-align: center;
+}
+
+.trade-qty-preset-btn:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #34d399;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.trade-qty-preset-btn.max-btn {
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #000;
+  border-color: #fde047;
+  font-weight: 900;
+}
+
+.trade-qty-preset-btn.max-btn:hover {
+  background: linear-gradient(135deg, #facc15, #eab308);
+  color: #000;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+}
+
+/* =========================================================
+   ESTADO ATIVO DE BOTOES DE MENU / SIDEBAR
+   Regra compartilhada que morava no arquivo do Mini Dashboard v1
+   (removido junto com aquele layout). Fica nesta posicao da ordem
+   de build pra manter a cascata identica a de antes.
+   ========================================================= */
+.sidebar-block-toggle-btn.active,
+.menu-item-btn.active {
+  background: linear-gradient(135deg, rgba(16,185,129,0.45), rgba(5,150,105,0.35)) !important;
+  border-color: rgba(16,185,129,0.6) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(16,185,129,0.4), inset 0 0 6px rgba(255,255,255,0.1) !important;
+}
+/* =========================================================
+   BOOTSTRAP 5 DARK THEME OVERRIDES
+   ========================================================= */
+:root {
+  --bs-body-bg: #0a0f1d;
+  --bs-body-color: #f1f5f9;
+  --bs-border-color: rgba(255,255,255,0.06);
+  --bs-card-bg: rgba(30,41,59,0.5);
+  --bs-emphasis-color: #f1f5f9;
+  --bs-secondary-bg: rgba(30,41,59,0.6);
+}
+body { background-color: #0a0f1d !important; color: #f1f5f9 !important; }
+.btn { font-weight: 700; border-radius: 10px; transition: all 0.15s; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.btn-sm { padding: 3px 10px; font-size: 10px; }
+.btn-outline-secondary { border-color: rgba(255,255,255,0.1); color: #94a3b8; }
+.btn-outline-secondary:hover { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.4); color: #f1f5f9; }
+.btn-primary { background: linear-gradient(135deg, #10b981, #059669); border: none; }
+.btn-primary:hover { background: linear-gradient(135deg, #34d399, #10b981); }
+.card { background: rgba(30,41,59,0.5) !important; border: 1px solid rgba(255,255,255,0.06) !important; border-radius: 14px !important; }
+.card-body { color: #f1f5f9; }
+.badge { font-weight: 800; }
+.form-check-input:checked { background-color: #10b981; border-color: #10b981; }
+.form-select, .form-control { background-color: rgba(15,23,42,0.9); border-color: rgba(255,255,255,0.08); color: #f1f5f9; }
+.form-select:focus, .form-control:focus { border-color: #10b981; box-shadow: 0 0 0 0.15rem rgba(16,185,129,0.25); }
+.modal-backdrop { z-index: 1050; }
+
+
+
+
+
+/* Performance: desabilita transições pesadas para melhorar fluidez */
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* =========================================================
+   MINI DASHBOARD — CONTAS ATIVAS
+   Tela unica. O layout antigo (.md-*, css/16) foi removido;
+   sobrou esta casca em vidro + os cards .md2-*.
+   Janela: shell/40-mini-dashboard.js
+   Coleta/render: shell/13-mini-dashboard-contas-ativas.js
+   ========================================================= */
+.mini-dash { position: fixed; inset: 0; z-index: 9500; pointer-events: auto; }
+.mini-dash-window {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 880px; max-width: 94vw; max-height: 86vh;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(30px) saturate(1.3); -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; overflow: hidden;
+  pointer-events: auto;
+  font-family:var(--app-font-ui);
+  color: #f1f5f9;
+}
+.mini-dash-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; cursor: grab; user-select: none;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.mini-dash-header:active { cursor: grabbing; }
+.mini-dash-drag { color: #94a3b8; font-size: 11px; }
+.mini-dash-title { font-size: 12px; font-weight: 700; }
+.mini-dash-title b { color: #f5a623; }
+.mini-dash-btn {
+  width: 24px; height: 24px; border-radius: 7px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18);
+  color: #cbd5e1; transition: all .15s;
+}
+.mini-dash-btn:hover { background: rgba(245,166,35,0.16); border-color: rgba(245,166,35,0.4); color: #f5a623; }
+.mini-dash-close:hover { background: rgba(239,68,68,0.16) !important; border-color: rgba(239,68,68,0.4) !important; color: #fca5a5 !important; }
+
+.mini-dash-body { padding: 12px 14px; overflow-y: auto; }
+.mini-dash-body::-webkit-scrollbar { width: 7px; }
+.mini-dash-body::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.25); border-radius: 7px; }
+
+.mini-dash-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 10px; }
+.md2-sum { background: rgba(148,163,184,0.05); border: 1px solid rgba(148,163,184,0.12); border-radius: 9px; padding: 7px 8px; text-align: center; }
+.md2-sum .l { font-size: 8px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+.md2-sum .v { font-size: 15px; font-weight: 700; margin-top: 2px; }
+
+.mini-dash-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 8px; }
+.mini-dash-cards.mode-list { display: flex; flex-direction: column; gap: 5px; }
+
+.md2-card {
+  background: linear-gradient(135deg, rgba(148,163,184,0.05), var(--md2-tint, rgba(148,163,184,0.03)));
+  border: 1px solid var(--md2-tint-border, rgba(148,163,184,0.14));
+  border-radius: 11px; padding: 9px; cursor: pointer; transition: border-color .15s, transform .12s;
+}
+.md2-card:hover { transform: translateY(-1px); }
+.md2-card.active { border-color: rgba(56,189,248,0.55); box-shadow: 0 0 0 1px rgba(56,189,248,0.35) inset; }
+.md2-top { display: flex; align-items: center; gap: 7px; }
+.md2-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.md2-dot.on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.md2-dot.off { background: #f59e0b; }
+.md2-name { font-size: 11px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md2-sub { font-size: 8.5px; color: #94a3b8; }
+.md2-hb { margin-left: auto; font-size: 8.5px; color: #94a3b8; white-space: nowrap; }
+
+.md2-poke { display: flex; justify-content: space-between; font-size: 9.5px; color: #cbd5e1; background: rgba(148,163,184,0.05); border-radius: 7px; padding: 4px 7px; margin: 7px 0 6px; }
+
+.md2-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; margin-bottom: 6px; }
+.md2-stat { background: rgba(148,163,184,0.05); border-radius: 6px; padding: 3px 2px; text-align: center; }
+.md2-stat .v { font-size: 10px; font-weight: 700; }
+.md2-stat .l { font-size: 7px; color: #94a3b8; }
+
+.md2-balls { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; }
+.md2-ball { font-size: 8.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: rgba(148,163,184,0.08); color: #cbd5e1; }
+
+.md2-toggles { display: grid; grid-template-columns: repeat(4,1fr); gap: 3px; }
+.md2-tg { text-align: center; font-size: 7.5px; font-weight: 800; padding: 3px 0; border-radius: 5px; background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.14); color: #94a3b8; cursor: pointer; }
+.md2-tg.on { background: rgba(34,197,94,0.16); border-color: rgba(34,197,94,0.4); color: #4ade80; }
+
+.mini-dash-cards.mode-list .md2-card { display: flex; align-items: center; gap: 10px; padding: 6px 10px; }
+.mini-dash-cards.mode-list .md2-poke,
+.mini-dash-cards.mode-list .md2-balls,
+.mini-dash-cards.mode-list .md2-toggles { display: none; }
+.mini-dash-cards.mode-list .md2-stats { margin: 0; grid-template-columns: repeat(3, auto); gap: 8px; }
+
+/* Linha de progresso + ETA (tempo estimado pro proximo nivel).
+   Os dados vem de __obterDashboardStatus: trainerEta e active.expEta —
+   XP que falta ate o proximo nivel dividido pela taxa de XP/s da cacada. */
+.md2-eta { margin-bottom: 5px; }
+.md2-eta-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 8.5px; }
+.md2-eta-lb { color: #94a3b8; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md2-eta-val { color: #fde047; font-weight: 800; white-space: nowrap; }
+.md2-eta-val.off { color: #64748b; font-weight: 600; }
+.md2-eta-bar { height: 3px; margin-top: 2px; border-radius: 3px; background: rgba(148,163,184,0.14); overflow: hidden; }
+.md2-eta-bar i { display: block; height: 100%; border-radius: 3px; transition: width .3s; }
+
+/* Modo lista: ETA continua visivel (e o dado mais util da linha),
+   so as bolas e os toggles somem. */
+.mini-dash-cards.mode-list .md2-eta { flex: 1; min-width: 120px; margin: 0; }
+/* =========================================================
+   AVALIADOR DE METAS v2 (Beta) — mesma base de dados do v1
+   (shell/32-35), casca visual em vidro/v2.
+   ========================================================= */
+.v2eval-box {
+  /* Tela grande de propósito: e uma grade de dezenas/centenas de Pokemon com
+     build, tier e score. Em 1180x800 cabiam ~4 colunas e 2 linhas por vez. */
+  width: min(1760px, 97vw); height: min(1120px, 95vh);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(30px) saturate(1.3); -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; overflow: hidden;
+  font-family:var(--app-font-ui);
+  color: #f1f5f9;
+}
+.v2eval-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+.v2eval-title { display: flex; align-items: center; gap: 10px; font-size: 20px; }
+.v2eval-title-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.v2eval-sub { font-size: 10px; color: #94a3b8; }
+.v2eval-badge { font-size: 9px; font-weight: 800; background: rgba(168,85,247,0.16); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.35); padding: 2px 8px; border-radius: 999px; }
+.v2eval-header-actions { display: flex; align-items: center; gap: 7px; }
+.v2eval-stat-total { font-size: 10.5px; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.24); padding: 4px 9px; border-radius: 7px; }
+.v2eval-btn-ghost, .v2eval-btn-sec, .v2eval-btn-close, .v2eval-btn-tert, .v2eval-btn {
+  font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: 7px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1;
+}
+.v2eval-btn-sec { background: rgba(56,189,248,0.14); border-color: rgba(56,189,248,0.36); color: #7dd3fc; }
+.v2eval-btn-close:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+.v2eval-btn-tert:hover { border-color: rgba(245,166,35,0.4); color: #f5a623; }
+
+.v2eval-toolbar { display: flex; align-items: center; gap: 7px; padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+.v2eval-select, .v2eval-search { background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.18); border-radius: 7px; padding: 6px 8px; font-size: 10.5px; color: #f1f5f9; font-family: inherit; }
+.v2eval-search { flex: 1; min-width: 140px; }
+.v2eval-viewtoggle { display: flex; background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.18); border-radius: 7px; overflow: hidden; }
+.v2eval-viewtoggle button { padding: 6px 10px; font-size: 10px; font-weight: 700; color: #94a3b8; background: none; border: none; cursor: pointer; font-family: inherit; }
+.v2eval-viewtoggle button.active { background: rgba(245,166,35,0.16); color: #f5a623; }
+
+.v2eval-batchbar { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+.v2eval-chklabel { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; color: #f1f5f9; cursor: pointer; }
+.v2eval-summary { font-size: 10px; font-weight: 800; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 3px 8px; border-radius: 6px; }
+.v2eval-btn-lock { background: rgba(34,197,94,0.14); border-color: rgba(34,197,94,0.36); color: #86efac; }
+.v2eval-btn-unlock { background: rgba(148,163,184,0.1); border-color: rgba(148,163,184,0.24); color: #cbd5e1; }
+.v2eval-btn-sell { background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.36); color: #fbbf24; }
+.v2eval-btn-trade { background: rgba(236,72,153,0.14); border-color: rgba(236,72,153,0.36); color: #f9a8d4; }
+
+.v2eval-content { flex: 1; min-height: 0; display: flex; }
+/* 300px de coluna mínima em vez de 230: em tela larga davam 7 cards por linha
+   e cada um ficava estreito demais pra ler build + stats. */
+.v2eval-grid { flex: 1; min-width: 0; overflow-y: auto; padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; align-content: start; }
+.v2eval-grid.view-list { grid-template-columns: 1fr; gap: 5px; }
+
+.v2eval-card { position: relative; background: rgba(148,163,184,0.05); border: 1px solid var(--v2c-border, rgba(148,163,184,0.14)); border-radius: 11px; padding: 10px; }
+.v2eval-card.best-copy { border-color: rgba(245,166,35,0.4); }
+.v2eval-card.selected { box-shadow: 0 0 0 1px rgba(168,85,247,0.5) inset; }
+.v2eval-card-head { display: flex; align-items: center; gap: 8px; }
+.v2eval-chk { width: 14px; height: 14px; accent-color: #a855f7; cursor: pointer; flex-shrink: 0; }
+.v2eval-sprite { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.v2eval-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2eval-sub2 { font-size: 9.5px; color: #38bdf8; }
+.v2eval-tier { margin-left: auto; font-size: 11px; font-weight: 900; padding: 2px 7px; border-radius: 7px; flex-shrink: 0; }
+.tier-s-plus { background: rgba(245,166,35,0.2); color: #f5a623; }
+.tier-s { background: rgba(168,85,247,0.2); color: #d8b4fe; }
+.tier-a { background: rgba(34,197,94,0.2); color: #4ade80; }
+.tier-b { background: rgba(56,189,248,0.2); color: #38bdf8; }
+.tier-c { background: rgba(148,163,184,0.14); color: #94a3b8; }
+
+.v2eval-growth-row { display: flex; justify-content: space-between; font-size: 9.5px; color: #94a3b8; margin-top: 8px; }
+.v2eval-growth-bar { height: 6px; border-radius: 999px; background: rgba(148,163,184,0.12); overflow: hidden; margin-top: 3px; }
+.v2eval-growth-fill { height: 100%; background: linear-gradient(90deg,#38bdf8,#a855f7); }
+
+.v2eval-build { margin-top: 8px; background: rgba(148,163,184,0.04); border-radius: 8px; padding: 7px 8px; }
+.v2eval-role { font-size: 9px; color: #f5a623; font-weight: 700; }
+.v2eval-moves { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+.v2eval-move { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: rgba(148,163,184,0.1); color: #cbd5e1; }
+.v2eval-move.stab { background: rgba(34,197,94,0.16); color: #86efac; }
+
+.v2eval-actions { display: flex; gap: 5px; margin-top: 8px; }
+.v2eval-aicon { flex: 1; text-align: center; padding: 5px; border-radius: 7px; background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.14); font-size: 11px; cursor: pointer; }
+.v2eval-aicon:disabled { opacity: .35; cursor: not-allowed; }
+.v2eval-dup { font-size: 8.5px; font-weight: 800; margin-top: 6px; text-align: center; }
+
+/* --- FICHA (nota do que foi rolado na captura) ao lado do tier da espécie --- */
+.v2eval-ficha {
+  font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 7px; flex-shrink: 0;
+  background: rgba(56,189,248,0.14); border: 1px solid rgba(56,189,248,0.32); color: #7dd3fc;
+}
+
+/* --- MÉTRICAS DO JOGO (dps / power / iv) — números crus, sem modelo nosso --- */
+.v2eval-metricas { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.v2eval-met {
+  font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.16);
+  color: #cbd5e1; white-space: nowrap;
+}
+.v2eval-met.dps { background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.34); color: #fbbf24; }
+.v2eval-met.iv  { background: rgba(168,85,247,0.13); border-color: rgba(168,85,247,0.3);  color: #d8b4fe; }
+
+/* --- RANKS (posição no acervo e entre as cópias) + NATUREZA --- */
+.v2eval-ranks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.v2eval-rank {
+  font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+  background: rgba(148,163,184,0.09); border: 1px solid rgba(148,163,184,0.16); color: #cbd5e1;
+  white-space: nowrap;
+}
+.v2eval-rank i { font-style: normal; font-weight: 600; color: #64748b; }
+.v2eval-rank.top { background: rgba(245,166,35,0.16); border-color: rgba(245,166,35,0.4); color: #f5a623; }
+.v2eval-rank.nature { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.24); color: #86efac; }
+.v2eval-growth-pct { font-weight: 800; color: #e2e8f0; }
+
+/* --- GROWTH POR STAT (os "IVs") — cor pelo quão perto do teto de 32 --- */
+.v2eval-stats { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+.v2eval-statchip {
+  font-size: 8.5px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+  background: rgba(148,163,184,0.07); border: 1px solid rgba(148,163,184,0.14);
+  color: #cbd5e1; white-space: nowrap;
+}
+.v2eval-statchip b { font-weight: 800; color: #94a3b8; margin-right: 4px; }
+.v2eval-statchip.alto  { background: rgba(34,197,94,0.16);  border-color: rgba(34,197,94,0.38);  color: #86efac; }
+.v2eval-statchip.alto b  { color: #4ade80; }
+.v2eval-statchip.medio { background: rgba(56,189,248,0.13); border-color: rgba(56,189,248,0.3);  color: #7dd3fc; }
+.v2eval-statchip.medio b { color: #38bdf8; }
+.v2eval-statchip.baixo { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.28); color: #fcd34d; }
+.v2eval-statchip.baixo b { color: #fbbf24; }
+.v2eval-statchip.ruim  { background: rgba(239,68,68,0.1);   border-color: rgba(239,68,68,0.24);  color: #fca5a5; }
+.v2eval-statchip.ruim b  { color: #f87171; }
+.v2eval-statchip.vazio { color: #64748b; font-weight: 600; }
+
+/* --- MODO LISTA ---
+   Antes a lista apagava growth e build e virava só nome + tier, que era menos
+   informação que o card. Agora os MESMOS blocos viram colunas de uma linha
+   densa: identidade | ranks | growth | stats | build | ações. Só as moves
+   somem (não cabem numa linha e já aparecem no modo cards). */
+.v2eval-grid.view-list { grid-template-columns: 1fr; gap: 4px; }
+.v2eval-grid.view-list .v2eval-card {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+}
+.v2eval-grid.view-list .v2eval-card-head { flex: 0 0 240px; min-width: 0; }
+.v2eval-grid.view-list .v2eval-sprite { width: 30px; height: 30px; }
+.v2eval-grid.view-list .v2eval-tier { margin-left: 0; }
+
+.v2eval-grid.view-list .v2eval-metricas { margin-top: 0; flex: 0 0 auto; flex-wrap: nowrap; }
+.v2eval-grid.view-list .v2eval-ranks { margin-top: 0; flex: 0 0 auto; flex-wrap: nowrap; }
+
+.v2eval-grid.view-list .v2eval-growth-row {
+  margin-top: 0; flex: 0 0 116px; gap: 6px; font-size: 9px;
+}
+.v2eval-grid.view-list .v2eval-growth-bar {
+  margin-top: 0; flex: 0 0 90px; align-self: center;
+}
+.v2eval-grid.view-list .v2eval-stats { margin-top: 0; flex: 1 1 auto; flex-wrap: nowrap; overflow: hidden; }
+
+.v2eval-grid.view-list .v2eval-build {
+  margin-top: 0; flex: 0 0 190px; padding: 0; background: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.v2eval-grid.view-list .v2eval-moves { display: none; }
+
+.v2eval-grid.view-list .v2eval-dup { margin-top: 0; flex: 0 0 auto; white-space: nowrap; }
+.v2eval-grid.view-list .v2eval-actions { margin-top: 0; flex: 0 0 auto; }
+.v2eval-grid.view-list .v2eval-aicon { flex: 0 0 auto; padding: 4px 7px; }
+
+/* Telas menores: a linha vira duas, em vez de espremer tudo. */
+@media (max-width: 1400px) {
+  .v2eval-grid.view-list .v2eval-card { flex-wrap: wrap; }
+  .v2eval-grid.view-list .v2eval-build { flex-basis: 100%; }
+}
+
+.v2eval-side-panel { width: 0; overflow: hidden; border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; transition: width .18s; flex-shrink: 0; }
+.v2eval-side-panel.open { width: 280px; }
+.v2eval-side-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px; font-weight: 700; }
+.v2eval-side-head button { margin-left: auto; background: rgba(239,68,68,0.14); border: 1px solid rgba(239,68,68,0.34); color: #fca5a5; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+.v2eval-side-stats { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.v2eval-side-stats span { font-size: 9px; color: #94a3b8; background: rgba(148,163,184,0.06); padding: 2px 7px; border-radius: 6px; }
+.v2eval-side-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+.v2eval-side-item { display: flex; align-items: center; gap: 7px; background: rgba(148,163,184,0.05); border-radius: 8px; padding: 6px 7px; }
+.v2eval-side-item img { width: 24px; height: 24px; object-fit: contain; }
+.v2eval-side-item .n { font-size: 10px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2eval-side-item .m { font-size: 8.5px; color: #94a3b8; }
+.v2eval-side-item .sc { font-size: 9.5px; font-weight: 800; margin-left: auto; }
+.v2eval-side-item button { background: none; border: none; color: #64748b; cursor: pointer; font-size: 11px; }
+.v2eval-side-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+.v2eval-side-actions button { flex: 1; font-size: 9.5px; font-weight: 700; padding: 7px 4px; border-radius: 7px; background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1; cursor: pointer; font-family: inherit; }
+/* =========================================================
+   CENTRAL DE TRADE v2 (Beta) — reaproveita a engine do v1
+   (shell/25-26), casca visual em vidro/v2.
+   ========================================================= */
+.v2trade-box {
+  width: min(1480px, 97vw); height: min(920px, 95vh);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(30px) saturate(1.3); -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; overflow: hidden;
+  font-family:var(--app-font-ui);
+  color: #f1f5f9;
+}
+.v2trade-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+.v2trade-title { display: flex; align-items: center; gap: 10px; font-size: 20px; }
+.v2trade-title b { font-size: 13px; }
+.v2trade-badge { font-size: 8.5px; font-weight: 800; background: rgba(245,166,35,0.18); color: #f5a623; border: 1px solid rgba(245,166,35,0.4); padding: 1px 7px; border-radius: 999px; }
+.v2trade-sub { font-size: 10px; color: #94a3b8; }
+.v2trade-header-actions { display: flex; gap: 7px; }
+.v2trade-btn-ghost, .v2trade-btn-sec, .v2trade-btn-close {
+  font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: 7px; cursor: pointer; font-family: inherit;
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1;
+}
+.v2trade-btn-close:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+.v2trade-btn-sec { background: rgba(245,166,35,0.12); border-color: rgba(245,166,35,0.34); color: #f5a623; }
+
+.v2trade-quickbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10.5px; color: #cbd5e1; flex-wrap: wrap; }
+
+.v2trade-progress-box { padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.v2trade-progress-row { display: flex; justify-content: space-between; font-size: 10px; color: #7dd3fc; margin-bottom: 4px; }
+.v2trade-progress-track { height: 7px; border-radius: 999px; background: rgba(148,163,184,0.14); overflow: hidden; }
+.v2trade-progress-fill { height: 100%; background: linear-gradient(90deg,#0284c7,#38bdf8); border-radius: 999px; }
+
+.v2trade-cols { flex: 1; min-height: 0; display: flex; gap: 1px; background: rgba(255,255,255,0.06); overflow: hidden; }
+/* O CORTE DOS CARDS DE CABECALHO (bug reportado: a faixa do pokemon ativo
+   aparecia com o texto cortado pela metade).
+   A coluna e um flex column. Todo filho nasce com `flex-shrink: 1`, entao,
+   quando o conteudo passava da altura, o navegador COMPRIMIA os blocos de
+   altura fixa — e `.v2trade-ativo` tem `overflow:hidden`, o que transforma a
+   compressao em texto decapitado. Duas mudancas resolvem:
+     1. todo bloco de "moldura" recebe `flex-shrink: 0` e nao encolhe mais;
+     2. quem rola sao as duas listas, que dividem a altura que sobra.
+   A coluna mantem `overflow-y: auto` so como valvula: com as listas em
+   `flex: 1 1 0` ela nunca transborda em tamanho normal, mas numa janela muito
+   baixa (onde so a moldura ja nao cabe) o scroll externo aparece em vez de o
+   campo de Gold sumir sem aviso. */
+.v2trade-col { flex: 1.2; min-width: 0; background: rgba(15,23,42,0.4); padding: 12px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.v2trade-col > .v2trade-col-head,
+.v2trade-col > .v2trade-stats,
+.v2trade-col > .v2trade-ativo,
+.v2trade-col > .v2trade-sec-head,
+.v2trade-col > .v2trade-donos,
+.v2trade-col > .v2trade-cats,
+.v2trade-col > .v2trade-search,
+.v2trade-col > .v2trade-filters,
+.v2trade-col > .v2trade-destino-nota,
+.v2trade-col > .v2trade-gold-row { flex-shrink: 0; }
+
+/* A mesa e o lugar onde a troca acontece e era a coluna mais apertada das tres.
+   Passa a crescer com a janela em vez de ficar presa em 380px. */
+.v2trade-col-center {
+  flex: 0 0 clamp(380px, 30vw, 560px); min-width: 360px;
+  background: rgba(2,6,23,0.88);
+  border-left: 1px solid rgba(168,85,247,0.3); border-right: 1px solid rgba(168,85,247,0.3);
+  box-shadow: 0 0 25px rgba(147,51,234,0.14) inset;
+  padding: 10px 12px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.v2trade-center-head { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; font-weight: 800; color: #fde047; border-bottom: 1px solid rgba(168,85,247,0.25); padding-bottom: 6px; }
+.v2trade-center-status { font-size: 9.5px; font-weight: 700; color: #cbd5e1; }
+
+.v2trade-exchange-side {
+  background: rgba(15,23,42,0.7); border: 1px solid rgba(148,163,184,0.18); border-radius: 8px;
+  padding: 7px 9px; display: flex; flex-direction: column; gap: 5px;
+  /* Cresce com a mesa: era o que fazia as duas caixas de oferta ficarem
+     minusculas enquanto o log embaixo tomava metade da coluna. */
+  flex: 1 1 0; min-height: 120px; overflow-y: auto;
+}
+.v2trade-exchange-side.origem { border-left: 3px solid #38bdf8; }
+.v2trade-exchange-side.destino { border-left: 3px solid #4ade80; }
+.v2trade-exchange-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+.v2trade-exchange-title { font-size: 10px; font-weight: 800; }
+.v2trade-exchange-title.side-1 { color: #38bdf8; }
+.v2trade-exchange-title.side-2 { color: #4ade80; }
+.v2trade-exchange-summary { font-size: 9px; color: #94a3b8; }
+
+.v2trade-divider-arrow { display: flex; align-items: center; justify-content: center; font-size: 17px; color: #a855f7; user-select: none; }
+
+/* Prévia do modo consolidado: de qual conta sai o quê, antes de executar. */
+.v2trade-preview { background: rgba(56,189,248,0.07); border: 1px solid rgba(56,189,248,0.26); border-radius: 8px; padding: 7px 9px; display: flex; flex-direction: column; gap: 4px; }
+.v2trade-prev-title { font-size: 9px; font-weight: 800; color: #7dd3fc; text-transform: uppercase; letter-spacing: .4px; }
+.v2trade-prev-row { display: flex; align-items: baseline; gap: 6px; font-size: 9.5px; color: #e2e8f0; }
+.v2trade-prev-row b { color: #7dd3fc; flex-shrink: 0; }
+.v2trade-prev-conta { color: #94a3b8; font-size: 8.5px; flex-shrink: 0; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2trade-prev-itens { flex: 1; min-width: 0; text-align: right; color: #fde047; }
+.v2trade-prev-aviso { font-size: 9px; color: #fbbf24; border-top: 1px solid rgba(245,158,11,0.24); padding-top: 4px; margin-top: 2px; }
+.v2trade-prev-vazio { font-size: 9px; color: #64748b; }
+
+/* Resultado da troca — fica na tela, ao contrário do toast. */
+.v2trade-result { display: flex; align-items: flex-start; gap: 7px; font-size: 10px; line-height: 1.45; border-radius: 8px; padding: 8px 10px; border: 1px solid; }
+.v2trade-result-ic { flex-shrink: 0; }
+.v2trade-result.ok { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.4); color: #86efac; }
+.v2trade-result.warn { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+.v2trade-result.erro { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.42); color: #fca5a5; }
+
+.v2trade-center-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; flex-shrink: 0; }
+.v2trade-col-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 700; }
+.v2trade-select { background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.2); border-radius: 7px; padding: 5px 8px; font-size: 10px; color: #f1f5f9; font-family: inherit; }
+.v2trade-stats { display: flex; gap: 10px; font-size: 9.5px; color: #94a3b8; background: rgba(148,163,184,0.05); border-radius: 7px; padding: 5px 8px; }
+.v2trade-stats b { color: #f1f5f9; }
+
+.v2trade-search { background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.16); border-radius: 7px; padding: 5px 8px; font-size: 10px; color: #f1f5f9; font-family: inherit; }
+
+/* Cabecalho de secao + alternador Card/Lista (paridade com o v1) */
+.v2trade-sec-head { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.v2trade-sec-title { font-size: 10px; font-weight: 800; color: #cbd5e1; }
+.v2trade-viewtoggle { display: flex; gap: 3px; }
+.v2trade-viewtoggle button { font-size: 8.5px; font-weight: 700; padding: 3px 7px; border-radius: 6px; cursor: pointer; font-family: inherit; background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #94a3b8; }
+.v2trade-viewtoggle button.active { background: rgba(168,85,247,0.18); border-color: rgba(168,85,247,0.45); color: #d8b4fe; }
+
+/* Abas de categoria de item */
+.v2trade-cats { display: flex; gap: 3px; flex-wrap: wrap; }
+.v2trade-cat { font-size: 8.5px; font-weight: 700; padding: 3px 7px; border-radius: 999px; cursor: pointer; font-family: inherit; background: rgba(148,163,184,0.07); border: 1px solid rgba(148,163,184,0.16); color: #94a3b8; white-space: nowrap; }
+.v2trade-cat.active { background: rgba(56,189,248,0.18); border-color: rgba(56,189,248,0.45); color: #7dd3fc; }
+
+/* Filtros de pokemon */
+.v2trade-filters { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.v2trade-filter { flex: 1; min-width: 62px; background: rgba(148,163,184,0.07); border: 1px solid rgba(148,163,184,0.16); border-radius: 6px; padding: 3px 5px; font-size: 9px; color: #cbd5e1; font-family: inherit; }
+.v2trade-filter-chk { display: flex; align-items: center; gap: 3px; font-size: 10px; color: #fde047; cursor: pointer; }
+
+/* Listas: em card viram grade de 2 colunas; em lista, uma coluna densa */
+.v2trade-item-list, .v2trade-poke-list {
+  /* Historico: 190px fixos -> clamp por vh -> agora divisao da sobra.
+     O clamp ainda deixava a coluna INTEIRA rolando por fora das listas: eram
+     tres barras de rolagem empilhadas na mesma coluna, que e o que tornava a
+     mochila dificil de explorar. Com a coluna em `overflow:hidden`, as duas
+     listas repartem a altura que sobra e cada uma rola sozinha. */
+  flex: 1 1 0; min-height: 132px; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  gap: 5px; align-content: start;
+}
+/* A mochila costuma ter muito mais linhas que a lista de pokemon. */
+.v2trade-item-list { flex-grow: 1.15; }
+.v2trade-item-list.view-list, .v2trade-poke-list.view-list { display: flex; flex-direction: column; gap: 2px; }
+.v2trade-gold-row { margin-top: auto; flex-shrink: 0; }
+.v2trade-empty { grid-column: 1 / -1; }
+
+/* ⚠️ CARD DENSO DE NOVO.
+   Ao trocar o emoji de 13px pelo sprite de 34px eu tambem empilhei nome e
+   quantidade e mantive uma segunda linha de tags — o card virou tres andares e
+   ficou ENORME: cabiam ~4 itens numa coluna que precisa mostrar dezenas.
+   Agora o sprite volta pra 26px, nome e quantidade dividem a MESMA linha e as
+   tags entram na linha de baixo so quando existem. */
+.v2trade-item-card, .v2trade-poke-card {
+  background: rgba(148,163,184,0.05); border: 1px solid rgba(148,163,184,0.14); border-radius: 7px;
+  padding: 4px 7px; font-size: 9.5px; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+  min-width: 0; transition: border-color .15s, background .15s;
+}
+.v2trade-item-card:hover, .v2trade-poke-card:hover { border-color: rgba(56,189,248,0.4); background: rgba(56,189,248,0.07); }
+.v2trade-item-card.selected { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.14); }
+.v2trade-poke-card.selected { border-color: rgba(168,85,247,0.55); background: rgba(168,85,247,0.14); }
+.v2trade-item-card.list, .v2trade-poke-card.list { flex-direction: row; align-items: center; gap: 7px; padding: 3px 7px; }
+.v2trade-item-card.list .v2trade-item-det { flex-wrap: nowrap; overflow: hidden; }
+
+.v2trade-item-top, .v2trade-poke-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.v2trade-item-bot, .v2trade-poke-bot { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-width: 0; }
+/* Sem tag, sem dono e sem selecao a linha de baixo so gastava altura. */
+.v2trade-item-bot:empty { display: none; }
+/* Nome e quantidade empilhados ao lado do sprite: com tudo na mesma linha o
+   sprite maior espremia o nome ate sobrar so "berry de…". */
+.v2trade-item-idw { display: flex; align-items: baseline; min-width: 0; flex: 1; gap: 6px; }
+.v2trade-item-ic { flex-shrink: 0; }
+.v2trade-item-n, .v2trade-poke-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: #f8fafc; }
+.v2trade-item-idw .v2trade-item-n { flex: 1; min-width: 0; }
+.v2trade-item-idw .v2trade-item-max { margin-left: auto; }
+.v2trade-item-max { color: #fde047; font-weight: 800; flex-shrink: 0; font-size: 9.5px; }
+.v2trade-item-det { font-size: 8.5px; color: #94a3b8; overflow: hidden; display: flex; align-items: center; gap: 3px; min-width: 0; flex-wrap: wrap; row-gap: 2px; }
+
+/* ---- SPRITE REAL DO ITEM (shell/48) -------------------------------------
+   `sprites/item_<cid>.png` as vezes e uma FOLHA (a pokeball vem 128x64, com
+   4 fases x 2 direcoes). O jogo desenha so o primeiro quadro 32x32; aqui a
+   mesma coisa: caixa de 32x32 com overflow hidden, imagem ancorada no canto
+   e a caixa inteira escalada por transform. Escalar por width esticaria a
+   folha toda e apareceriam pedacos dos quadros vizinhos. */
+.game-item-sprite { flex-shrink: 0; display: block; position: relative; overflow: hidden; }
+.game-item-sprite-crop {
+  position: absolute; top: 0; left: 0; width: 32px; height: 32px;
+  overflow: hidden; transform-origin: top left;
+}
+.game-item-sprite-crop img {
+  position: absolute; top: 0; left: 0;
+  width: auto; height: auto; max-width: none; max-height: none;
+  image-rendering: pixelated;
+}
+/* Sprite que nao existe no servidor nao pode deixar um buraco no card. */
+.game-item-sprite.falhou::after {
+  content: '🎒'; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.game-item-sprite.falhou .game-item-sprite-crop { display: none; }
+.v2trade-item-ic.emoji { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Dono do item no modo consolidado — um chip por conta, em vez da linha de
+   texto truncada que escondia todos menos o primeiro. */
+.v2trade-dono-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 8px; font-weight: 800; color: #7dd3fc;
+  background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.3);
+  border-radius: 4px; padding: 0 4px; flex-shrink: 0;
+}
+.v2trade-dono-chip b { color: #f8fafc; font-weight: 800; }
+
+/* Ordenacao da mochila */
+.v2trade-ordem {
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 6px; padding: 2px 5px; font-size: 8.5px; font-weight: 700;
+  color: #cbd5e1; font-family: inherit; cursor: pointer;
+}
+.v2trade-item-sel { font-size: 8.5px; font-weight: 800; color: #4ade80; flex-shrink: 0; }
+.v2trade-item-card:not(.selected) .v2trade-item-sel { color: #64748b; }
+
+.v2trade-tag { font-size: 7.5px; font-weight: 900; padding: 1px 4px; border-radius: 3px; color: #fff; flex-shrink: 0; }
+.v2trade-tag.stone { background: linear-gradient(135deg,#06b6d4,#3b82f6); }
+.v2trade-tag.held { background: linear-gradient(135deg,#f59e0b,#d97706); }
+.v2trade-tag.tm { background: linear-gradient(135deg,#10b981,#059669); }
+.v2trade-tag.diamond { background: linear-gradient(135deg,#38bdf8,#22d3ee); }
+.v2trade-tag.bloqueado { background: linear-gradient(135deg,#dc2626,#991b1b); }
+/* Item que o servidor recusa: continua clicável (pode ser regra que muda),
+   mas fica visualmente marcado pra não ser escolhido por engano. */
+.v2trade-item-card.bloqueado { opacity: .5; border-style: dashed; border-color: rgba(239,68,68,0.45); }
+.v2trade-item-card.bloqueado:hover { opacity: .8; }
+
+.v2trade-poke-chk { flex-shrink: 0; font-size: 9px; }
+.v2trade-poke-sprite { width: 20px; height: 20px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
+.v2trade-poke-lv { color: #94a3b8; flex-shrink: 0; font-size: 8.5px; }
+.v2trade-poke-conta { font-size: 7.5px; font-weight: 900; color: #7dd3fc; background: rgba(56,189,248,0.14); border: 1px solid rgba(56,189,248,0.34); border-radius: 3px; padding: 0 3px; flex-shrink: 0; }
+.v2trade-poke-badge { font-size: 8px; font-weight: 800; padding: 0 3px; border-radius: 3px; border: 1px solid rgba(148,163,184,0.3); color: #cbd5e1; flex-shrink: 0; }
+
+/* Modo consolidado: o lado destino nao oferta de volta */
+.v2trade-all-warning { padding: 7px 16px; font-size: 9.5px; color: #fde047; background: rgba(245,158,11,0.1); border-bottom: 1px solid rgba(245,158,11,0.24); }
+/* No modo consolidado só as áreas de OFERTA da coluna de destino ficam
+   inativas. O cabeçalho (seletor de conta) e as estatísticas continuam
+   funcionando — desabilitar a coluna inteira impedia trocar o destino. */
+.v2trade-col.ofertas-inativas .v2trade-sec-head,
+.v2trade-col.ofertas-inativas .v2trade-cats,
+.v2trade-col.ofertas-inativas .v2trade-filters,
+.v2trade-col.ofertas-inativas .v2trade-search,
+.v2trade-col.ofertas-inativas .v2trade-item-list,
+.v2trade-col.ofertas-inativas .v2trade-poke-list,
+.v2trade-col.ofertas-inativas .v2trade-gold-row {
+  opacity: .38; pointer-events: none; filter: saturate(.4);
+}
+
+.v2trade-ativo {
+  font-size: 9.5px; font-weight: 700; color: #7dd3fc;
+  background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 6px; padding: 3px 8px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.v2trade-destino-nota {
+  font-size: 9px; line-height: 1.45; color: #fcd34d;
+  background: rgba(245,158,11,0.09); border: 1px solid rgba(245,158,11,0.26);
+  border-radius: 6px; padding: 5px 8px;
+}
+
+.v2trade-empty { text-align: center; color: #64748b; font-size: 9.5px; padding: 10px; }
+
+.v2trade-gold-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #fbbf24; }
+.v2trade-gold-input { flex: 1; background: rgba(148,163,184,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 7px; padding: 5px 8px; font-size: 10px; color: #fbbf24; font-family: inherit; }
+
+.v2trade-queue-title { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+.v2trade-queue { min-height: 120px; max-height: clamp(140px, 22vh, 300px); overflow-y: auto; background: rgba(148,163,184,0.04); border-radius: 7px; padding: 6px 8px; display: flex; flex-direction: column; gap: 7px; }
+.v2trade-queue-empty { font-size: 9px; color: #64748b; text-align: center; padding: 12px 0; }
+.v2trade-queue-sec { display: flex; flex-direction: column; gap: 4px; }
+.v2trade-queue-sec-title { font-size: 8.5px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid rgba(148,163,184,0.14); padding-bottom: 2px; }
+.v2trade-queue-sec-title span { color: #64748b; font-weight: 700; }
+.v2trade-queue-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.v2trade-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(148,163,184,0.09); border: 1px solid rgba(148,163,184,0.22); border-radius: 999px; padding: 2px 4px 2px 8px; font-size: 9px; color: #e2e8f0; max-width: 100%; }
+.v2trade-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2trade-chip b { color: #fde047; }
+.v2trade-chip img { width: 16px; height: 16px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
+.v2trade-chip.gold { border-color: rgba(245,158,11,0.42); background: rgba(245,158,11,0.13); color: #fbbf24; }
+.v2trade-chip.poke { border-color: rgba(168,85,247,0.42); background: rgba(168,85,247,0.13); }
+.v2trade-chip button { width: 15px; height: 15px; border-radius: 50%; background: rgba(239,68,68,0.16); border: 1px solid rgba(239,68,68,0.34); color: #fca5a5; cursor: pointer; font-size: 8px; line-height: 1; padding: 0; flex-shrink: 0; }
+.v2trade-chip button:hover { background: rgba(239,68,68,0.34); color: #fff; }
+
+/* O log tinha 60px de altura — cabiam duas linhas e era onde aparecem as
+   mensagens de erro da troca, justamente o que precisa ser lido. */
+.v2trade-log {
+  flex: 1 1 auto; min-height: 150px; max-height: clamp(150px, 30vh, 340px);
+  overflow-y: auto; font-size: 9.5px; line-height: 1.5; color: #cbd5e1;
+  background: rgba(2,6,23,0.55); border: 1px solid rgba(148,163,184,0.14);
+  border-radius: 7px; padding: 6px 9px;
+}
+.v2trade-btn-exec { font-size: 11px; font-weight: 800; padding: 9px 18px; border-radius: 9px; cursor: pointer; background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.45); color: #4ade80; font-family: inherit; white-space: nowrap; }
+.v2trade-btn-exec:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (max-width: 860px) { .v2trade-cols { flex-direction: column; overflow-y: auto; } .v2trade-col-center { flex-basis: auto; } }
+
+.v2trade-chk {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  font-size: 10.5px; font-weight: 700; color: #7dd3fc;
+  background: rgba(56,189,248,0.09); border: 1px solid rgba(56,189,248,0.26);
+  border-radius: 7px; padding: 3px 9px;
+}
+.v2trade-chk input { accent-color: #38bdf8; cursor: pointer; }
+
+/* Barra de donos (modo "Todas as Contas"): filtra a lista consolidada por conta
+   e, ao escolher uma, a troca vira direta com ela — antes o destino ficava
+   travado e nao dava pra negociar com um personagem especifico. */
+.v2trade-donos { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.v2trade-donos-label { font-size: 8.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .4px; margin-right: 2px; }
+.v2trade-dono {
+  font-size: 8.5px; font-weight: 800; font-family: inherit; cursor: pointer;
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  background: rgba(148,163,184,0.07); border: 1px solid rgba(148,163,184,0.18); color: #94a3b8;
+}
+.v2trade-dono:hover { border-color: rgba(168,85,247,0.5); color: #d8b4fe; }
+.v2trade-dono.active { background: rgba(168,85,247,0.2); border-color: rgba(192,132,252,0.6); color: #e9d5ff; }
+
+/* =========================================================
+   DOCAS DA CENTRAL DE TRADE — favoritos (esq.) e log (dir.)
+   =========================================================
+   Antes eram 3 colunas e o LOG morava dentro da coluna central, comendo metade
+   do espaço da mesa — que é justamente onde a troca acontece. Agora são cinco
+   faixas: favoritos | origem | mesa | destino | log. As duas pontas recolhem
+   numa lingueta, porque em tela estreita elas são o que sobra. */
+.v2trade-doca {
+  flex: 0 0 200px; min-width: 0;
+  display: flex; flex-direction: column;
+  background: rgba(2, 6, 23, 0.6);
+  overflow: hidden;
+}
+.v2trade-doca.esquerda { border-right: 1px solid rgba(250, 204, 21, 0.22); }
+.v2trade-doca.direita { border-left: 1px solid rgba(148, 163, 184, 0.2); }
+
+.v2trade-doca-head {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 10px; flex: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.v2trade-doca-tit { flex: 1; font-size: 10.5px; font-weight: 800; color: #fde047; }
+.v2trade-doca.direita .v2trade-doca-tit { color: #cbd5e1; }
+.v2trade-doca-x {
+  background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #94a3b8; border-radius: 5px; font-size: 10px; padding: 2px 6px;
+  cursor: pointer; font-family: inherit; flex: none;
+}
+.v2trade-doca-x:hover { background: rgba(148, 163, 184, 0.22); color: #f1f5f9; }
+.v2trade-doca-corpo { flex: 1; min-height: 0; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+.v2trade-doca-rodape {
+  flex: none; padding: 6px 10px; font-size: 9px; color: #64748b;
+  border-top: 1px solid rgba(255, 255, 255, 0.06); font-style: italic;
+}
+
+/* Lingueta de quem foi recolhido. Fechar sem deixar como voltar seria esconder
+   a função pra sempre. */
+.v2trade-doca-abrir {
+  flex: 0 0 26px; align-items: center; justify-content: center;
+  background: rgba(2, 6, 23, 0.6); border: none; cursor: pointer;
+  color: #94a3b8; font-size: 13px; font-family: inherit; writing-mode: vertical-rl;
+}
+.v2trade-doca-abrir:hover { background: rgba(56, 189, 248, 0.12); color: #7dd3fc; }
+.v2trade-doca-abrir.esquerda { border-right: 1px solid rgba(250, 204, 21, 0.22); }
+.v2trade-doca-abrir.direita { border-left: 1px solid rgba(148, 163, 184, 0.2); }
+
+/* ---- item favorito ---- */
+.v2trade-fav-item {
+  background: rgba(148, 163, 184, 0.05); border: 1px solid rgba(250, 204, 21, 0.18);
+  border-radius: 7px; padding: 5px 6px; display: flex; flex-direction: column; gap: 4px;
+}
+.v2trade-fav-topo { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.v2trade-fav-nome {
+  flex: 1; min-width: 0; font-size: 9.5px; font-weight: 700; color: #f8fafc;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.v2trade-fav-total { font-size: 9px; font-weight: 800; color: #fde047; flex: none; }
+.v2trade-fav-x {
+  background: transparent; border: none; color: #475569; cursor: pointer;
+  font-size: 10px; padding: 0 2px; flex: none; font-family: inherit;
+}
+.v2trade-fav-x:hover { color: #fca5a5; }
+.v2trade-fav-donos { display: flex; flex-wrap: wrap; gap: 3px; }
+.v2trade-fav-dono {
+  display: inline-flex; align-items: center; gap: 3px; cursor: pointer;
+  font-size: 8px; font-weight: 800; color: #7dd3fc; font-family: inherit;
+  background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 4px; padding: 1px 4px;
+}
+.v2trade-fav-dono:hover { background: rgba(56, 189, 248, 0.3); color: #fff; }
+.v2trade-fav-dono b { color: #f8fafc; }
+.v2trade-fav-sem { font-size: 8px; color: #64748b; font-style: italic; }
+.v2trade-fav-vazio { font-size: 9.5px; color: #64748b; line-height: 1.5; padding: 6px 2px; }
+
+/* ---- estrela no card do item ---- */
+.v2trade-fav-bt {
+  background: transparent; border: none; cursor: pointer; padding: 0;
+  color: #475569; font-size: 12px; line-height: 1; flex: none; font-family: inherit;
+}
+.v2trade-fav-bt.on { color: #fbbf24; }
+.v2trade-fav-bt:hover { color: #fde047; }
+
+/* O item alcançado por um clique na doca pisca, senão a lista rola e não se
+   sabe qual das linhas era o alvo. */
+@keyframes v2tradePisca {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.55); }
+}
+.v2trade-item-card.piscando { animation: v2tradePisca .5s ease-in-out 3; }
+
+/* O log deixa de ter altura própria: quem manda agora é a doca. */
+.v2trade-doca .v2trade-log {
+  flex: 1; min-height: 0; max-height: none; border: none; border-radius: 0;
+  background: transparent;
+}
+
+/* A caixa cresce: cinco faixas não cabem em 1480px. */
+.v2trade-box { width: min(1760px, 98vw); }
+
+@media (max-width: 1500px) {
+  /* Em tela estreita as pontas são o que sobra — some com elas por padrão. */
+  .v2trade-doca { flex-basis: 170px; }
+}
+
+/* =========================================================
+   RESPONSIVO DAS CINCO FAIXAS
+   =========================================================
+   A prévia em 784px mostrou o defeito: com duas docas fixas + mesa em 30vw, as
+   colunas de origem/destino sobravam com ~130px e o conteúdo TRANSBORDAVA
+   (barra horizontal em cada coluna, nome do item cortado no meio). Três
+   correções, na ordem de importância: */
+
+/* 1. Coluna de conta tem largura mínima legível e não encolhe abaixo dela. */
+.v2trade-cols > .v2trade-col { flex: 1 1 0; min-width: 248px; }
+
+/* 2. A grade de itens pode cair pra UMA coluna. `minmax(178px, 1fr)` exigia
+      178px por coluna e era isso que estourava a largura. */
+.v2trade-item-list, .v2trade-poke-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(178px, 100%), 1fr));
+}
+
+/* 3. Sem espaço pras cinco faixas, as pontas recolhem sozinhas — é melhor
+      perder o log do que perder a leitura da mochila. A lingueta continua lá
+      pra reabrir quando quiser. */
+@media (max-width: 1400px) {
+  .v2trade-doca { display: none !important; }
+  .v2trade-doca-abrir { display: flex !important; }
+}
+@media (max-width: 1100px) {
+  .v2trade-doca-abrir { display: none !important; }
+}
+
+/* =========================================================
+   ABAS ITENS | POKÉMON  +  CARD × LISTA DE VERDADE DIFERENTES
+   =========================================================
+   Duas queixas na mesma rodada: "sistema lista e card são bem parecidos" e
+   "separar Itens e Pokémon por abas, daí teria mais espaço".
+
+   As duas listas dividiam a altura da coluna — cada uma ficava com metade, e
+   metade de uma coluna estreita é quase nada. Agora só uma aparece por vez e
+   ocupa a coluna inteira. */
+.v2trade-abas {
+  display: flex; gap: 4px; flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 5px; margin-top: 2px;
+}
+.v2trade-aba {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+  font-size: 10px; font-weight: 700; font-family: inherit; cursor: pointer;
+  background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: #64748b; padding: 4px 6px; border-radius: 6px 6px 0 0;
+}
+.v2trade-aba:hover { color: #cbd5e1; background: rgba(148, 163, 184, 0.06); }
+.v2trade-aba.on { color: #7dd3fc; border-bottom-color: #38bdf8; background: rgba(56, 189, 248, 0.08); }
+/* Contador na própria aba: sem ele, clicar em Pokémon pra descobrir que a conta
+   não tem nenhum é um clique jogado fora. */
+.v2trade-aba-cnt {
+  font-size: 8.5px; font-weight: 800; color: #94a3b8;
+  background: rgba(148, 163, 184, 0.14); border-radius: 999px; padding: 0 5px;
+  font-variant-numeric: tabular-nums;
+}
+.v2trade-aba.on .v2trade-aba-cnt { background: rgba(56, 189, 248, 0.22); color: #bae6fd; }
+
+/* A aba escondida some de verdade — não basta opacidade, ela roubaria altura. */
+.v2trade-col:not(.aba-pokes) [data-aba="pokes"] { display: none !important; }
+.v2trade-col.aba-pokes [data-aba="itens"] { display: none !important; }
+
+/* ---------------------------------------------------------
+   LISTA = tabela densa, colunas alinhadas. É o modo de ACHAR.
+   --------------------------------------------------------- */
+.v2trade-item-list.view-list .v2trade-item-card.list {
+  display: grid;
+  grid-template-columns: 14px 22px 1fr auto auto;
+  align-items: center; gap: 7px; padding: 3px 8px; min-height: 26px;
+}
+.v2trade-item-list.view-list .v2trade-item-card.list:nth-child(odd) {
+  background: rgba(148, 163, 184, 0.03);
+}
+.v2trade-item-list.view-list .v2trade-item-det {
+  justify-content: flex-end; flex-wrap: nowrap; overflow: hidden;
+}
+.v2trade-item-list.view-list .v2trade-item-max {
+  min-width: 62px; text-align: right; font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------
+   CARD = ladrilho pra BATER O OLHO. Sprite grande, número grande.
+   Linguagem visual do Avaliador da conta: rótulo miúdo em cima,
+   valor forte embaixo, tudo alinhado.
+   --------------------------------------------------------- */
+.v2trade-item-list:not(.view-list) {
+  grid-template-columns: repeat(auto-fill, minmax(min(132px, 100%), 1fr));
+  gap: 6px;
+}
+.v2trade-item-list:not(.view-list) .v2trade-item-card {
+  padding: 5px 6px 6px; gap: 2px; align-items: center; text-align: center;
+  position: relative;
+}
+.v2trade-item-list:not(.view-list) .v2trade-item-top {
+  flex-direction: column; gap: 4px; width: 100%;
+}
+/* O ladrilho nao pode virar poster: com scale 1.5 + margens ele passava de
+   100px de altura e cabiam 4 itens na coluna. 1.3 ja da o "bater o olho" sem
+   custar linha. */
+.v2trade-item-list:not(.view-list) .game-item-sprite,
+.v2trade-item-list:not(.view-list) .v2trade-item-ic { transform: scale(1.3); margin: 3px 0 5px; }
+.v2trade-item-list:not(.view-list) .v2trade-item-idw {
+  flex-direction: column; align-items: center; gap: 1px; width: 100%;
+}
+.v2trade-item-list:not(.view-list) .v2trade-item-n {
+  font-size: 9.5px; white-space: normal; text-align: center; line-height: 1.2;
+  max-height: 2.4em; overflow: hidden;
+}
+.v2trade-item-list:not(.view-list) .v2trade-item-max {
+  margin-left: 0; font-size: 12px; color: #fde047; letter-spacing: -.3px;
+}
+.v2trade-item-list:not(.view-list) .v2trade-item-bot {
+  flex-direction: column; gap: 3px; width: 100%;
+}
+.v2trade-item-list:not(.view-list) .v2trade-item-det { justify-content: center; }
+/* A estrela sai do fluxo pra não empurrar o sprite do centro. */
+.v2trade-item-list:not(.view-list) .v2trade-fav-bt {
+  position: absolute; top: 3px; left: 5px; z-index: 2;
+}
+/* =========================================================
+   GERENCIADOR DE PROXIES v2 (Beta) — reaproveita listaProxies e
+   as ações reais do v1 (shell/10,14-20), casca visual em vidro/v2.
+   ========================================================= */
+.v2proxy-box {
+  width: min(1200px, 95vw); height: min(800px, 92vh);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(30px) saturate(1.3); -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; overflow: hidden;
+  font-family:var(--app-font-ui);
+  color: #f1f5f9;
+}
+.v2proxy-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+.v2proxy-title { display: flex; align-items: center; gap: 10px; font-size: 20px; }
+.v2proxy-title b { font-size: 13px; }
+.v2proxy-badge { font-size: 8.5px; font-weight: 800; background: rgba(245,166,35,0.18); color: #f5a623; border: 1px solid rgba(245,166,35,0.4); padding: 1px 7px; border-radius: 999px; }
+.v2proxy-sub { font-size: 10px; color: #94a3b8; }
+.v2proxy-header-actions { display: flex; gap: 7px; }
+.v2proxy-btn-ghost, .v2proxy-btn-sec, .v2proxy-btn-tert, .v2proxy-btn-close, .v2proxy-btn-danger, .v2proxy-btn-save {
+  font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: 7px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1;
+}
+.v2proxy-btn-close:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+.v2proxy-btn-sec { background: rgba(245,166,35,0.12); border-color: rgba(245,166,35,0.34); color: #f5a623; flex: 1; text-align: center; }
+.v2proxy-btn-danger { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.36); color: #fca5a5; flex: 1; text-align: center; }
+.v2proxy-btn-save { background: rgba(34,197,94,0.18); border-color: rgba(34,197,94,0.45); color: #4ade80; font-weight: 800; }
+
+.v2proxy-content { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+.v2proxy-btnrow { display: flex; gap: 6px; }
+
+.v2proxy-main { flex: 1; min-width: 0; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+.v2proxy-card { background: rgba(148,163,184,0.05); border: 1px solid rgba(148,163,184,0.14); border-radius: 11px; padding: 10px 12px; }
+.v2proxy-pool-head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #fde047; margin-bottom: 8px; }
+.v2proxy-pool-grid { display: flex; flex-wrap: wrap; gap: 5px; max-height: 100px; overflow-y: auto; }
+.v2proxy-poolchip { font-size: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.16); color: #94a3b8; display: flex; gap: 5px; }
+.v2proxy-poolchip.in-use { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.3); color: #86efac; }
+
+.v2proxy-acc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.v2proxy-acc-head > span { font-size: 11px; font-weight: 700; color: #cbd5e1; }
+.v2proxy-acc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+
+.v2proxy-card2, .v2proxy-card { }
+.v2proxy-card.has-proxy, [class*="v2proxy-card"].has-proxy {}
+#v2-proxy-accounts-list .v2proxy-card { display: flex; flex-direction: column; gap: 6px; }
+.v2proxy-card-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.v2proxy-chk { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; cursor: pointer; }
+.v2proxy-tag { font-size: 9px; font-weight: 700; white-space: nowrap; }
+.v2proxy-row { display: flex; gap: 5px; align-items: center; }
+.v2proxy-select { flex: 1; background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.2); border-radius: 6px; padding: 4px 6px; font-size: 9.5px; color: #f1f5f9; font-family: inherit; min-width: 0; }
+.v2proxy-aicon { width: 24px; height: 24px; border-radius: 6px; background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1; cursor: pointer; font-size: 10px; flex-shrink: 0; }
+.v2proxy-custom-input { background: rgba(148,163,184,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 6px; padding: 4px 6px; font-size: 9.5px; color: #fbbf24; font-family: inherit; }
+.v2proxy-autorotate { display: flex; align-items: center; gap: 6px; font-size: 9px; color: #94a3b8; cursor: pointer; }
+.v2proxy-test-result { font-size: 9px; }
+.v2proxy-bw { display: flex; gap: 6px; font-size: 8.5px; color: #64748b; border-top: 1px solid rgba(148,163,184,0.1); padding-top: 4px; }
+
+.v2proxy-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+

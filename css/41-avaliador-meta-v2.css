@@ -1,0 +1,183 @@
+/* =========================================================
+   AVALIADOR DE METAS v2 (Beta) — mesma base de dados do v1
+   (shell/32-35), casca visual em vidro/v2.
+   ========================================================= */
+.v2eval-box {
+  /* Tela grande de propósito: e uma grade de dezenas/centenas de Pokemon com
+     build, tier e score. Em 1180x800 cabiam ~4 colunas e 2 linhas por vez. */
+  width: min(1760px, 97vw); height: min(1120px, 95vh);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(30px) saturate(1.3); -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; overflow: hidden;
+  font-family:var(--app-font-ui);
+  color: #f1f5f9;
+}
+.v2eval-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+.v2eval-title { display: flex; align-items: center; gap: 10px; font-size: 20px; }
+.v2eval-title-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.v2eval-sub { font-size: 10px; color: #94a3b8; }
+.v2eval-badge { font-size: 9px; font-weight: 800; background: rgba(168,85,247,0.16); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.35); padding: 2px 8px; border-radius: 999px; }
+.v2eval-header-actions { display: flex; align-items: center; gap: 7px; }
+.v2eval-stat-total { font-size: 10.5px; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.24); padding: 4px 9px; border-radius: 7px; }
+.v2eval-btn-ghost, .v2eval-btn-sec, .v2eval-btn-close, .v2eval-btn-tert, .v2eval-btn {
+  font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: 7px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1;
+}
+.v2eval-btn-sec { background: rgba(56,189,248,0.14); border-color: rgba(56,189,248,0.36); color: #7dd3fc; }
+.v2eval-btn-close:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+.v2eval-btn-tert:hover { border-color: rgba(245,166,35,0.4); color: #f5a623; }
+
+.v2eval-toolbar { display: flex; align-items: center; gap: 7px; padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+.v2eval-select, .v2eval-search { background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.18); border-radius: 7px; padding: 6px 8px; font-size: 10.5px; color: #f1f5f9; font-family: inherit; }
+.v2eval-search { flex: 1; min-width: 140px; }
+.v2eval-viewtoggle { display: flex; background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.18); border-radius: 7px; overflow: hidden; }
+.v2eval-viewtoggle button { padding: 6px 10px; font-size: 10px; font-weight: 700; color: #94a3b8; background: none; border: none; cursor: pointer; font-family: inherit; }
+.v2eval-viewtoggle button.active { background: rgba(245,166,35,0.16); color: #f5a623; }
+
+.v2eval-batchbar { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+.v2eval-chklabel { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; color: #f1f5f9; cursor: pointer; }
+.v2eval-summary { font-size: 10px; font-weight: 800; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 3px 8px; border-radius: 6px; }
+.v2eval-btn-lock { background: rgba(34,197,94,0.14); border-color: rgba(34,197,94,0.36); color: #86efac; }
+.v2eval-btn-unlock { background: rgba(148,163,184,0.1); border-color: rgba(148,163,184,0.24); color: #cbd5e1; }
+.v2eval-btn-sell { background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.36); color: #fbbf24; }
+.v2eval-btn-trade { background: rgba(236,72,153,0.14); border-color: rgba(236,72,153,0.36); color: #f9a8d4; }
+
+.v2eval-content { flex: 1; min-height: 0; display: flex; }
+/* 300px de coluna mínima em vez de 230: em tela larga davam 7 cards por linha
+   e cada um ficava estreito demais pra ler build + stats. */
+.v2eval-grid { flex: 1; min-width: 0; overflow-y: auto; padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; align-content: start; }
+.v2eval-grid.view-list { grid-template-columns: 1fr; gap: 5px; }
+
+.v2eval-card { position: relative; background: rgba(148,163,184,0.05); border: 1px solid var(--v2c-border, rgba(148,163,184,0.14)); border-radius: 11px; padding: 10px; }
+.v2eval-card.best-copy { border-color: rgba(245,166,35,0.4); }
+.v2eval-card.selected { box-shadow: 0 0 0 1px rgba(168,85,247,0.5) inset; }
+.v2eval-card-head { display: flex; align-items: center; gap: 8px; }
+.v2eval-chk { width: 14px; height: 14px; accent-color: #a855f7; cursor: pointer; flex-shrink: 0; }
+.v2eval-sprite { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.v2eval-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2eval-sub2 { font-size: 9.5px; color: #38bdf8; }
+.v2eval-tier { margin-left: auto; font-size: 11px; font-weight: 900; padding: 2px 7px; border-radius: 7px; flex-shrink: 0; }
+.tier-s-plus { background: rgba(245,166,35,0.2); color: #f5a623; }
+.tier-s { background: rgba(168,85,247,0.2); color: #d8b4fe; }
+.tier-a { background: rgba(34,197,94,0.2); color: #4ade80; }
+.tier-b { background: rgba(56,189,248,0.2); color: #38bdf8; }
+.tier-c { background: rgba(148,163,184,0.14); color: #94a3b8; }
+
+.v2eval-growth-row { display: flex; justify-content: space-between; font-size: 9.5px; color: #94a3b8; margin-top: 8px; }
+.v2eval-growth-bar { height: 6px; border-radius: 999px; background: rgba(148,163,184,0.12); overflow: hidden; margin-top: 3px; }
+.v2eval-growth-fill { height: 100%; background: linear-gradient(90deg,#38bdf8,#a855f7); }
+
+.v2eval-build { margin-top: 8px; background: rgba(148,163,184,0.04); border-radius: 8px; padding: 7px 8px; }
+.v2eval-role { font-size: 9px; color: #f5a623; font-weight: 700; }
+.v2eval-moves { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+.v2eval-move { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: rgba(148,163,184,0.1); color: #cbd5e1; }
+.v2eval-move.stab { background: rgba(34,197,94,0.16); color: #86efac; }
+
+.v2eval-actions { display: flex; gap: 5px; margin-top: 8px; }
+.v2eval-aicon { flex: 1; text-align: center; padding: 5px; border-radius: 7px; background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.14); font-size: 11px; cursor: pointer; }
+.v2eval-aicon:disabled { opacity: .35; cursor: not-allowed; }
+.v2eval-dup { font-size: 8.5px; font-weight: 800; margin-top: 6px; text-align: center; }
+
+/* --- FICHA (nota do que foi rolado na captura) ao lado do tier da espécie --- */
+.v2eval-ficha {
+  font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 7px; flex-shrink: 0;
+  background: rgba(56,189,248,0.14); border: 1px solid rgba(56,189,248,0.32); color: #7dd3fc;
+}
+
+/* --- MÉTRICAS DO JOGO (dps / power / iv) — números crus, sem modelo nosso --- */
+.v2eval-metricas { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.v2eval-met {
+  font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+  background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.16);
+  color: #cbd5e1; white-space: nowrap;
+}
+.v2eval-met.dps { background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.34); color: #fbbf24; }
+.v2eval-met.iv  { background: rgba(168,85,247,0.13); border-color: rgba(168,85,247,0.3);  color: #d8b4fe; }
+
+/* --- RANKS (posição no acervo e entre as cópias) + NATUREZA --- */
+.v2eval-ranks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.v2eval-rank {
+  font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+  background: rgba(148,163,184,0.09); border: 1px solid rgba(148,163,184,0.16); color: #cbd5e1;
+  white-space: nowrap;
+}
+.v2eval-rank i { font-style: normal; font-weight: 600; color: #64748b; }
+.v2eval-rank.top { background: rgba(245,166,35,0.16); border-color: rgba(245,166,35,0.4); color: #f5a623; }
+.v2eval-rank.nature { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.24); color: #86efac; }
+.v2eval-growth-pct { font-weight: 800; color: #e2e8f0; }
+
+/* --- GROWTH POR STAT (os "IVs") — cor pelo quão perto do teto de 32 --- */
+.v2eval-stats { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+.v2eval-statchip {
+  font-size: 8.5px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+  background: rgba(148,163,184,0.07); border: 1px solid rgba(148,163,184,0.14);
+  color: #cbd5e1; white-space: nowrap;
+}
+.v2eval-statchip b { font-weight: 800; color: #94a3b8; margin-right: 4px; }
+.v2eval-statchip.alto  { background: rgba(34,197,94,0.16);  border-color: rgba(34,197,94,0.38);  color: #86efac; }
+.v2eval-statchip.alto b  { color: #4ade80; }
+.v2eval-statchip.medio { background: rgba(56,189,248,0.13); border-color: rgba(56,189,248,0.3);  color: #7dd3fc; }
+.v2eval-statchip.medio b { color: #38bdf8; }
+.v2eval-statchip.baixo { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.28); color: #fcd34d; }
+.v2eval-statchip.baixo b { color: #fbbf24; }
+.v2eval-statchip.ruim  { background: rgba(239,68,68,0.1);   border-color: rgba(239,68,68,0.24);  color: #fca5a5; }
+.v2eval-statchip.ruim b  { color: #f87171; }
+.v2eval-statchip.vazio { color: #64748b; font-weight: 600; }
+
+/* --- MODO LISTA ---
+   Antes a lista apagava growth e build e virava só nome + tier, que era menos
+   informação que o card. Agora os MESMOS blocos viram colunas de uma linha
+   densa: identidade | ranks | growth | stats | build | ações. Só as moves
+   somem (não cabem numa linha e já aparecem no modo cards). */
+.v2eval-grid.view-list { grid-template-columns: 1fr; gap: 4px; }
+.v2eval-grid.view-list .v2eval-card {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+}
+.v2eval-grid.view-list .v2eval-card-head { flex: 0 0 240px; min-width: 0; }
+.v2eval-grid.view-list .v2eval-sprite { width: 30px; height: 30px; }
+.v2eval-grid.view-list .v2eval-tier { margin-left: 0; }
+
+.v2eval-grid.view-list .v2eval-metricas { margin-top: 0; flex: 0 0 auto; flex-wrap: nowrap; }
+.v2eval-grid.view-list .v2eval-ranks { margin-top: 0; flex: 0 0 auto; flex-wrap: nowrap; }
+
+.v2eval-grid.view-list .v2eval-growth-row {
+  margin-top: 0; flex: 0 0 116px; gap: 6px; font-size: 9px;
+}
+.v2eval-grid.view-list .v2eval-growth-bar {
+  margin-top: 0; flex: 0 0 90px; align-self: center;
+}
+.v2eval-grid.view-list .v2eval-stats { margin-top: 0; flex: 1 1 auto; flex-wrap: nowrap; overflow: hidden; }
+
+.v2eval-grid.view-list .v2eval-build {
+  margin-top: 0; flex: 0 0 190px; padding: 0; background: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.v2eval-grid.view-list .v2eval-moves { display: none; }
+
+.v2eval-grid.view-list .v2eval-dup { margin-top: 0; flex: 0 0 auto; white-space: nowrap; }
+.v2eval-grid.view-list .v2eval-actions { margin-top: 0; flex: 0 0 auto; }
+.v2eval-grid.view-list .v2eval-aicon { flex: 0 0 auto; padding: 4px 7px; }
+
+/* Telas menores: a linha vira duas, em vez de espremer tudo. */
+@media (max-width: 1400px) {
+  .v2eval-grid.view-list .v2eval-card { flex-wrap: wrap; }
+  .v2eval-grid.view-list .v2eval-build { flex-basis: 100%; }
+}
+
+.v2eval-side-panel { width: 0; overflow: hidden; border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; transition: width .18s; flex-shrink: 0; }
+.v2eval-side-panel.open { width: 280px; }
+.v2eval-side-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px; font-weight: 700; }
+.v2eval-side-head button { margin-left: auto; background: rgba(239,68,68,0.14); border: 1px solid rgba(239,68,68,0.34); color: #fca5a5; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+.v2eval-side-stats { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.v2eval-side-stats span { font-size: 9px; color: #94a3b8; background: rgba(148,163,184,0.06); padding: 2px 7px; border-radius: 6px; }
+.v2eval-side-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+.v2eval-side-item { display: flex; align-items: center; gap: 7px; background: rgba(148,163,184,0.05); border-radius: 8px; padding: 6px 7px; }
+.v2eval-side-item img { width: 24px; height: 24px; object-fit: contain; }
+.v2eval-side-item .n { font-size: 10px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2eval-side-item .m { font-size: 8.5px; color: #94a3b8; }
+.v2eval-side-item .sc { font-size: 9.5px; font-weight: 800; margin-left: auto; }
+.v2eval-side-item button { background: none; border: none; color: #64748b; cursor: pointer; font-size: 11px; }
+.v2eval-side-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+.v2eval-side-actions button { flex: 1; font-size: 9.5px; font-weight: 700; padding: 7px 4px; border-radius: 7px; background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1; cursor: pointer; font-family: inherit; }

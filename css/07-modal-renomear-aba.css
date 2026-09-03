@@ -1,0 +1,291 @@
+/* --- MODAL DE RENOMEAR ABA --- */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.modal-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-box {
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(16, 185, 129, 0.15);
+  border-radius: 16px;
+  padding: 18px 22px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: animate__animated animate__fadeInDown 0.25s ease-out;
+}
+
+.modal-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-input {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.modal-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.btn-confirm:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-cancel {
+  background: rgba(51, 65, 85, 0.7);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background: rgba(71, 85, 105, 0.9);
+  color: #ffffff;
+}
+
+.btn-danger-modal {
+  flex: 1;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.btn-danger-modal:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.btn-warning-modal {
+  flex: 1;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.btn-warning-modal:hover {
+  background: rgba(251, 191, 36, 0.25);
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+
+
+/* =========================================================================
+   MODAL "GERENCIAR CONTA" — redesenho
+   O anterior empilhava título, rótulo solto, input e 4 botões de pesos
+   visuais parecidos, sem hierarquia: dava pra clicar em "Fechar Conta"
+   achando que era "fechar a janela". Agora: cabeçalho com identidade da
+   conta, corpo com os campos e rodapé separando ações destrutivas das
+   de confirmação.
+   ========================================================================= */
+.modal-box.modal-conta {
+  width: 380px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.modal-conta-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 13px 16px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.5));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  cursor: move;
+}
+.modal-conta-ident { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.modal-conta-ball {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.45);
+}
+.modal-conta-txt { min-width: 0; }
+.modal-conta-nome {
+  font-size: 13.5px; font-weight: 800; color: #f1f5f9;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.modal-conta-sub {
+  font-size: 9.5px; color: #94a3b8; margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.modal-conta-x {
+  background: none; border: none; color: #64748b; font-size: 14px;
+  cursor: pointer; padding: 2px 4px; line-height: 1; flex-shrink: 0;
+}
+.modal-conta-x:hover { color: #fca5a5; }
+
+.modal-conta-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 7px; }
+.modal-conta-label {
+  font-size: 9px; font-weight: 800; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.modal-conta-cores { display: flex; flex-wrap: wrap; gap: 5px; }
+.modal-cor-opt {
+  width: 20px; height: 20px; border-radius: 50%; cursor: pointer; padding: 0;
+  border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s;
+}
+.modal-cor-opt:hover { transform: scale(1.15); }
+.modal-cor-opt.ativa { border-color: #f1f5f9; box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9), 0 0 8px rgba(255, 255, 255, 0.35); }
+.modal-cor-reset {
+  width: 20px; height: 20px; border-radius: 50%; cursor: pointer; padding: 0;
+  font-size: 11px; line-height: 1; color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1); border: 1px dashed rgba(148, 163, 184, 0.4);
+}
+.modal-cor-reset:hover { color: #f1f5f9; border-color: rgba(241, 245, 249, 0.6); }
+
+.modal-conta-foot {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 12px 16px 14px;
+  background: rgba(2, 6, 23, 0.45);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+.modal-conta-foot-perigo { display: flex; gap: 7px; }
+.modal-conta-foot-acoes { display: flex; gap: 7px; justify-content: flex-end; }
+
+.modal-conta-btn {
+  font-size: 11px; font-weight: 700; font-family: inherit;
+  padding: 7px 13px; border-radius: 8px; cursor: pointer;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
+  transition: background 0.15s, border-color 0.15s;
+}
+.modal-conta-btn:hover { background: rgba(148, 163, 184, 0.18); }
+/* As ações destrutivas ficam discretas por padrão e só "acendem" no hover —
+   antes competiam visualmente com o Salvar. */
+.modal-conta-btn.perigo { flex: 1; color: #f87171; border-color: rgba(239, 68, 68, 0.28); background: rgba(239, 68, 68, 0.07); }
+.modal-conta-btn.perigo:hover { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); }
+.modal-conta-btn.aviso { flex: 1; color: #fcd34d; border-color: rgba(245, 158, 11, 0.28); background: rgba(245, 158, 11, 0.07); }
+.modal-conta-btn.aviso:hover { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.5); }
+.modal-conta-btn.ok {
+  color: #ffffff; border-color: transparent;
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+.modal-conta-btn.ok:hover { background: linear-gradient(135deg, #34d399, #10b981); }
+
+/* Cor escolhida tinge a aba SEMPRE, nao so quando selecionada.
+   `.tab-btn` declara `border: ... !important` e `.tab-btn.active` refaz o
+   border-left tambem com !important — nenhuma regra de borda minha sobrevive
+   a isso. A faixa vira um pseudo-elemento (o botao ja e position:relative e
+   overflow:hidden), que nenhum !important de borda alcanca. */
+.tab-btn::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; border-radius: 10px 0 0 10px;
+  background: var(--cor-aba, transparent);
+  z-index: 2;
+}
+.tab-btn::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--cor-aba, transparent) 13%, transparent),
+      transparent 55%);
+}
+/* Na aba ativa o esmeralda do estado precisa ganhar do lavado da cor da
+   conta — antes o wash subia pra 32% e cobria justamente o sinal de "esta e a
+   aba selecionada". Agora o wash da ativa CAI (a identidade da conta migra pra
+   faixa lateral, que engorda e ganha brilho) e o esmeralda do fundo aparece. */
+.tab-btn.active::before {
+  width: 7px;
+  box-shadow: 0 0 10px var(--cor-aba, transparent);
+}
+.tab-btn.active::after {
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--cor-aba, transparent) 14%, transparent),
+      transparent 45%);
+}
+/* O conteudo precisa ficar acima do overlay */
+.tab-btn > * { position: relative; z-index: 1; }
+
+/* Bloco "Posição na lista" do modal de gerenciar conta. O arrasto na sidebar
+   continua valendo; estes botões são o caminho previsível quando são 11 contas
+   empilhadas e o alvo do drop fica com poucos pixels de altura. */
+.modal-conta-secao {
+  display: flex; flex-direction: column; gap: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 9px; margin-top: 2px;
+}
+.modal-conta-secao-t {
+  font-size: 9px; font-weight: 800; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.modal-conta-ordem { display: flex; align-items: center; gap: 7px; }
+.modal-conta-ordem .modal-conta-btn { flex: 1; }
+.modal-conta-ordem .modal-conta-btn:disabled {
+  opacity: 0.35; cursor: not-allowed;
+}
+.modal-conta-pos {
+  font-size: 10px; font-weight: 800; color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px; padding: 4px 9px; white-space: nowrap;
+}

@@ -1,0 +1,42 @@
+name: Build & Release
+
+# Dispara quando você cria uma TAG de versão (ex: v1.0.1), não em todo push.
+# Por quê: publicar em todo commit mandaria pro jogador qualquer commit
+# quebrado sem querer. Tag = "estou pronto pra lançar isso" -- um passo a
+# mais, de propósito.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}   # também dá pra disparar na mão pela aba Actions
+
+permissions:
+  contents: write   # electron-builder precisa disso pra criar o Release
+
+jobs:
+  build-and-publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rebuild dos bundles (shell + css + userscript)
+        run: |
+          python shell/build_shell.py
+          python css/build_css.py
+          python scripts/build.py
+
+      - name: Empacotar e publicar Release no GitHub
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
