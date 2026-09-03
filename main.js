@@ -650,6 +650,8 @@ ipcMain.on('shiny-primary-alert-clicked', (event, accountIndex) => {
     }
 });
 
+ipcMain.handle('get-app-version', () => app.getVersion());
+
 // IPC para reiniciar o aplicativo completamente
 ipcMain.on('restart-app', () => {
     saveWindowState();
