@@ -12,9 +12,15 @@
         // #mini-hunt é do jogo, não do userscript, e o próprio jogo reescreve
         // o innerHTML dela a cada tick -- um botão inserido DENTRO dela seria
         // apagado no próximo refresh. O botão aqui é um elemento à parte que
-        // PERSEGUE o retângulo dela a cada 150ms (mesma ideia de
+        // PERSEGUE o retângulo dela a cada 400ms (mesmo ritmo de
         // `docaAncorarTodas`, 09b-doca.js): arrastar a barra move o botão
         // junto no próximo tick, sem tocar em como ela se move.
+        //
+        // Rodava a 150ms antes -- rápido demais pra um reposicionamento que só
+        // muda quando alguém arrasta a barra manualmente, e com getBoundingClientRect
+        // (força layout) em CADA conta aberta isso somava até ~100 execuções/s
+        // com muitas contas simultâneas. 400ms segue igual de suave visualmente
+        // e alinha com o mesmo ritmo já usado pro resto das docas.
         // =====================================================================
         function montarBotaoResetMiniHunt() {
             const barra = document.getElementById('mini-hunt');
@@ -62,7 +68,5 @@
                 btn.style.height = Math.round(r.height) + 'px';
             }
         }
-        // 150ms: rápido o bastante pra o botão acompanhar o arrasto da barra
-        // sem lag visível, e barato -- é só um getBoundingClientRect.
-        setInterval(montarBotaoResetMiniHunt, 150);
+        setInterval(montarBotaoResetMiniHunt, 400);
         montarBotaoResetMiniHunt();
