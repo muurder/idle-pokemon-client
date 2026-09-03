@@ -1,14 +1,15 @@
 name: Build & Release
 
-# Dispara quando você cria uma TAG de versão (ex: v1.0.1), não em todo push.
-# Por quê: publicar em todo commit mandaria pro jogador qualquer commit
-# quebrado sem querer. Tag = "estou pronto pra lançar isso" -- um passo a
-# mais, de propósito.
+# Dispara em todo push na master: sobe codigo -> builda -> publica Release
+# sozinho, sem precisar de tag manual. A versao e calculada automaticamente
+# (major.minor do package.json + numero sequencial do run), entao cada push
+# sempre gera uma versao maior que a anterior -- e o que o electron-updater
+# usa pra saber que tem atualizacao nova.
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch: {}   # também dá pra disparar na mão pela aba Actions
+    branches:
+      - master
+  workflow_dispatch: {}   # tambem da pra disparar na mao pela aba Actions
 
 permissions:
   contents: write   # electron-builder precisa disso pra criar o Release
@@ -29,6 +30,13 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci
+
+      - name: Definir versão automática (major.minor + numero do run)
+        shell: bash
+        run: |
+          BASE=$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")
+          npm pkg set version="$BASE.${{ github.run_number }}"
+          echo "Versao deste build: $(node -p "require('./package.json').version")"
 
       - name: Rebuild dos bundles (shell + css + userscript)
         run: |
