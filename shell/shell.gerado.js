@@ -2137,7 +2137,7 @@
       `).catch(() => {});
     }
 
-    // Carrega o script do tampermonkey da memória
+    // Carrega o script de injeção da memória
     async function carregarScriptTamper() {
       try {
         tamperScriptCache = await ipcRenderer.invoke('get-tamper-script');
@@ -2640,6 +2640,11 @@
     function reloadActiveWebview() {
       reloadWebview(currentTab);
     }
+
+    // Atalhos de teclado globais vindos do main.js (before-input-event)
+    ipcRenderer.on('toggle-grid', () => toggleGridMode());
+    ipcRenderer.on('reload-active', () => reloadActiveWebview());
+    ipcRenderer.on('reload-all', () => recarregarEAplicarTudo());
 
     // Recarregar todas e reaplicar ajustes de forma suave e rápida
     async function recarregarEAplicarTudo() {

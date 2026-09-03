@@ -395,6 +395,11 @@
       reloadWebview(currentTab);
     }
 
+    // Atalhos de teclado globais vindos do main.js (before-input-event)
+    ipcRenderer.on('toggle-grid', () => toggleGridMode());
+    ipcRenderer.on('reload-active', () => reloadActiveWebview());
+    ipcRenderer.on('reload-all', () => recarregarEAplicarTudo());
+
     // Recarregar todas e reaplicar ajustes de forma suave e rápida
     async function recarregarEAplicarTudo() {
       console.log('[IdleSuite] Recarregando e aplicando todas as contas...');

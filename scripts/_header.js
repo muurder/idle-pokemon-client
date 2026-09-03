@@ -27,7 +27,7 @@
 //   - scripts/MAPA.md     → O que cada arquivo faz
 //   - CONTRIBUINDO.md     → Regras completas de edição
 //
-// NUNCA edite bug-test-suite.gerado.tampermonkey.js na raiz!
+// NUNCA edite scripts/dist/game-injector.js diretamente!
 // =====================================================================
 
 (function () {

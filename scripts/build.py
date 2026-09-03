@@ -2,7 +2,8 @@ import os
 import datetime
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(SCRIPTS_DIR, os.pardir, 'bug-test-suite.gerado.tampermonkey.js')
+OUT_DIR = os.path.join(SCRIPTS_DIR, 'dist')
+OUT = os.path.join(OUT_DIR, 'game-injector.js')
 
 # Carimbo do build: entra no bundle e vai pro log do Auto Hunt, pra dar pra
 # saber QUAL build produziu um log (webview com script antigo em memoria e
@@ -175,6 +176,7 @@ if problemas:
     print('sao o fim da string. Ver o bloco GUARDA no topo deste build.py.')
     raise SystemExit(1)
 
+os.makedirs(OUT_DIR, exist_ok=True)
 with open(OUT, 'w', encoding='utf-8') as fh:
     fh.write('\n'.join(parts))
 print('build ->', OUT, '| id:', BUILD_ID)

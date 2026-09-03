@@ -1,46 +1,39 @@
-# 🛠️ Idle Pokémon — Dev Suite (Ambiente de Testes)
+# Idle Pokémon — Cliente Multi-Contas
 
-Ambiente completo de desenvolvimento, testes e automação avançada com isolamento total para **Idle Pokémon**.
+Cliente desktop (Electron) para jogar Idle Pokémon com várias contas ao mesmo
+tempo, cada uma isolada em sua própria sessão (`persist:accN`).
 
----
+## Funcionalidades
 
-## 📌 Diferenças entre as Versões
+- Várias contas em abas ou em modo grid (várias telas ao mesmo tempo)
+- Tracker de XP/ETA injetado no card do treinador e no mini-dashboard
+- Doca de Hunts: navegar, buscar e favoritar zonas de caça
+- Doca de Custo de Captura: calculadora de custo por captura
+- Atualização automática via GitHub Releases (`electron-updater`)
 
-| Recurso | `browser_pokemoon` (Comunitário) | `browser_pokemoon_dev` (Ambiente Dev/Testes) |
-| :--- | :---: | :---: |
-| **Público-Alvo** | Jogadores / Distribuição Pública | Desenvolvimento, Testes & Diagnósticos |
-| **Partições & Isolamento** | `browser_pokemoon_community_data` | `browser_pokemoon_dev_data` |
-| **Limite de Contas** | 3 Contas fixas | Até 16 Contas simultâneas |
-| **Injeção de Scripts (Tampermonkey)** | ❌ Bloqueado | ✅ Ativo (`bug-test-suite`, `xp-tracker`, etc.) |
-| **Editor de Scripts em Tempo Real** | ❌ Não | ✅ Ativo (`Ctrl + E`) |
-| **Gerenciador de Proxies (Webshare/IP:Port)** | ❌ Conexão Direta | ✅ Ativo (`Ctrl + P` com teste de IP em tempo real) |
-| **Monitor de Drops & Inventário** | ❌ Não | ✅ Ativo (`Ctrl + L`) |
-| **Trade Hub & Central de Trocas** | ❌ Não | ✅ Ativo (`Ctrl + T`) |
-| **Avaliador Meta & Estatísticas** | ❌ Não | ✅ Ativo (`Ctrl + M`) |
-| **Suporte Multi-Monitores** | ❌ Automático | ✅ Seleção dinâmica de telas com 1 clique |
+## Como iniciar
 
----
+```bash
+npm install
+npm start
+```
 
-## 🚀 Como Iniciar
+## Atalhos de teclado
 
-Você pode iniciar o cliente de testes de duas maneiras:
+| Atalho | Ação |
+| :--- | :--- |
+| `Alt + 1` até `Alt + 9`, `Alt + 0` | Trocar de conta (funciona mesmo com o jogo em foco) |
+| `Ctrl + G` | Alternar modo Grid / Abas |
+| `Ctrl + Alt + R` | Reiniciar o app completamente |
+| `Ctrl + Shift + R` | Recarregar todas as contas |
+| `F5` | Recarregar a conta ativa |
+| `Shift + C` | Abrir/fechar a doca de Custo de Captura |
+| `Shift + B` | Abrir Time & Box (do próprio jogo) |
+| `Shift + I` | Abrir Inventário (do próprio jogo) |
 
-1. **Pela Raiz:**
-   * Dê dois cliques em `iniciar-cliente-dev.bat`
-2. **Dentro desta pasta (`browser_pokemoon_dev`):**
-   * Dê dois cliques em `iniciar.bat`
-   * Ou pelo terminal: `npm start` ou `npx electron .`
+## Build e release
 
----
-
-## ⌨️ Atalhos Principais no Ambiente DEV
-
-* **`Ctrl + 1` até `Ctrl + 9`**: Alternar entre contas ativas
-* **`Ctrl + G`**: Alternar modo Grid Multi-Telas / Tela Cheia
-* **`Ctrl + E`**: Abrir Editor de Scripts e Automações em Tempo Real
-* **`Ctrl + P`**: Abrir Painel de Configuração e Diagnóstico de Proxies
-* **`Ctrl + L`**: Abrir Monitor de Drops e Inventário
-* **`Ctrl + T`**: Abrir Central de Trade Automatizada
-* **`Ctrl + M`**: Abrir Calculadora e Avaliador Meta
-* **`Ctrl + Alt + R`**: Reiniciar o Electron completamente
-* **`Ctrl + Shift + R`**: Recarregar todas as contas simultaneamente
+Veja [CONTRIBUINDO.md](CONTRIBUINDO.md) para o fluxo de edição dos scripts
+injetados e `.github/workflows/release.yml` para o processo de release
+(tag `vX.Y.Z` → build → publish no GitHub Releases → auto-update nos clientes
+instalados).

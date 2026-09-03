@@ -1,68 +1,72 @@
-# 🤖 INSTRUÇÕES PARA IA — COMO EDITAR ESTE PROJETO
+# Instruções para editar este projeto
 
-> **⚠️ REGRA #1: NUNCA edite `bug-test-suite.gerado.tampermonkey.js` diretamente!**
-> Este arquivo é um **OUTPUT** do build, não fonte. Edições nele são perdidas
-> quando `build.py` roda.
+> **Regra #1: nunca edite `scripts/dist/game-injector.js` diretamente!**
+> Esse arquivo é **output** do build, não fonte. Edições nele são perdidas
+> na próxima vez que `scripts/build.py` rodar.
 
-## Fluxo Obrigatório
-
-```
-1. Leia `scripts/MAPA.md` para entender qual arquivo editar
-2. Edite APENAS em `scripts/XX-nome.js`
-3. Rode `python scripts/build.py` para gerar o output
-4. O arquivo gerado na raiz é reescrito automaticamente
-5. O usuário reinicia o Electron
-```
-
-## Estrutura do Projeto
+## Fluxo obrigatório
 
 ```
-browser_pokemoon_dev/
-├── scripts/                    ← FONTE (edite aqui!)
-│   ├── _header.js              ← Abre IIFE (NÃO EDITAR)
-│   ├── 01-core-estado.js       ← Variáveis globais
-│   ├── 02-...36-...js          ← Módulos de funcionalidade
-│   ├── 37-tabinfo.js           ← Barra "now playing"
-│   ├── _footer.js              ← Fecha IIFE (NÃO EDITAR)
-│   ├── build.py                ← Compilador (junta tudo)
-│   └── MAPA.md                 ← Documentação de cada arquivo
+1. Edite APENAS em scripts/XX-nome.js (script injetado no jogo)
+   ou shell/XX-nome.js (UI do Electron, sidebar, docas, atalhos)
+2. Rode:
+   python scripts/build.py     # gera scripts/dist/game-injector.js
+   python shell/build_shell.py # gera shell/shell.gerado.js
+3. Reinicie o Electron (npm start) pra testar
+```
+
+## Estrutura do projeto
+
+```
+browser_pokemoon_client/
+├── scripts/                       ← fonte do script injetado no jogo
+│   ├── _header.js / _footer.js    ← abrem/fecham a IIFE (não editar)
+│   ├── 09b-doca.js                ← factory de docas (Hunts, Custo, etc.)
+│   ├── 18-api-helpers.js          ← helpers de API + zonas meta
+│   ├── 23-status-bridge.js        ← poller de estado + XP/ETA no card do jogo
+│   ├── 37d-doca-custo.js          ← doca de Custo de Captura (Shift+C)
+│   ├── 37f-doca-hunts.js          ← doca de Hunts
+│   ├── build.py                   ← compila scripts/*.js → scripts/dist/game-injector.js
+│   └── dist/game-injector.js      ← OUTPUT (não editar!)
 │
-├── bug-test-suite.gerado.tampermonkey.js  ← OUTPUT (NÃO EDITAR!)
-├── main.js                     ← Processo principal do Electron
-├── index.html                  ← UI do Electron
-└── backups/                    ← Cópias de segurança
+├── shell/                         ← fonte da UI do Electron (sidebar, topbar, docas de janela)
+│   ├── build_shell.py             ← compila shell/*.js → shell/shell.gerado.js
+│   └── shell.gerado.js            ← OUTPUT (não editar!)
+│
+├── main.js                        ← processo principal do Electron
+├── index.html                     ← UI do Electron
+└── css/                           ← fonte do CSS (build_css.py → styles.css)
 ```
 
-## Regras Importantes
+## Regras importantes
 
-### ❌ NÃO FAÇA ISSO:
-- Editar `bug-test-suite.gerado.tampermonkey.js`
-- Criar novos arquivos `.js` na raiz (exceto main.js, preload.js)
-- Rodar `build.py` sem antes salvar as mudanças em `scripts/`
+### Não faça isso
+- Editar `scripts/dist/game-injector.js` ou `shell/shell.gerado.js` diretamente
+- Rodar os `build.py` sem antes salvar as mudanças nos arquivos fonte
 
-### ✅ FAÇA ISSO:
-- Editar sempre em `scripts/`
-- Rodar `build.py` após cada edição significativa
-- Adicionar comentários explicando o que cada função faz
-- Verificar sintaxe com `node -c bug-test-suite.gerado.tampermonkey.js`
+### Faça isso
+- Editar sempre em `scripts/` (script do jogo) ou `shell/` (UI do Electron)
+- Rodar o `build.py` correspondente após cada edição
+- Verificar sintaxe com `node -c <arquivo gerado>`
 
-### ⚠️ Crase dentro de CSS/HTML
+### Crase dentro de CSS/HTML em template literal
 
-Quase todo CSS e HTML do projeto mora dentro de template literal (crase). Um
-`/* ... */` ali dentro **não é comentário** — é texto da string. Se você escrever
-uma crase nele (pra destacar um nome de classe, por exemplo), ela **fecha a
-string no meio** e o resto vira expressão JS. O `node -c` passa liso, porque a
-sintaxe fica válida; o erro só aparece no runtime, e dentro de função `async`
-vira `Uncaught (in promise) ReferenceError: <lixo> is not defined`.
+Quase todo CSS e HTML deste projeto mora dentro de template literal (crase). Um
+`/* ... */` ali dentro **não é comentário** — é texto da string. Se você
+escrever uma crase nesse "comentário" (pra destacar um nome de classe, por
+exemplo), ela **fecha a string no meio** e o resto vira expressão JS. O
+`node -c` passa liso, porque a sintaxe fica válida; o erro só aparece em
+runtime, e dentro de função `async` vira `Uncaught (in promise)
+ReferenceError: <lixo> is not defined`.
 
-O `build.py` derruba o build quando isso acontece. Se ele acusar, tire a crase
-do comentário — não tente escapar.
+`scripts/build.py` derruba o build quando detecta isso. Se ele acusar, tire a
+crase do comentário — não tente escapar.
 
-## Para Criar um Novo Script
+## Para criar um novo script
 
-1. Crie `scripts/XX-nome-do-script.js` (XX = próximo número)
-2. **NÃO** use IIFE própria — o código roda dentro da IIFE do `_header.js`
-3. Use guard para evitar dupla execução:
+1. Crie `scripts/XX-nome-do-script.js` (XX = próximo número livre)
+2. **Não** use IIFE própria — o código roda dentro da IIFE compartilhada
+3. Use guard para evitar dupla execução se o script puder rodar mais de uma vez:
    ```javascript
    if (!window.__nomeUnico) {
        window.__nomeUnico = true;
@@ -70,31 +74,22 @@ do comentário — não tente escapar.
    }
    ```
 4. Rode `python scripts/build.py`
-5. Reinicie Electron
+5. Reinicie o Electron
 
-## Comandos Úteis
+## Comandos úteis
 
 ```bash
-# Compilar scripts/ → gerado
+# Compilar scripts/ → scripts/dist/game-injector.js
 python scripts/build.py
 
-# Verificar sintaxe do gerado
-node -c bug-test-suite.gerado.tampermonkey.js
+# Compilar shell/ → shell/shell.gerado.js
+python shell/build_shell.py
 
-# Verificar depth de chaves (deve ser 0)
-node -e "const s=require('fs').readFileSync('bug-test-suite.gerado.tampermonkey.js','utf8'); let d=0; for(const c of s){if(c==='{')d++;if(c==='}')d--;} console.log('Depth:',d);"
+# Verificar sintaxe
+node -c scripts/dist/game-injector.js
+node -c shell/shell.gerado.js
+node -c main.js
 
-# Verificar sefunções-chave existem
-grep -c "__getIdleAuto\|__setIdleAuto\|__getTabInfo" bug-test-suite.gerado.tampermonkey.js
+# Checar onclick/chamadas órfãs (função referenciada mas não definida)
+python scripts_orfaos.py
 ```
-
-## Arquivos Mais Editados
-
-| Arquivo | O que é | Quando editar |
-|---------|---------|---------------|
-| `26-auto-hunt-matriz.js` | Auto Hunt | Mudar lógica de caçada, detecção de troca |
-| `07-ui-build.js` | UI do drawer | Mudar layout, adicionar abas, estilos |
-| `19-toggles-auto.js` | Toggles auto | Mudar sincronização sidebar ↔ menu |
-| `30-motor-farm.js` | Loop principal | Mudar combate, drops, XP |
-| `20-cidade-utils.js` | Topbar pins | Mudar pins 📌, atalhos |
-| `01-core-estado.js` | Variáveis | Adicionar novo estado global |

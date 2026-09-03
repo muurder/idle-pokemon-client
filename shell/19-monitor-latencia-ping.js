@@ -479,7 +479,7 @@
       `).catch(() => {});
     }
 
-    // Carrega o script do tampermonkey da memória
+    // Carrega o script de injeção da memória
     async function carregarScriptTamper() {
       try {
         tamperScriptCache = await ipcRenderer.invoke('get-tamper-script');

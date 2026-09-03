@@ -44,7 +44,7 @@
       "index.html",
       "styles.css",
       "shell/shell.gerado.js",
-      "bug-test-suite.gerado.tampermonkey.js",
+      "scripts/dist/game-injector.js",
       "logo.png",
       "logo.ico",
       "package.json"
