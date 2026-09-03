@@ -31,12 +31,14 @@
     },
     "nsis": {
       "oneClick": true,
-      "perMachine": false
+      "perMachine": false,
+      "differentialPackage": false
     },
     "publish": {
       "provider": "github",
       "owner": "muurder",
-      "repo": "idle-pokemon-client"
+      "repo": "idle-pokemon-client",
+      "releaseType": "release"
     },
     "files": [
       "main.js",
