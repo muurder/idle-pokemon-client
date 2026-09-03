@@ -8,19 +8,31 @@
    Antes: `grid-template-columns: repeat(auto-fit, minmax(280px,1fr))` +
    `grid-auto-rows: minmax(220px,1fr)`. O auto-fit espremia 7-8 contas por linha
    em telas largas e o `1fr` das linhas esticava cada card até preencher a
-   viewport — daí os cards altos e estreitos. */
+   viewport — daí os cards altos e estreitos.
+
+   ATENÇÃO à altura da linha (--grid-row-h): ela é medida em JS, em
+   medirAlturaLinhaGrid() (shell/20). NÃO troque por `grid-auto-rows: auto`
+   achando que o `aspect-ratio` do card resolve. O Chromium dimensiona a linha
+   `auto` pela contribuição de conteúdo do item e ignora o aspect-ratio nessa
+   conta: a linha saía com ~193px (18px do header + a altura intrínseca padrão
+   de uma <webview>) enquanto o card era desenhado com os 715px do 16/10. Cada
+   card transbordava a própria linha e cobria o de cima; só a última linha, sem
+   nada desenhado por cima, aparecia inteira. */
 #views-container.mode-grid {
   --grid-cols: 4;
   --grid-aspect: 16 / 10;
   display: grid;
   grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
   grid-template-rows: none;
-  grid-auto-rows: auto;
+  grid-auto-rows: var(--grid-row-h, auto);
   align-content: start;
   gap: 6px;
   padding: 6px;
   background: #090d16;
-  height: calc(100vh - 42px);
+  /* Era `calc(100vh - 42px)`, desconto da topbar que sumiu no redesign.
+     #views-container é filho único de .app-main-area (100vh), então os
+     42px viravam faixa morta no fim do scroll. */
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -28,7 +40,9 @@
 #views-container.mode-grid .webview-wrapper {
   position: relative;
   width: 100%;
-  height: auto;
+  /* A altura vem da linha (--grid-row-h). O aspect-ratio fica como rede de
+     segurança para o primeiro quadro, antes de medirAlturaLinhaGrid() rodar. */
+  height: 100%;
   aspect-ratio: var(--grid-aspect);
   visibility: visible;
   opacity: 1;
@@ -40,9 +54,12 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-/* Garante que o Dashboard 4x fique 100% oculto no modo Grid 2x2 para nao esmagar os 4 quadrantes */
-#views-container.mode-grid .dashboard-view-wrapper,
-#views-container.mode-grid #wrap-4 {
+/* Garante que o Dashboard 4x fique 100% oculto no modo Grid para nao esmagar os cards.
+   O seletor `#wrap-4` que morava aqui era lixo da epoca em que a Dashboard era o
+   indice 4. Hoje a Dashboard e `#wrap-dash` (index.html) e `wrap-N` e SEMPRE uma
+   conta, entao `#wrap-4` apagava do grid a 5a conta de quem tem 5 ou mais.
+   `.dashboard-view-wrapper` sozinho ja cobre o caso real. */
+#views-container.mode-grid .dashboard-view-wrapper {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;

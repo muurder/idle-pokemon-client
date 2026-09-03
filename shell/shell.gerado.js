@@ -2475,6 +2475,8 @@
       if (container) container.style.setProperty('--grid-cols', n);
       const sel = document.getElementById('select-grid-cols');
       if (sel) sel.value = String(n);
+      // Outra largura de coluna = outra altura de linha.
+      if (typeof medirAlturaLinhaGrid === 'function') medirAlturaLinhaGrid();
     }
 
     function alterarColunasGrid(valor) {
@@ -2484,6 +2486,44 @@
       // Card maior/menor muda o zoom que o jogo precisa pra caber legível.
       if (isGridMode) aplicarZoomAlvo();
     }
+
+    // Altura da linha do Grid, em pixels, escrita em `--grid-row-h` (css/06).
+    // Por que medir em JS em vez de deixar o `aspect-ratio` do card resolver:
+    // com `grid-auto-rows: auto` o Chromium dimensiona a linha pela contribuição
+    // de CONTEÚDO do card e ignora o aspect-ratio nessa conta. A linha saía com
+    // ~193px (18px do header + a altura intrínseca padrão de uma <webview>)
+    // enquanto o card era desenhado com os 715px do 16/10 — cada card
+    // transbordava a linha e cobria o de cima, e só a última linha, sem nada por
+    // cima, aparecia inteira. Medindo a largura real da coluna e fixando a
+    // altura da linha, linha e card passam a ter o mesmo tamanho.
+    function medirAlturaLinhaGrid() {
+      const container = document.getElementById('views-container');
+      if (!container || !container.classList.contains('mode-grid')) return;
+      const cs = getComputedStyle(container);
+      const cols = parseInt(cs.getPropertyValue('--grid-cols'), 10) || GRID_COLS_PADRAO;
+      const gap = parseFloat(cs.columnGap) || 0;
+      const padH = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      const aspecto = (cs.getPropertyValue('--grid-aspect') || '16/10').split('/');
+      const razao = (parseFloat(aspecto[1]) || 10) / (parseFloat(aspecto[0]) || 16);
+      // clientWidth já desconta a barra de rolagem vertical, então a conta
+      // continua certa quando ela aparece ou some.
+      const larguraCol = (container.clientWidth - padH - (cols - 1) * gap) / cols;
+      if (!(larguraCol > 0)) return;
+      const altura = (larguraCol * razao).toFixed(2) + 'px';
+      // A escrita muda o layout e pode reentrar pelo ResizeObserver; sair quando
+      // o valor não mudou é o que fecha esse laço.
+      if (container.style.getPropertyValue('--grid-row-h') === altura) return;
+      container.style.setProperty('--grid-row-h', altura);
+    }
+
+    // Remede quando a área muda de tamanho: janela redimensionada, sidebar
+    // recolhida/fixada, ou a própria barra de rolagem entrando e saindo.
+    try {
+      const alvoObs = document.getElementById('views-container');
+      if (alvoObs && typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => medirAlturaLinhaGrid()).observe(alvoObs);
+      }
+    } catch (e) {}
 
     aplicarColunasGrid(obterColunasGrid());
 
@@ -2625,6 +2665,9 @@
             else btn.classList.remove('active');
           }
         });
+        // O ResizeObserver não dispara aqui (o container não muda de tamanho ao
+        // trocar de classe), então a primeira medição da linha é manual.
+        medirAlturaLinhaGrid();
         aplicarZoomAlvo();
         notificarAjusteGrid(true);
       } else {
