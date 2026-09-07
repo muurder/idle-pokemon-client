@@ -110,6 +110,63 @@
         menu: 'geral', grupo: 'Controle & Sistema', hotkey: 'Ctrl+Alt+R',
         desc: 'Fechar e reabrir o aplicativo completamente'
       },
+      'central-notificacoes': {
+        icon: '🔔', label: 'Painel de Notificações', color: '#38bdf8',
+        action: 'fecharIdleSuiteMenu(); abrirModalConfigNotificacoes()',
+        menu: 'gametools', categoria: 'audio', grupo: 'Áudio & Notificações', bold: true,
+        desc: 'Gerenciar popups, notificações do SO e sons detalhadamente por conta ou globalmente, com testes'
+      },
+      'silenciar-shinies-atual': {
+        icon: '🔕', label: 'Silenciar Janela Atual', color: '#f87171',
+        action: 'alternarSilenciarNotificacoesAbaAtual()',
+        menu: 'gametools', categoria: 'audio', grupo: 'Áudio & Notificações', bold: true,
+        desc: 'Silencia som, popups do Electron e notificações do SO apenas na conta ativa (continua registrando na Sala de Troféus)',
+        badgeHtml: '<span id="shiny-mute-atual-badge" style="font-size:9px; font-weight:900; color:#4ade80; background:rgba(34,197,94,0.18); padding:2px 6px; border-radius:10px; border:1px solid rgba(34,197,94,0.35); margin-right:4px">SOM</span>'
+      },
+      'silenciar-shinies-todas': {
+        icon: '🔇', label: 'Silenciar Todas as Abas', color: '#ef4444',
+        action: 'alternarSilenciarNotificacoesTodasAbas()',
+        menu: 'gametools', categoria: 'audio', grupo: 'Áudio & Notificações', bold: true,
+        desc: 'Silencia som, popups do Electron e notificações do SO em TODAS as contas abertas (continua registrando na Sala de Troféus)',
+        badgeHtml: '<span id="shiny-mute-todas-badge" style="font-size:9px; font-weight:900; color:#4ade80; background:rgba(34,197,94,0.18); padding:2px 6px; border-radius:10px; border:1px solid rgba(34,197,94,0.35); margin-right:4px">SOM</span>'
+      },
+      'monitor-recursos': {
+        icon: '⚡', label: 'Monitor de Recursos & Telemetria', color: '#10b981',
+        action: 'fecharIdleSuiteMenu(); abrirModalMonitorDesempenho()',
+        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema', bold: true,
+        desc: 'RAM (Heap vs 1024MB, RSS, SO), Latência /api/state (ms) e FPS por conta ao vivo'
+      },
+      'otimizar-ram': {
+        icon: '🧹', label: 'Limpar & Otimizar Memória RAM', color: '#34d399',
+        action: 'fecharIdleSuiteMenu(); otimizarMemoriaRamUI()',
+        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema', bold: true,
+        desc: 'Aciona o otimizador Python Win32 (EmptyWorkingSet) para liberar RAM física retida'
+      },
+      'sentinela-ram': {
+        icon: '🛡️', label: 'Sentinela de RAM Automático', color: '#60a5fa',
+        action: 'fecharIdleSuiteMenu(); alternarSentinelaRamUI()',
+        badgeHtml: '<span id="sentinela-badge" style="font-size:9px; font-weight:900; color:#4ade80; background:rgba(34,197,94,0.18); padding:2px 6px; border-radius:10px; border:1px solid rgba(34,197,94,0.35); margin-right:4px">AUTO</span>',
+        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema', bold: true,
+        desc: 'Ativo por padrão: monitora a cada 60s em 2º plano e limpa se RAM > 75%. Clique para pausar/retomar.'
+      },
+      'sentinela-powershell': {
+        icon: '🖥️', label: 'Ver Sentinela no PowerShell', color: '#93c5fd',
+        action: 'fecharIdleSuiteMenu(); abrirSentinelaPowerShellUI()',
+        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema',
+        desc: 'Abre uma janela visível do PowerShell rodando o loop de monitoramento da RAM ao vivo'
+      },
+      'diag-desempenho': {
+        icon: '📊', label: 'Diagnostico de Desempenho', color: '#7dd3fc',
+        action: 'fecharIdleSuiteMenu(); relatorioDesempenho()',
+        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema',
+        desc: 'Le o pmiFps() de cada conta (quadro, FPS, auto-alivio do jogo, caches) e copia o relatorio pra area de transferencia'
+      },
+      'isuite-debug': {
+        icon: '📋', label: 'Copiar Logs de Debug', color: '#94a3b8',
+        action: 'fecharIdleSuiteMenu(); copiarLogsDeDiagnostico()',
+        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema',
+        desc: 'Copiar logs de console de todas as janelas para diagnóstico'
+      }
     };
 
     // Categorias hierárquicas do Game Tools (desenham o leque com flyout à direita)
@@ -177,6 +234,7 @@
         html += `<div id="gametools-cats-list" class="gametools-cats-list"${termoSalvo ? ' style="display:none"' : ''}>`;
         for (const cat of GAMETOOLS_CATEGORIAS) {
           const itensCat = Object.entries(MENU_ITEMS).filter(([_, it]) => it.menu === 'gametools' && (it.categoria === cat.id));
+          if (!itensCat.length) continue;
           let itensHtml = '';
           for (const [id, it] of itensCat) {
             itensHtml += criarLinhaItemMenu(id, it);
@@ -809,8 +867,6 @@
 // ===== 07-fixar-itens-dashboard.js =====
     const DASH_ITEMS = {
       'atualizar-tudo': { icon: '🔄', label: 'Atualizar Tudo', color: '#7dd3fc', action: 'atualizarDashboardCompleta()' },
-      'iniciar-hunts':  { icon: '⚔️', label: 'Iniciar Hunts', color: '#86efac', action: 'iniciarTodasHunts()' },
-      'pausar-hunts':   { icon: '⏸', label: 'Pausar Hunts', color: '#fef08a', action: 'pausarTodasHunts()' },
       'curar-contas':   { icon: '💊', label: 'Curar Contas', color: '#f9a8d4', action: 'curarTodasContas()' },
       'avaliador-meta': { icon: '🧬', label: 'Avaliador Meta', color: '#e2e8f0', action: 'abrirModalAvaliadorMeta()' }
     };
@@ -4735,12 +4791,6 @@
                   ${totalCatches} <span style="font-size:8px; color:#94a3b8">(Sessão: ${huntCatches})</span>
                 </span>
               </div>
-              <div class="dash-stat-pill" title="Alvo configurado na caçada automática">
-                <span class="dash-stat-label">🎯 ALVO / HUNT:</span>
-                <span class="dash-stat-val" style="color:#a855f7; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
-                  ${huntActive ? '⚔️ ' : '⏸ '}${huntTarget}
-                </span>
-              </div>
             </div>
 
             <!-- ESTOQUE DE BALLS & POÇÕES -->
@@ -4799,9 +4849,6 @@
 
             <!-- BOTÕES DE AÇÃO INDIVIDUAIS -->
             <div class="dash-card-actions">
-              <button class="dash-btn ${huntActive ? 'dash-btn-yellow' : 'dash-btn-green'}" style="flex:1" onclick="toggleHuntConta(${i})">
-                <span>${huntActive ? '⏸ Pausar' : '⚔️ Caçar'}</span>
-              </button>
               <button class="dash-btn dash-btn-pink" style="flex:1" onclick="curarConta(${i})" title="Usar Poção">
                 <span>💊 Curar</span>
               </button>
@@ -4814,53 +4861,7 @@
       }).join('');
     }
 
-    // Ações Rápidas da Dashboard
-    async function iniciarTodasHunts() {
-      for (let i = 0; i < totalContas; i++) {
-        const wv = webviews[i];
-        if (!wv) continue;
-        wv.executeJavaScript(`
-          try {
-            if (window.gameState && window.gameState.auto) window.gameState.auto.hunt = true;
-            const btn = document.getElementById('btn-auto-hunt') || document.querySelector('[data-action="auto-hunt"]');
-            if (btn && !btn.classList.contains('active')) btn.click();
-          } catch(e) {}
-        `).catch(() => {});
-      }
-      mostrarToast(`⚔️ Auto-Hunt INICIADO nas ${totalContas} contas simultaneamente!`, '🚀', 'toast-success', 4000);
-      setTimeout(atualizarDashboardCompleta, 1000);
-    }
 
-    async function pausarTodasHunts() {
-      for (let i = 0; i < totalContas; i++) {
-        const wv = webviews[i];
-        if (!wv) continue;
-        wv.executeJavaScript(`
-          try {
-            if (window.gameState && window.gameState.auto) window.gameState.auto.hunt = false;
-            const btn = document.getElementById('btn-auto-hunt') || document.querySelector('[data-action="auto-hunt"]');
-            if (btn && btn.classList.contains('active')) btn.click();
-          } catch(e) {}
-        `).catch(() => {});
-      }
-      mostrarToast(`⏸ Auto-Hunt PAUSADO nas ${totalContas} contas.`, '⏸', 'normal', 3000);
-      setTimeout(atualizarDashboardCompleta, 1000);
-    }
-
-    async function toggleHuntConta(idx) {
-      const wv = webviews[idx];
-      if (!wv) return;
-      await wv.executeJavaScript(`
-        try {
-          if (window.gameState && window.gameState.auto) {
-            window.gameState.auto.hunt = !window.gameState.auto.hunt;
-          }
-          const btn = document.getElementById('btn-auto-hunt') || document.querySelector('[data-action="auto-hunt"]');
-          if (btn) btn.click();
-        } catch(e) {}
-      `).catch(() => {});
-      setTimeout(atualizarDashboardCompleta, 600);
-    }
 
     async function curarTodasContas() {
       for (let i = 0; i < totalContas; i++) {
@@ -7250,6 +7251,11 @@
   // quando o pool esta vazio, entao o chamador ja sabe lidar.
   function rotacionarProxyConta() { return null; }
 
+  // --- Ações de Hunt na Dashboard -------------------------------------
+  function iniciarTodasHunts() {}
+  function pausarTodasHunts() {}
+  function toggleHuntConta() {}
+
   // Publica no escopo global: o shell.gerado.js roda em escopo plano e as
   // chamadas pendentes procuram estes nomes ali.
   var tocos = {
@@ -7263,7 +7269,10 @@
     renderizarWidgetAutoTogglesSidebar: renderizarWidgetAutoTogglesSidebar,
     syncSidebarAutoToggles: syncSidebarAutoToggles,
     toggleWidgetAutoTogglesSidebarVisibilidade: toggleWidgetAutoTogglesSidebarVisibilidade,
-    rotacionarProxyConta: rotacionarProxyConta
+    rotacionarProxyConta: rotacionarProxyConta,
+    iniciarTodasHunts: iniciarTodasHunts,
+    pausarTodasHunts: pausarTodasHunts,
+    toggleHuntConta: toggleHuntConta
   };
   for (var nome in tocos) {
     if (typeof window[nome] === 'undefined') window[nome] = tocos[nome];
