@@ -83,14 +83,11 @@ try {
 } catch(e) {}
 
 window.addEventListener('DOMContentLoaded', () => {
-    const removeDevLimit = () => {
-        const dl = document.getElementById('dev-limit');
-        if (dl && dl.style.display !== 'none') {
-            dl.style.display = 'none';
-        }
-    };
-    removeDevLimit();
-    setInterval(removeDevLimit, 1000);
+    // CSS puro em vez de setInterval(1000ms) — zero CPU para esconder #dev-limit.
+    // O intervalo anterior rodava para sempre em cada webview, só para setar display:none.
+    const devLimitStyle = document.createElement('style');
+    devLimitStyle.textContent = '#dev-limit { display: none !important; }';
+    (document.head || document.documentElement).appendChild(devLimitStyle);
 
     // Barra de ferramentas de debug para o popup do TopIdle
     try {

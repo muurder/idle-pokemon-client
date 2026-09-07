@@ -1,9 +1,9 @@
 const { app, BrowserWindow, ipcMain, session, globalShortcut, Menu, screen, net, webContents } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
-const { autoUpdater } = require('electron-updater');
 
 // =====================================================================
 // ONDE E QUE DA PRA ESCREVER
@@ -110,35 +110,43 @@ const _origLog = console.log;
 const _origWarn = console.warn;
 const _origError = console.error;
 
+// Perf: limita serialização a 300 chars por argumento — objetos grandes do
+// jogo (gameState, planos de hunt) causavam stringify custoso a cada log.
+function _serializarArg(a) {
+    if (typeof a !== 'object' || a === null) return String(a);
+    try { const s = JSON.stringify(a); return s.length > 300 ? s.slice(0, 300) + '…' : s; } catch(e) { return String(a); }
+}
+
 console.log = function(...args) {
     _origLog.apply(console, args);
     try {
-        registrarLogDebug('MAIN', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+        registrarLogDebug('MAIN', args.map(_serializarArg).join(' '));
     } catch(e) {}
 };
 
 console.warn = function(...args) {
     _origWarn.apply(console, args);
     try {
-        registrarLogDebug('MAIN-WARN', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+        registrarLogDebug('MAIN-WARN', args.map(_serializarArg).join(' '));
     } catch(e) {}
 };
 
 console.error = function(...args) {
     _origError.apply(console, args);
     try {
-        registrarLogDebug('MAIN-ERR', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+        registrarLogDebug('MAIN-ERR', args.map(_serializarArg).join(' '));
     } catch(e) {}
 };
 
-// Otimização de Performance e Carregamento Rápido
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
+// Perf: 1024 MB em vez de 512 — sessões longas com 4 contas ultrapassavam 512.
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=1024');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('renderer-process-limit', '4');
+// Perf: 8 renderers — equilibra isolamento de processos sem estourar a memória RAM da máquina (economiza ~1.5 GB em 12 contas)
+app.commandLine.appendSwitch('renderer-process-limit', '8');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
-app.commandLine.appendSwitch('disable-features', 'BlockThirdPartyCookies,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure');
+app.commandLine.appendSwitch('disable-features', 'BlockThirdPartyCookies,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,CalculateNativeWinOcclusion');
 // Mantém as contas em segundo plano (abas não ativas) executando normalmente:
 // sem isso o Chromium "background" os renderers e pausa os timers/rAF (ex.: Auto Hunt do Idle Suite)
 app.commandLine.appendSwitch('disable-background-timer-throttling');
@@ -182,19 +190,19 @@ function configurarParticaoConta(partitionName, index) {
         .digest('hex')
         .slice(0, 16);
 
-    ses.webRequest.onBeforeSendHeaders((details, callback) => {
+    // Perf: filtra por URL do jogo — sem filtro, o handler rodava em TODA
+    // requisição (CDN, Google Fonts, etc.), desperdiçando CPU no event loop.
+    ses.webRequest.onBeforeSendHeaders({ urls: ['*://*.idlepokemoon.com.br/*'] }, (details, callback) => {
         const headers = { ...details.requestHeaders };
         // Bandwidth: conta bytes enviados (headers ~200-500 bytes por request)
         trackBandwidthSent(partitionName, 500);
         // Injeta o ID de dispositivo único SOMENTE em requisições do jogo idlepokemoon.com.br
-        if (details.url.includes('idlepokemoon.com.br')) {
-            for (const key of Object.keys(headers)) {
-                if (key.toLowerCase() === 'x-dev') {
-                    delete headers[key];
-                }
+        for (const key of Object.keys(headers)) {
+            if (key.toLowerCase() === 'x-dev') {
+                delete headers[key];
             }
-            headers['X-Dev'] = uniqueDevId;
         }
+        headers['X-Dev'] = uniqueDevId;
 
         callback({ requestHeaders: headers });
     });
@@ -303,7 +311,7 @@ function createWindow() {
         height: 900,
         minWidth: 900,
         minHeight: 600,
-        title: 'Idle Pokémon Electron Client - Multi-Contas · idlepokemoon.com.br',
+        title: 'Idle Pokémon Electron Client - Multi-Contas',
         backgroundColor: '#090d16',
         autoHideMenuBar: true,
         webPreferences: {
@@ -345,7 +353,10 @@ function createWindow() {
     // Atalhos de teclado globais da janela
     mainWindow.webContents.on('before-input-event', (event, input) => {
         if (input.type === 'keyDown') {
-            if (input.control && input.key.toLowerCase() === 'g') {
+            if (input.control && input.key >= '1' && input.key <= '9') {
+                mainWindow.webContents.send('switch-tab', parseInt(input.key) - 1);
+                event.preventDefault();
+            } else if (input.control && (input.key.toLowerCase() === 'g' || input.key.toLowerCase() === 'm')) {
                 mainWindow.webContents.send('toggle-grid');
                 event.preventDefault();
             } else if (input.control && input.alt && input.key.toLowerCase() === 'r') {
@@ -355,6 +366,15 @@ function createWindow() {
                 event.preventDefault();
             } else if (input.control && input.shift && input.key.toLowerCase() === 'r') {
                 mainWindow.webContents.send('reload-all');
+                event.preventDefault();
+            } else if (input.control && input.key.toLowerCase() === 't') {
+                mainWindow.webContents.send('toggle-trade-hub');
+                event.preventDefault();
+            } else if (input.control && input.key.toLowerCase() === 'm') {
+                mainWindow.webContents.send('toggle-eval-meta');
+                event.preventDefault();
+            } else if (input.control && input.key.toLowerCase() === 'e') {
+                mainWindow.webContents.send('toggle-editor');
                 event.preventDefault();
             } else if (input.key === 'F5') {
                 mainWindow.webContents.send('reload-active');
@@ -476,6 +496,7 @@ ipcMain.on('get-global-debug-logs', (event) => {
 // O buffer do log so vira arquivo no flush assincrono; ao fechar, o processo
 // morre antes. Aqui, e SO aqui, a escrita sincrona se justifica.
 app.on('before-quit', () => {
+    pararSentinelaRamAutomatico();
     try {
         if (_debugBuffer.length) fs.appendFileSync(DEBUG_LOG_PATH, _debugBuffer.join('\n') + '\n', 'utf8');
         _debugBuffer = [];
@@ -484,6 +505,171 @@ app.on('before-quit', () => {
 
 ipcMain.on('write-debug-log', (event, { tipo, mensagem }) => {
     registrarLogDebug(tipo || 'RENDERER', mensagem || '');
+});
+
+// =====================================================================
+// TELEMETRIA E OTIMIZAÇÃO DE MEMÓRIA RAM (SENTINELA PYTHON WIN32)
+// =====================================================================
+// IPC para telemetria em tempo real de memória, CPU e processos para o Monitor de Recursos
+ipcMain.handle('get-performance-metrics', async () => {
+    try {
+        const mem = process.memoryUsage();
+        const appMetrics = (typeof app.getAppMetrics === 'function') ? app.getAppMetrics() : [];
+        return {
+            ok: true,
+            timestamp: Date.now(),
+            mainMemory: {
+                rss: mem.rss,
+                heapUsed: mem.heapUsed,
+                heapTotal: mem.heapTotal,
+                external: mem.external || 0,
+                maxOldSpaceSizeMb: 1024
+            },
+            appMetrics: appMetrics.map(m => ({
+                pid: m.pid,
+                type: m.type,
+                cpuPercent: m.cpu ? +(m.cpu.percentCPUUsage).toFixed(1) : 0,
+                memoryKb: m.memory ? m.memory.workingSetSize : 0
+            })),
+            osInfo: {
+                platform: process.platform,
+                arch: process.arch,
+                totalMem: os.totalmem(),
+                freeMem: os.freemem(),
+                cpus: (os.cpus() || []).length,
+                uptime: os.uptime()
+            },
+            versions: {
+                electron: process.versions.electron,
+                chrome: process.versions.chrome,
+                node: process.versions.node
+            }
+        };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+// IPC para acionar o otimizador de memória RAM (Python Win32 EmptyWorkingSet)
+ipcMain.handle('trim-memory-now', async (event, options) => {
+    try {
+        const { execFile } = require('child_process');
+        const scriptPath = path.join(__dirname, 'otimizador_memoria.py');
+        const args = ['--json'];
+        if (options && options.all) args.push('--all');
+        
+        return new Promise((resolve) => {
+            execFile('python', [scriptPath, ...args], { cwd: __dirname, timeout: 15000 }, (error, stdout, stderr) => {
+                if (error) {
+                    resolve({ ok: false, error: error.message });
+                } else {
+                    try {
+                        const data = JSON.parse(stdout);
+                        resolve({ ok: true, data });
+                    } catch(e) {
+                        resolve({ ok: true, raw: stdout });
+                    }
+                }
+            });
+        });
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+// IPC para abrir o Sentinela de RAM em uma janela do console/terminal visível
+ipcMain.handle('abrir-sentinela-powershell', async (event, options) => {
+    try {
+        const { exec } = require('child_process');
+        const loopSegundos = (options && options.loop) || 60;
+        const threshold = (options && options.threshold) || 75;
+        const batPath = path.join(__dirname, 'iniciar_sentinela_ram.bat');
+        
+        if (fs.existsSync(batPath)) {
+            // Abre o .bat diretamente via start (cria uma janela visível real no Windows)
+            exec(`cmd.exe /c start "" "${batPath}"`, { cwd: __dirname });
+        } else {
+            const cmd = `cmd.exe /c start "Sentinela de RAM" powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Set-Location -LiteralPath '${__dirname}'; Write-Host '⚡ Sentinela de RAM Ativado...' -ForegroundColor Cyan; python otimizador_memoria.py --loop ${loopSegundos} --threshold ${threshold}"`;
+            exec(cmd, { cwd: __dirname });
+        }
+        registrarLogDebug('SENTINELA-RAM', 'Janela externa do Sentinela de RAM iniciada pelo usuário');
+        return { ok: true };
+    } catch (e) {
+        registrarLogDebug('SENTINELA-RAM-ERR', 'Erro ao abrir terminal do sentinela: ' + e.message);
+        return { ok: false, error: e.message };
+    }
+});
+
+let sentinelaRamProcess = null;
+
+function iniciarSentinelaRamAutomatico() {
+    if (sentinelaRamProcess) return;
+    try {
+        const { spawn } = require('child_process');
+        const scriptPath = path.join(__dirname, 'otimizador_memoria.py');
+        if (!fs.existsSync(scriptPath)) return;
+
+        // Inicia o sentinela silencioso em segundo plano (-u para stdout sem buffer): verifica a cada 60s se RAM > 75%
+        sentinelaRamProcess = spawn('python', ['-u', scriptPath, '--loop', '60', '--threshold', '75'], {
+            cwd: __dirname,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true
+        });
+
+        sentinelaRamProcess.stdout.on('data', (chunk) => {
+            const txt = chunk.toString().trim();
+            if (txt) registrarLogDebug('SENTINELA-RAM', txt);
+        });
+
+        sentinelaRamProcess.stderr.on('data', (chunk) => {
+            const err = chunk.toString().trim();
+            if (err) registrarLogDebug('SENTINELA-RAM-ERR', err);
+        });
+
+        sentinelaRamProcess.on('error', (err) => {
+            registrarLogDebug('SENTINELA-RAM-ERR', `Falha no processo do sentinela: ${err.message}`);
+            sentinelaRamProcess = null;
+        });
+
+        sentinelaRamProcess.on('exit', (code) => {
+            registrarLogDebug('SENTINELA-RAM', `Sentinela de RAM encerrado (código ${code})`);
+            sentinelaRamProcess = null;
+        });
+
+        registrarLogDebug('SENTINELA-RAM', 'Sentinela de RAM iniciado automaticamente (verificando a cada 60s se RAM > 75%)');
+    } catch (e) {
+        registrarLogDebug('SENTINELA-RAM-ERR', `Erro ao iniciar sentinela automático: ${e.message}`);
+    }
+}
+
+function pararSentinelaRamAutomatico() {
+    if (sentinelaRamProcess) {
+        const pid = sentinelaRamProcess.pid;
+        try {
+            sentinelaRamProcess.kill();
+        } catch (e) { }
+        if (process.platform === 'win32' && pid) {
+            try {
+                require('child_process').execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
+            } catch (e) { }
+        }
+        sentinelaRamProcess = null;
+        registrarLogDebug('SENTINELA-RAM', 'Sentinela de RAM desativado');
+    }
+}
+
+ipcMain.handle('get-sentinela-ram-status', async () => {
+    return { ativo: !!sentinelaRamProcess, pid: sentinelaRamProcess ? sentinelaRamProcess.pid : null };
+});
+
+ipcMain.handle('toggle-sentinela-ram', async () => {
+    if (sentinelaRamProcess) {
+        pararSentinelaRamAutomatico();
+        return { ativo: false };
+    } else {
+        iniciarSentinelaRamAutomatico();
+        return { ativo: !!sentinelaRamProcess };
+    }
 });
 
 // IPC para abrir DevTools da janela/frame que solicitou
@@ -650,8 +836,6 @@ ipcMain.on('shiny-primary-alert-clicked', (event, accountIndex) => {
     }
 });
 
-ipcMain.handle('get-app-version', () => app.getVersion());
-
 // IPC para reiniciar o aplicativo completamente
 ipcMain.on('restart-app', () => {
     saveWindowState();
@@ -659,19 +843,31 @@ ipcMain.on('restart-app', () => {
     app.exit(0);
 });
 
-// IPC para fornecer o script de injeção (gerado de scripts/*.js) às webviews
+// IPC para fornecer o script bug-test-suite às webviews
 ipcMain.handle('get-tamper-script', async () => {
     try {
-        const p = path.join(__dirname, 'scripts', 'dist', 'game-injector.js');
-        if (fs.existsSync(p)) {
-            const size = fs.statSync(p).size;
-            registrarLogDebug('SCRIPT', `Script carregado: ${p} (${size} bytes)`);
-            return fs.readFileSync(p, 'utf8');
+        // 1) PRIORIDADE: arquivo pré-gerado (validado, funciona)
+        const pathsToTry = [
+            // O cliente empacota so as docas, com outro nome. Primeiro da
+            // lista: no dev este arquivo nao existe e cai no seguinte.
+            path.join(__dirname, 'bug-test-suite.client.js'),
+            path.join(__dirname, 'bug-test-suite.gerado.tampermonkey.js'),
+            path.join(__dirname, '..', 'bug-test-suite.gerado.tampermonkey.js'),
+            path.join(__dirname, 'bug-test-suite.tampermonkey.js'),
+            path.join(__dirname, '..', 'bug-test-suite.tampermonkey.js'),
+            path.join(process.resourcesPath, 'bug-test-suite.tampermonkey.js')
+        ];
+        for (const p of pathsToTry) {
+            if (fs.existsSync(p)) {
+                const size = fs.statSync(p).size;
+                registrarLogDebug('SCRIPT', `Script carregado: ${p} (${size} bytes)`);
+                return fs.readFileSync(p, 'utf8');
+            }
         }
         registrarLogDebug('SCRIPT-ERR', 'Nenhum arquivo de script encontrado!');
         return '';
     } catch (err) {
-        console.error('Erro ao ler script de injeção:', err);
+        console.error('Erro ao ler script do tampermonkey:', err);
         return '';
     }
 });
@@ -724,24 +920,7 @@ app.whenReady().then(async () => {
     registrarLogDebug('MEMORY', `Pré-Window - RSS: ${(memPreWindow.rss / (1024*1024)).toFixed(1)}MB | Heap: ${(memPreWindow.heapUsed / (1024*1024)).toFixed(1)}MB`);
     
     createWindow();
-
-    // Auto-update: verifica no GitHub Releases do repo (package.json ->
-    // build.publish) se tem versao mais nova, baixa em segundo plano e
-    // avisa quando estiver pronta pra instalar no proximo restart. So
-    // funciona empacotado (app.isPackaged) -- rodando via `npm start` o
-    // electron-updater nao acha feed nenhum e so loga um aviso, sem quebrar.
-    if (app.isPackaged) {
-        try {
-            autoUpdater.logger = { info: (m) => registrarLogDebug('UPDATER', m), warn: (m) => registrarLogDebug('UPDATER-WARN', m), error: (m) => registrarLogDebug('UPDATER-ERR', m) };
-            autoUpdater.on('update-available', (info) => registrarLogDebug('UPDATER', `Atualizacao disponivel: v${info.version}`));
-            autoUpdater.on('update-downloaded', (info) => {
-                registrarLogDebug('UPDATER', `Atualizacao v${info.version} baixada -- sera aplicada ao reiniciar.`);
-                if (mainWindow) mainWindow.webContents.send('update-downloaded', info.version);
-            });
-            autoUpdater.on('error', (err) => registrarLogDebug('UPDATER-ERR', String(err && err.message || err)));
-            autoUpdater.checkForUpdatesAndNotify();
-        } catch (e) { registrarLogDebug('UPDATER-ERR', String(e && e.message || e)); }
-    }
+    iniciarSentinelaRamAutomatico();
 
     const memPosWindow = process.memoryUsage();
     registrarLogDebug('MEMORY', `Pós-Window - RSS: ${(memPosWindow.rss / (1024*1024)).toFixed(1)}MB | Heap: ${(memPosWindow.heapUsed / (1024*1024)).toFixed(1)}MB`);
@@ -753,6 +932,11 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+    pararSentinelaRamAutomatico();
+    // Encerra Tor gracefulmente ao fechar o app
+    if (torProcess) {
+        try { torProcess.kill('SIGTERM'); } catch(e) {}
+    }
     if (process.platform !== 'darwin') {
         app.quit();
     }

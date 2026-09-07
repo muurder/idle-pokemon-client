@@ -1,0 +1,171 @@
+/* ===================================================================
+   HOVER DA ABA: O TIME DA CONTA  (JS em shell/50-hover-time-aba.js)
+   ===================================================================
+   Um único balão fixo no <body>, reposicionado a cada hover. Não é
+   `::after` da aba porque `.tab-btn` tem overflow:hidden (degradê da
+   borda) e cortaria o balão; não é `title` porque o Chromium suprime
+   tooltip nativo dentro de elemento draggable.
+
+   Este card é o ÚNICO tooltip da aba: o `title` nativo e o balão do
+   ponto de ping foram removidos (css/02, shell/11, shell/19) porque
+   abriam por cima dele, cobrindo os sprites com menos informação. */
+.hover-time-aba {
+  position: fixed;
+  z-index: 10000;
+  width: 300px;
+  padding: 0;
+  background: #0b1220;
+  border: 1px solid rgba(148, 163, 184, .28);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
+  color: #e2e8f0;
+  /* Fica fora do fluxo do ponteiro: se ele capturasse o mouse, entrar no
+     balão dispararia o `mouseout` da aba e o balão se fecharia sozinho. */
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-4px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+.hover-time-aba.visivel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+/* ---- CABEÇALHO: qual conta é esta, e como ela está ----
+   Três linhas, porque este cabeçalho absorveu o `title` nativo da aba e o
+   tooltip do ponto de ping — os dois abriam por cima deste card:
+     l1  nome da conta + treinador
+     l2  partição + latência
+     l3  pokémon ativo
+   A faixa usa a MESMA cor da aba (--cor-aba), senão o card de 11 contas fica
+   idêntico e some a referência de onde ele nasceu. */
+.hover-time-aba .hta-topo {
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, .18);
+  border-left: 3px solid var(--cor-aba, #10b981);
+  border-radius: 10px 10px 0 0;
+  background: rgba(148, 163, 184, .07);
+}
+.hover-time-aba .hta-topo-l1 {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.hover-time-aba .hta-topo-l2 {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 3px;
+  font-size: 9.5px; font-weight: 600; color: #64748b;
+}
+.hover-time-aba .hta-topo-l3 {
+  margin-top: 3px;
+  font-size: 10px; font-weight: 700; color: #cbd5e1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hover-time-aba .hta-conta {
+  font-size: 12px; font-weight: 800; color: #f1f5f9;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hover-time-aba .hta-treinador {
+  font-size: 10px; font-weight: 600; color: #a7f3d0; flex-shrink: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px;
+}
+.hover-time-aba .hta-particao {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hover-time-aba .hta-ping {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  color: #94a3b8; white-space: nowrap;
+}
+/* O mesmo ponto da aba, repetido aqui: é o que amarra "esta linha do card" ao
+   pontinho que se vê na lista de contas. Cores iguais às de `.tab-ping-dot`
+   (css/02) — as classes bom/medio/ruim/morto vêm do mesmo lugar. */
+.hover-time-aba .hta-ping-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #475569; flex-shrink: 0;
+}
+.hover-time-aba .hta-ping-dot.bom { background: #4ade80; }
+.hover-time-aba .hta-ping-dot.medio { background: #fde047; }
+.hover-time-aba .hta-ping-dot.ruim { background: #fb923c; }
+.hover-time-aba .hta-ping-dot.morto { background: #ef4444; }
+
+/* ---- GRADE 3x2: as seis vagas ----
+   Três colunas porque o time é de 6: duas linhas iguais, sem vaga órfã. */
+.hover-time-aba .hta-grade {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 8px;
+}
+.hover-time-aba .hta-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 5px 3px 4px;
+  background: rgba(148, 163, 184, .06);
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 7px;
+  min-width: 0;
+}
+/* O ATIVO é o que está batendo agora — é a informação mais procurada aqui,
+   então ganha contorno verde em vez de só uma etiqueta. */
+.hover-time-aba .hta-slot.ativo {
+  border-color: rgba(16, 185, 129, .65);
+  background: rgba(16, 185, 129, .12);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, .25);
+}
+.hover-time-aba .hta-slot.vazio {
+  justify-content: center;
+  min-height: 74px;
+  border-style: dashed;
+  background: transparent;
+}
+.hover-time-aba .hta-vazio-ic { color: #334155; font-size: 16px; font-weight: 700; }
+
+.hover-time-aba .hta-sprite-box {
+  position: relative;
+  width: 44px; height: 38px;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.hover-time-aba .hta-sprite {
+  max-width: 44px; max-height: 38px;
+  image-rendering: pixelated;   /* sprite BW é pixel art: sem borrar ao escalar */
+}
+.hover-time-aba .hta-shiny {
+  position: absolute; top: -2px; right: -2px;
+  font-size: 9px; line-height: 1;
+}
+.hover-time-aba .hta-nome {
+  font-size: 10px; font-weight: 700; color: #f1f5f9;
+  max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hover-time-aba .hta-linha2 {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 9px; font-weight: 600; line-height: 1.2;
+  max-width: 100%; overflow: hidden; white-space: nowrap;
+}
+.hover-time-aba .hta-lv { color: #86efac; }
+.hover-time-aba .hta-power { color: #fcd34d; }
+.hover-time-aba .hta-tier {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, .16);
+  border-radius: 4px; padding: 0 3px;
+}
+
+.hover-time-aba .hta-aviso {
+  padding: 12px 12px 14px;
+  font-size: 10.5px; line-height: 1.45; color: #94a3b8; text-align: center;
+}
+.hover-time-aba .hta-aviso i { color: #64748b; font-style: normal; font-size: 9.5px; }
+
+/* Rodapé: resumo do time e as dicas de uso que estavam no `title` da aba.
+   A dica fica menor e mais apagada que o resumo — ela é lembrete, não é o que
+   se veio ler aqui. */
+.hover-time-aba .hta-rodape {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 5px 10px 7px;
+  border-top: 1px solid rgba(148, 163, 184, .14);
+  font-size: 9.5px; font-weight: 600; color: #94a3b8; text-align: center;
+}
+.hover-time-aba .hta-dica {
+  font-size: 9px; font-weight: 500; color: #556274;
+}

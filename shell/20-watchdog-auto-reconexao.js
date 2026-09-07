@@ -185,8 +185,122 @@
         if (msg.includes('[BUG SUITE]')) {
           console.log(`%c[${nomesAbas[idxAtual()] || ('Conta ' + (idxAtual() + 1))}] ${msg}`, 'color: #38bdf8; font-weight: bold;');
         }
+        if (msg.includes('[HUNT_RESET_ALL]')) {
+          console.log(`[Hunt Analyse] Reset global disparado pela Conta ${idxAtual() + 1} via console-message`);
+          reiniciarHuntAnalyseTodasAbas(idxAtual());
+        }
+      });
+
+      // Fallback nativo via page-title-updated caso console-message não seja interceptado
+      wv.addEventListener('page-title-updated', (e) => {
+        const t = e.title || '';
+        if (t.startsWith('__HUNT_RESET_ALL__')) {
+          console.log(`[Hunt Analyse] Reset global detectado pela Conta ${idxAtual() + 1} via page-title-updated`);
+          reiniciarHuntAnalyseTodasAbas(idxAtual());
+        }
       });
     }
+
+    let _ultimoHuntResetGlobalTs = 0;
+    function reiniciarHuntAnalyseTodasAbas(origemIdx = -1) {
+      const agora = Date.now();
+      if (agora - _ultimoHuntResetGlobalTs < 800) return;
+      _ultimoHuntResetGlobalTs = agora;
+
+      const todasWvs = new Set();
+      if (typeof webviews !== 'undefined' && Array.isArray(webviews)) {
+        webviews.forEach(wv => { if (wv) todasWvs.add(wv); });
+      }
+      document.querySelectorAll('webview').forEach(wv => { if (wv) todasWvs.add(wv); });
+
+      const totalAlvo = todasWvs.size;
+      const logMsg = `[Hunt Analyse] Propagando reset para ${totalAlvo} webviews (Origem: Conta ${origemIdx + 1})`;
+      console.log(logMsg);
+      try {
+        if (typeof ipcRenderer !== 'undefined' && ipcRenderer.send) {
+          ipcRenderer.send('write-debug-log', { tipo: 'HUNT-RESET-ALL', mensagem: logMsg });
+        }
+      } catch (e) {}
+
+      const scriptReset = `
+        (async () => {
+          try {
+            const w = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            if (typeof w.__haExecutarResetHunt === 'function') {
+              return await w.__haExecutarResetHunt('global');
+            }
+            if (typeof window.__haExecutarResetHunt === 'function') {
+              return await window.__haExecutarResetHunt('global');
+            }
+
+            // Fallback completo e autocontido
+            try {
+              if (w.K && w.K.hunt) {
+                w.K.hunt.secs = 0;
+                w.K.hunt.t0 = Date.now();
+                w.K.hunt.gold = 0;
+                w.K.hunt.soldGold = 0;
+                w.K.hunt.lootGold = 0;
+                w.K.hunt.loot = [];
+                w.K.hunt.xp = 0;
+                w.K.hunt.kills = 0;
+                w.K.hunt.catches = 0;
+              }
+              if (w.gameState && w.gameState._lastHunt) {
+                w.gameState._lastHunt = (w.K && w.K.hunt) ? w.K.hunt : { secs: 0, t0: Date.now(), gold: 0, soldGold: 0, lootGold: 0, loot: [], xp: 0, kills: 0 };
+              }
+            } catch(e) {}
+
+            try {
+              if (typeof w.Y === 'function') {
+                await w.Y('huntReset');
+              } else if (typeof apiTest === 'function') {
+                await apiTest('huntReset');
+              } else {
+                let tok = '';
+                try { tok = sessionStorage.getItem('pmi_tab_token') || ''; } catch(e){}
+                if (!tok || tok.length < 10) {
+                  try { tok = localStorage.getItem('pmi_token') || localStorage.getItem('token') || ''; } catch(e){}
+                }
+                if (!tok || tok.length < 10) tok = w.q || w.TOKEN || w.TAB_TOKEN || '';
+                if (tok) {
+                  await fetch('/api/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: tok, action: 'huntReset' })
+                  }).catch(() => {});
+                }
+              }
+            } catch(e) {}
+
+            try {
+              const huntObj = (w.K && w.K.hunt) || (w.gameState && w.gameState._lastHunt) || { secs: 0, t0: Date.now(), gold: 0, soldGold: 0, lootGold: 0, loot: [], xp: 0, kills: 0 };
+              if (typeof w.updateMiniHunt === 'function') {
+                w.updateMiniHunt(huntObj);
+              }
+            } catch(e) {}
+
+            try {
+              if (typeof logEvent === 'function') {
+                logEvent('🔄 <b>Hunt Analyse reiniciada</b> (todas as abas)', '#38bdf8');
+              }
+            } catch(e) {}
+          } catch (err) {
+            console.warn('[HUNT_RESET] Erro ao executar reset na webview:', err);
+          }
+        })();
+      `;
+
+      todasWvs.forEach((wv) => {
+        if (!wv || typeof wv.executeJavaScript !== 'function') return;
+        wv.executeJavaScript(scriptReset).catch(() => {});
+      });
+
+      if (typeof mostrarToast === 'function') {
+        mostrarToast('🌐 Hunt Analyse reiniciada em todas as abas!', '🌐', 'toast-success', 2500);
+      }
+    }
+    window.reiniciarHuntAnalyseTodasAbas = reiniciarHuntAnalyseTodasAbas;
 
     // Escala do modo Grid: acompanha quantas contas cabem por linha. Menos
     // colunas = card maior = dá pra render o jogo maior sem cortar nada.

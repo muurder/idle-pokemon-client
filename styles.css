@@ -4,6 +4,14 @@
   box-sizing: border-box;
 }
 
+/* Substituição local do Animate.css CDN (~80KB) — a única animação que o
+   projeto usava era fadeInDown, e a referência estava com a sintaxe errada
+   (nome de classe em vez de keyframe). Agora funciona de verdade. */
+@keyframes modalFadeInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* A lista aberta de um <select> nativo é desenhada pelo Chromium com fundo
    BRANCO próprio: ela NÃO herda o background translúcido do campo. Como todos
    os selects da casca usam `color` claro (#f1f5f9 / #cbd5e1), o texto das
@@ -131,7 +139,7 @@ body {
 .app-sidebar.collapsed .sidebar-nav-btn span:not(:first-child),
 .app-sidebar.collapsed .nav-btn-title,
 .app-sidebar.collapsed .sidebar-menu-btn > div > span:last-child,
-.app-sidebar.collapsed .sidebar-menu-btn > span:last-child,
+.app-sidebar.collapsed .sidebar-menu-btn > span,
 .app-sidebar.collapsed .sidebar-pinned-section .sidebar-section-header,
 .app-sidebar.collapsed .sidebar-section-header,
 .app-sidebar.collapsed .sidebar-brand-text {
@@ -445,7 +453,6 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(15, 23, 42, 0.5);
   overflow: visible;
-  flex-shrink: 0;
 }
 
 .brand-text-group {
@@ -714,7 +721,6 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(15, 23, 42, 0.7);
   position: relative;
-  flex-shrink: 0;
 }
 
 .sidebar-menu-btn {
@@ -778,27 +784,11 @@ body {
 .tab-ping-dot.ruim { background: #fb923c; box-shadow: 0 0 5px rgba(251, 146, 60, .6), 0 0 0 2px rgba(15,23,42,.55); }
 .tab-ping-dot.morto { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, .8), 0 0 0 2px rgba(15,23,42,.55); }
 
-/* Tooltip flutuante do ping (ver JS em 19-monitor-latencia-ping.js): não dá
-   pra usar `title` nativo (Chromium suprime tooltip nativo em descendente de
-   elemento draggable, e `.tab-btn` é draggable="true") nem `::after` preso ao
-   ponto (`.tab-btn` tem overflow:hidden pro degradê da borda, que cortaria o
-   balão). Por isso é um único `<div>` fixo, anexado no `<body>`, posicionado
-   via JS a cada hover — fora de qualquer clipping da sidebar. */
-.ping-tip-flutuante {
-  position: fixed;
-  transform: translateX(-50%);
-  background: #0f172a;
-  color: #f1f5f9;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 5px;
-  border: 1px solid rgba(148, 163, 184, .3);
-  white-space: nowrap;
-  z-index: 9999;
-  pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,.4);
-}
+/* O ping NAO tem mais tooltip proprio (o `.ping-tip-flutuante` foi removido
+   daqui e de shell/19). Ele abria colado ao ponto, ou seja, em cima da aba —
+   e o card do time (css/50, shell/50) abre no mesmo lugar, com muito mais
+   informacao. O numero em ms virou uma linha dentro do card; aqui ficou so o
+   ponto colorido, que e o aviso de relance. */
 
 /* A aba fica um pouco mais alta pra caber o sprite sem apertar as duas linhas. */
 .tab-btn { height: 44px; }
@@ -915,12 +905,9 @@ body {
 }
 .app-sidebar.collapsed .tab-btn { position: relative; }
 
-/* Rodapé: só os ícones, centrados e sem transbordar.
-   `.sidebar-menu-btn` fica de fora daqui de proposito -- ja tem regra
-   propria (36px, igual aos outros botoes-icone do rodape) mais acima;
-   duplicar aqui com 44px so pra brigar com ela e o texto "Menu" ficando
-   torto quando a barra recolhe. */
-.app-sidebar.collapsed .sidebar-pinned-item {
+/* Rodapé: só os ícones, centrados e sem transbordar. */
+.app-sidebar.collapsed .sidebar-pinned-item,
+.app-sidebar.collapsed .sidebar-menu-btn {
   width: 44px; min-width: 44px; padding: 0; margin: 0 auto;
   justify-content: center; gap: 0;
 }
@@ -1266,23 +1253,28 @@ body {
   contain: layout paint style;
 }
 
-/* MODO ABAS (TAB MODE)
-   As abas inativas continuam carregadas e com background throttling desativado
-   pelo Electron, portanto a hunt segue online. `visibility:hidden` só tira a
-   aba do compositor: evita desenhar jogos que o usuário não está vendo sem
-   descarregar, pausar ou recriar a webview. */
+/* MODO ABAS (TAB MODE) — OTIMIZADO PARA BAIXO USO DE GPU
+   As abas inativas usam `visibility: hidden`, liberando as texturas DirectX na GPU
+   e economizando até 1.0 GB de VRAM no processo GPU do Chromium.
+   A velocidade de troca e ausência de travamento é mantida pelo cache de zoom e foco desacoplado. */
 #views-container.mode-tabs .webview-wrapper {
-  position: absolute; inset: 0;
-  visibility: hidden; opacity: 1; pointer-events: none;
-  width: 100%; height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  visibility: hidden;
+  opacity: 1;
+  pointer-events: none;
+  z-index: 1;
+  contain: layout paint size;
 }
 
 #views-container.mode-tabs .webview-wrapper.active {
-  position: absolute; inset: 0; left: 2px;
-  visibility: visible; opacity: 1; pointer-events: auto;
-  z-index: 2;
-  display: flex;
-  width: 100%; height: 100%;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 /* --- TOAST NOTIFICATIONS --- */
@@ -1520,7 +1512,7 @@ webview {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  animation: animate__animated animate__fadeInDown 0.25s ease-out;
+  animation: modalFadeInDown 0.25s ease-out;
 }
 
 .modal-title {
@@ -3542,3 +3534,21 @@ body { background-color: #0a0f1d !important; color: #f1f5f9 !important; }
 .v2eval-side-item button { background: none; border: none; color: #64748b; cursor: pointer; font-size: 11px; }
 .v2eval-side-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
 .v2eval-side-actions button { flex: 1; font-size: 9.5px; font-weight: 700; padding: 7px 4px; border-radius: 7px; background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.18); color: #cbd5e1; cursor: pointer; font-family: inherit; }
+
+/* =====================================================================
+   99-client.css -- AJUSTES QUE SO O CLIENTE PRECISA
+   =====================================================================
+   Anexado ao fim de styles.css por build_client.py. Existe pra corrigir
+   o que a PODA deixa torto -- nao pra redesenhar nada. Se um ajuste aqui
+   crescer, o certo e cercar o CSS no fonte do dev, nao empilhar override.
+
+   O !important nao e preguica: os estilos alvo sao atributos style="..."
+   inline no index.html do dev, e folha de estilo so vence inline com ele.
+   ===================================================================== */
+
+/* O rodape da sidebar era uma grade de duas colunas: [☰ Menu][⚡ Game
+   Tools]. Sem o Game Tools, o Menu ficava com metade da largura e um
+   buraco do lado. Volta pra uma coluna. */
+.sidebar-footer > div {
+  grid-template-columns: 1fr !important;
+}

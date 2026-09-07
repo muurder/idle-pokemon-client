@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Idle Pokémon Electron Client - Multi-Contas · idlepokemoon.com.br</title>
-  <!-- 🎨 Tailwind CSS Play CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Idle Pokémon Electron Client - Multi-Contas (Trade & Farm 4x)</title>
+  <!-- 🎨 Tailwind Play CDN REMOVIDO (perf): nenhuma classe Tailwind no HTML,
+       era ~300KB de runtime JS fazendo JIT scan do DOM inteiro. -->
   <!-- 🅱️ Bootstrap 5 CSS + Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <!-- ✨ Animate.css -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <!-- ✨ Animate.css REMOVIDO (perf): ~80KB, só referenciada com sintaxe
+       incorreta em 2 regras CSS (corrigidas para @keyframes local). -->
   <!-- 🔤 Fontes: Inter (UI) + JetBrains Mono (código/dados) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -100,11 +100,12 @@
 
       <!-- FOOTER DA SIDEBAR: BOTÃO DO MENU HAMBÚRGUER & IDLE SUITE -->
       <div class="sidebar-footer" style="padding: 4px 6px">
-        <div style="display: grid; grid-template-columns: 1fr; gap: 4px; position: relative; width: 100%">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; position: relative; width: 100%">
           <button class="sidebar-menu-btn" id="btn-hamburger-menu" onclick="toggleHamburgerMenu(event)" title="Menu de Ações, Ferramentas e Configurações" style="padding: 6px 4px; justify-content: center; gap: 4px">
             <span style="font-size: 13px">☰</span>
             <span style="font-size: 11px; font-weight: 800">Menu</span>
           </button>
+          
 
           <!-- DROPDOWN FLUTUANTE DO MENU HAMBÚRGUER (ABRE PARA CIMA) -->
           <div id="dropdown-hamburger-menu" class="hamburger-dropdown" style="display:none; position:absolute; bottom:42px; left:0; width:235px; background:rgba(15,23,42,0.98); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.18); border-radius:10px; box-shadow:0 12px 35px rgba(0,0,0,0.9); z-index:99999; padding:6px; flex-direction:column; gap:3px" onclick="event.stopPropagation()">
@@ -272,7 +273,7 @@
 
       <div class="modal-conta-body">
         <label class="modal-conta-label" for="modal-rename-input">Nome da conta</label>
-        <input type="text" id="modal-rename-input" class="modal-input" placeholder="Ex: Principal, Farm 2..." maxlength="25" />
+        <input type="text" id="modal-rename-input" class="modal-input" placeholder="Ex: JesusCrizto, Farm 2..." maxlength="25" />
 
         <div class="modal-conta-label" style="margin-top:2px">Cor da aba</div>
         <div class="modal-conta-cores" id="modal-conta-cores"></div>
@@ -624,6 +625,289 @@
   </div>
 
 
+
+  <!-- ⚜️ ALTO COMANDO — ranking global das N contas e redistribuição de elite.
+       Lógica em shell/51 (pontuação), 52 (plano), 53 (esta tela) e 54 (execução).
+       Nada aqui escreve no jogo: o plano só sai do papel no botão Executar. -->
+  <div id="modal-alto-comando" class="modal-backdrop" onclick="fecharModalSeFora(event, 'modal-alto-comando')">
+    <div class="ac-box" onclick="event.stopPropagation()">
+      <div class="ac-header">
+        <div class="ac-title">
+          <span class="ac-title-emoji">⚜️</span>
+          <div>
+            <div class="ac-title-nome">ALTO COMANDO</div>
+            <div class="ac-title-sub">Ranking global do acervo · Rank 1 é a primeira aba e escolhe primeiro</div>
+          </div>
+        </div>
+        <div class="ac-header-actions">
+          <button class="ac-btn-sec" onclick="acAtualizarAcervo()">🔄 Atualizar acervo</button>
+          <button class="ac-btn-close" onclick="fecharAltoComando()">✕</button>
+        </div>
+      </div>
+
+      <div class="ac-abas">
+        <button id="ac-aba-distribuicao" class="active" onclick="acAbrirAba('distribuicao')" title="Reparte o acervo entre todos os treinadores, na ordem das abas.">⚖️ Distribuição</button>
+        <button id="ac-aba-foco" onclick="acAbrirAba('foco')" title="Um treinador só recebe, com o acervo inteiro à disposição — e mirando um líder específico, usando o histórico de batalha dele.">🎯 Foco em um treinador</button>
+      </div>
+
+      <div class="ac-toolbar">
+        <span class="ac-rotulo">Critério</span>
+        <div class="ac-seg">
+          <button id="ac-modo-gym" class="active" onclick="acDefinirModo('gym')" title="Pontua cada time pela melhor resposta contra cada um dos 18 líderes, com o poder entrando como peso. O time nasce variado em tipo.">🏟️ Cobertura de Ginásio</button>
+          <button id="ac-modo-poder" onclick="acDefinirModo('poder')" title="Só DPS/Power: os 6 mais fortes disponíveis vão pro Rank 1, os 6 seguintes pro Rank 2, e assim por diante.">💥 Poder Bruto</button>
+        </div>
+        <span class="ac-rotulo">Custo de troca</span>
+        <select id="ac-custo-select" class="ac-select" onchange="acDefinirCusto(this.value)" title="O quanto um pokémon precisa ser melhor pra valer mudar de conta. Cada troca pausa a caçada das duas contas.">
+          <option value="livre">Livre — só a nota importa</option>
+          <option value="baixo">Baixo (5%)</option>
+          <option value="medio">Médio (15%)</option>
+          <option value="alto">Alto (30%) — poucas trocas</option>
+        </select>
+        <label class="fj-chk" title="Mostra, em cada treinador, o time de HOJE e o time DEPOIS do plano — quem sai, quem fica e quem chega — antes de qualquer troca acontecer.">
+          <input type="checkbox" id="ac-antes-depois" onchange="acAlternarAntesDepois(this.checked)" /> 🔀 Antes → depois
+        </label>
+        <button id="ac-btn-calcular" class="ac-btn" onclick="acCalcularPlano()">⚡ Calcular Plano</button>
+        <button id="ac-btn-executar" class="ac-btn-go" onclick="acExecutarPlano()" disabled>▶️ Executar Plano</button>
+        <button id="ac-btn-abortar" class="ac-btn-stop" style="display:none" onclick="acAbortarPlano()">⏹ Abortar</button>
+        <input type="text" id="ac-search" class="ac-search" placeholder="🔍 Buscar pokémon ou conta..." oninput="acBuscar(this.value)" />
+        <span class="ac-status" id="ac-status">—</span>
+      </div>
+
+      <div class="ac-barra-foco" id="ac-barra-foco" style="display:none">
+        <span class="ac-rotulo">Treinador</span>
+        <select id="ac-foco-conta" class="ac-select" onchange="acDefinirFoco(this.value)"></select>
+        <span class="ac-rotulo">Líder alvo</span>
+        <select id="ac-foco-lider" class="ac-select ac-select-largo" onchange="acDefinirLiderFoco(this.value)" title="🧱 marca os líderes onde esta conta só apanhou. Escolhido um líder, os alvos deixam de ser os 18 e passam a ser os 6 pokémon do time dele."></select>
+        <span class="ac-dica-foco">🧱 = derrota sem vitória no histórico desta conta · 💀 = golpe medido com 0 de dano contra este líder</span>
+      </div>
+
+      <div class="ac-content">
+        <div class="ac-col-fila">
+          <div class="ac-col-head" id="ac-fila-titulo">🏅 Fila do acervo <small>todas as contas, ordenadas pelo critério ativo</small></div>
+          <div class="ac-fila" id="ac-fila"><div class="ac-vazio">Abra e clique em ⚡ Calcular Plano.</div></div>
+        </div>
+        <div class="ac-col-ranks">
+          <div class="ac-col-head">🎖️ Treinadores <small>🔓/🔒 tranca o treinador fora da ação em massa · ▲▼ move a conta de rank (move a aba de verdade)</small></div>
+          <div class="ac-ranks" id="ac-ranks"><div class="ac-vazio">Sem plano calculado.</div></div>
+        </div>
+      </div>
+
+      <div class="ac-footer">
+        <div class="ac-resumo-bar" id="ac-resumo"></div>
+        <div class="ac-progress-box" id="ac-progress-box">
+          <div class="ac-progress-trilho"><div class="ac-progress-fill" id="ac-progress-fill"></div></div>
+          <span class="ac-progress-txt" id="ac-progress-txt">—</span>
+        </div>
+        <div class="ac-log" id="ac-log-console"><div style="color:#64748b">Log da execução aparece aqui. Nada foi escrito no jogo ainda.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⚗️ FORJA DE ELITE — em quem vale gastar XP. shell/56 (nota), shell/57 (tela).
+       Só leitura: nada aqui escreve no jogo. -->
+  <div id="modal-forja" class="modal-backdrop" onclick="fecharModalSeFora(event, 'modal-forja')">
+    <div class="fj-box" onclick="event.stopPropagation()">
+      <div class="fj-header">
+        <div class="ac-title">
+          <span class="ac-title-emoji">⚗️</span>
+          <div>
+            <div class="fj-title-nome">FORJA DE ELITE</div>
+            <div class="ac-title-sub">Quem subir de nível para virar peça de time — medido contra os 18 líderes e as fases dos bosses</div>
+          </div>
+        </div>
+        <div class="ac-header-actions">
+          <button id="forja-btn-expandir" class="ac-btn" style="display:none" onclick="forjaSairDaDoca()" title="Volta a Forja para a tela cheia e solta a aba do jogo.">⛶ Tela cheia</button>
+          <button class="ac-btn-sec" onclick="forjaAtualizar()">🔄 Atualizar</button>
+          <button class="ac-btn-close" onclick="fecharForja()">✕</button>
+        </div>
+      </div>
+
+      <div class="ac-toolbar">
+        <span class="ac-rotulo">Conta</span>
+        <select id="forja-conta" class="ac-select" onchange="forjaDefinirConta(this.value)"></select>
+        <span class="ac-rotulo">Origem</span>
+        <select id="forja-origem" class="ac-select" onchange="forjaDefinirOrigem(this.value)" title="Por padrão a Forja olha só quem está parado no box — quem já está no time está sendo usado.">
+          <option value="box" selected>📦 Só quem está no box</option>
+          <option value="tudo">Box + time</option>
+        </select>
+        <label class="fj-chk" title="Esconde quem só daria força bruta: sobra quem cobre um líder ou boss que a conta dele não responde hoje.">
+          <input type="checkbox" id="forja-destrava" onchange="forjaAlternarSoDestrava(this.checked)" /> Só quem destrava alvo
+        </label>
+        <div class="ac-seg">
+          <button id="forja-vista-lista" class="active" onclick="forjaDefinirVista('lista')" title="Linha por pokémon, densa — pra varrer centenas.">📑 Lista</button>
+          <button id="forja-vista-cards" onclick="forjaDefinirVista('cards')" title="Card por pokémon, com a régua de growth aberta — pra decidir entre finalistas.">🎴 Cards</button>
+        </div>
+        <input type="text" id="forja-busca" class="ac-search" placeholder="🔍 Buscar pokémon ou conta..." oninput="forjaBuscar(this.value)" />
+        <span class="ac-status" id="forja-status">—</span>
+      </div>
+
+      <div class="fj-lista" id="forja-lista">
+        <div class="ac-vazio">Abrindo... a primeira leitura busca os bosses e o acervo das contas.</div>
+      </div>
+    </div>
+
+    <!-- Doca: só aparece no modo encolhido, ao lado da Forja, com a projeção do
+         pokémon aberto. O jogo fica visível e clicável atrás das duas. -->
+    <div class="fj-doca" id="forja-doca" style="display:none" onclick="event.stopPropagation()">
+      <div class="fj-doca-cab">
+        <span class="fj-doca-titulo" id="forja-doca-titulo">Projeção</span>
+        <button class="ac-btn-close" onclick="forjaSairDaDoca()" title="Fecha a doca e volta para a tela cheia">✕</button>
+      </div>
+      <div class="fj-doca-corpo" id="forja-doca-corpo">
+        <div class="ac-vazio">Clique num pokémon da lista.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⚡ MONITOR DE RECURSOS & TELEMETRIA -->
+  <div id="modal-monitor-desempenho" class="modal-backdrop" onclick="fecharModalSeFora(event, 'modal-monitor-desempenho')">
+    <div class="perf-mon-box" onclick="event.stopPropagation()">
+      <!-- HEADER -->
+      <div class="perf-mon-header">
+        <div class="perf-mon-title-wrap">
+          <span style="font-size:20px">📊</span>
+          <div>
+            <div class="perf-mon-title">MONITOR DE RECURSOS & TELEMETRIA</div>
+            <div class="perf-mon-sub">Memória RAM, latência da API, FPS e estabilidade de renderização em tempo real</div>
+          </div>
+        </div>
+        <button class="ac-btn-close" onclick="fecharModalMonitorDesempenho()" style="background:transparent; border:none; color:#94a3b8; font-size:16px; cursor:pointer; font-weight:800">✕</button>
+      </div>
+
+      <!-- GRID DE CARDS PRINCIPAIS -->
+      <div class="perf-mon-grid">
+        <!-- CARD 1: MEMÓRIA HEAP / RAM -->
+        <div class="perf-mon-card">
+          <div class="perf-mon-card-head">
+            <span>🧠 Memória Electron / Node</span>
+            <span class="perf-pill green" id="perf-ram-pill">Normal</span>
+          </div>
+          <div class="perf-mon-val-huge">
+            <span id="perf-ram-used">--</span>
+            <span class="perf-mon-val-unit">MB Heap</span>
+          </div>
+          <div class="perf-mon-bar-trilho">
+            <div class="perf-mon-bar-fill" id="perf-ram-bar" style="width: 25%"></div>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Alocação Heap:</span>
+            <b id="perf-ram-limit">-- MB</b>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Memória Física (RSS):</span>
+            <b id="perf-ram-rss">-- MB</b>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Windows RAM Livre:</span>
+            <b id="perf-ram-os">--</b>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Sentinela de RAM (2º Plano):</span>
+            <b id="perf-ram-sentinela" style="color:#4ade80">🟢 Ativo (Auto >75%)</b>
+          </div>
+        </div>
+
+        <!-- CARD 2: PING / LATÊNCIA DA REDE -->
+        <div class="perf-mon-card">
+          <div class="perf-mon-card-head">
+            <span>📶 Latência API do Jogo</span>
+            <span class="perf-pill green" id="perf-ping-pill">Testando...</span>
+          </div>
+          <div class="perf-mon-val-huge">
+            <span id="perf-ping-val">-- ms</span>
+          </div>
+          <div class="perf-mon-stats-row" style="margin-top:auto">
+            <span>Endpoint:</span>
+            <b>/api/state</b>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Protocolo:</span>
+            <b>HTTP/1.1 HTTPS Keep-Alive</b>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Status da Conexão:</span>
+            <b id="perf-ping-status" style="color:#10b981">Conectado (200 OK)</b>
+          </div>
+        </div>
+
+        <!-- CARD 3: TAXA DE QUADROS (SHELL) -->
+        <div class="perf-mon-card">
+          <div class="perf-mon-card-head">
+            <span>🖥️ Janela Principal (Shell)</span>
+            <span class="perf-pill green" id="perf-shell-fps-pill">60 FPS</span>
+          </div>
+          <div class="perf-mon-val-huge">
+            <span id="perf-shell-fps">60</span>
+            <span class="perf-mon-val-unit">FPS / 16.7ms</span>
+          </div>
+          <div class="perf-mon-stats-row" style="margin-top:auto">
+            <span>Tempo 95% (p95):</span>
+            <b id="perf-shell-p95">-- ms</b>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Tarefas longas (>50ms):</span>
+            <b id="perf-shell-longtasks">0</b>
+          </div>
+          <div class="perf-mon-stats-row">
+            <span>Contas Monitoradas:</span>
+            <b id="perf-shell-contas">12 contas ativas</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABELA DETALHADA POR CONTA -->
+      <div class="perf-mon-section-title">DESEMPENHO POR CONTA CONECTADA</div>
+      <div class="perf-mon-table-wrap">
+        <table class="perf-mon-table">
+          <thead>
+            <tr>
+              <th>Conta</th>
+              <th>FPS Atual</th>
+              <th>Tempo Quadro</th>
+              <th>Auto-Alívio</th>
+              <th>Nós DOM</th>
+              <th>Painel v2</th>
+            </tr>
+          </thead>
+          <tbody id="perf-table-body">
+            <tr>
+              <td colspan="6" style="text-align:center; color:#94a3b8; padding:16px;">Carregando métricas das contas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- FOOTER / AÇÕES -->
+      <div class="perf-mon-footer">
+        <div style="display:flex; align-items:center; gap:10px">
+          <label style="font-size:11px; color:#cbd5e1; display:flex; align-items:center; gap:6px; cursor:pointer">
+            <input type="checkbox" id="perf-chk-auto-refresh" checked style="accent-color:#10b981" />
+            <span>Atualização ao vivo (2s)</span>
+          </label>
+        </div>
+        <div class="perf-mon-actions">
+          <button class="perf-btn perf-btn-sec" onclick="window.otimizarMemoriaRamUI()" style="border-color:rgba(52,211,153,0.4); color:#6ee7b7" title="Executa o otimizador Python (EmptyWorkingSet) para liberar memória física do sistema imediatamente">
+            <span>🧹</span> <span>Limpar RAM Agora</span>
+          </button>
+          <button class="perf-btn perf-btn-sec" onclick="window.alternarSentinelaRamUI()" id="perf-btn-toggle-sentinela" style="border-color:rgba(96,165,250,0.4); color:#93c5fd" title="Pausar ou Retomar o Sentinela automático em segundo plano">
+            <span>🛡️</span> <span id="perf-txt-toggle-sentinela">Sentinela: Ativo</span>
+          </button>
+          <button class="perf-btn perf-btn-sec" onclick="window.abrirSentinelaPowerShellUI()" style="border-color:rgba(148,163,184,0.3); color:#cbd5e1" title="Abrir janela do terminal externo no Windows">
+            <span>🖥️</span> <span>Ver no Terminal</span>
+          </button>
+          <button class="perf-btn perf-btn-sec" onclick="window.copiarRelatorioMonitor()" title="Gera o relatório de diagnóstico e copia para a área de transferência">
+            <span>📋</span> <span>Copiar Relatório</span>
+          </button>
+          <button class="perf-btn perf-btn-primary" onclick="window.atualizarMonitorDesempenhoManualmente()" title="Atualizar dados imediatamente">
+            <span>🔄</span> <span>Atualizar</span>
+          </button>
+          <button class="perf-btn perf-btn-sec" onclick="fecharModalMonitorDesempenho()">
+            <span>Fechar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- CONTAINER DE NOTIFICAÇÕES TOAST -->
   <div id="toast-container"></div>
