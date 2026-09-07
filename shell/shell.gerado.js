@@ -130,43 +130,6 @@
         desc: 'Silencia som, popups do Electron e notificações do SO em TODAS as contas abertas (continua registrando na Sala de Troféus)',
         badgeHtml: '<span id="shiny-mute-todas-badge" style="font-size:9px; font-weight:900; color:#4ade80; background:rgba(34,197,94,0.18); padding:2px 6px; border-radius:10px; border:1px solid rgba(34,197,94,0.35); margin-right:4px">SOM</span>'
       },
-      'monitor-recursos': {
-        icon: '⚡', label: 'Monitor de Recursos & Telemetria', color: '#10b981',
-        action: 'fecharIdleSuiteMenu(); abrirModalMonitorDesempenho()',
-        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema', bold: true,
-        desc: 'RAM (Heap vs 1024MB, RSS, SO), Latência /api/state (ms) e FPS por conta ao vivo'
-      },
-      'otimizar-ram': {
-        icon: '🧹', label: 'Limpar & Otimizar Memória RAM', color: '#34d399',
-        action: 'fecharIdleSuiteMenu(); otimizarMemoriaRamUI()',
-        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema', bold: true,
-        desc: 'Aciona o otimizador Python Win32 (EmptyWorkingSet) para liberar RAM física retida'
-      },
-      'sentinela-ram': {
-        icon: '🛡️', label: 'Sentinela de RAM Automático', color: '#60a5fa',
-        action: 'fecharIdleSuiteMenu(); alternarSentinelaRamUI()',
-        badgeHtml: '<span id="sentinela-badge" style="font-size:9px; font-weight:900; color:#4ade80; background:rgba(34,197,94,0.18); padding:2px 6px; border-radius:10px; border:1px solid rgba(34,197,94,0.35); margin-right:4px">AUTO</span>',
-        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema', bold: true,
-        desc: 'Ativo por padrão: monitora a cada 60s em 2º plano e limpa se RAM > 75%. Clique para pausar/retomar.'
-      },
-      'sentinela-powershell': {
-        icon: '🖥️', label: 'Ver Sentinela no PowerShell', color: '#93c5fd',
-        action: 'fecharIdleSuiteMenu(); abrirSentinelaPowerShellUI()',
-        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema',
-        desc: 'Abre uma janela visível do PowerShell rodando o loop de monitoramento da RAM ao vivo'
-      },
-      'diag-desempenho': {
-        icon: '📊', label: 'Diagnostico de Desempenho', color: '#7dd3fc',
-        action: 'fecharIdleSuiteMenu(); relatorioDesempenho()',
-        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema',
-        desc: 'Le o pmiFps() de cada conta (quadro, FPS, auto-alivio do jogo, caches) e copia o relatorio pra area de transferencia'
-      },
-      'isuite-debug': {
-        icon: '📋', label: 'Copiar Logs de Debug', color: '#94a3b8',
-        action: 'fecharIdleSuiteMenu(); copiarLogsDeDiagnostico()',
-        menu: 'gametools', categoria: 'sistema', grupo: 'Desempenho & Sistema',
-        desc: 'Copiar logs de console de todas as janelas para diagnóstico'
-      }
     };
 
     // Categorias hierárquicas do Game Tools (desenham o leque com flyout à direita)
