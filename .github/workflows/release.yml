@@ -45,6 +45,7 @@ jobs:
           python scripts/build.py
 
       - name: Empacotar e publicar Release no GitHub
-        run: npx electron-builder --win --publish always -c.publish.provider=github -c.publish.releaseType=release
+        run: npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_DRAFT: false

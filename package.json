@@ -55,7 +55,13 @@
       "logo.png",
       "logo.ico",
       "package.json"
-    ]
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "muurder",
+      "repo": "idle-pokemon-client",
+      "releaseType": "release"
+    }
   },
   "keywords": ["idle-pokemon", "multi-client", "electron"],
   "author": "Comunidade Idle Pokemon",
