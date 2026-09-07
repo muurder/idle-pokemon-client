@@ -933,8 +933,8 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
     pararSentinelaRamAutomatico();
-    // Encerra Tor gracefulmente ao fechar o app
-    if (torProcess) {
+    // Encerra Tor gracefulmente ao fechar o app (se estiver disponível)
+    if (typeof torProcess !== 'undefined' && torProcess) {
         try { torProcess.kill('SIGTERM'); } catch(e) {}
     }
     if (process.platform !== 'darwin') {
