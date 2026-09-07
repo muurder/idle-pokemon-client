@@ -34,7 +34,7 @@
       try {
         localStorage.setItem('idlePokemonXpMiniPinned', xpMiniPinnedToSidebar ? '1' : '0');
       } catch(e) {}
-      
+
       destruirXpMiniView();
       if (xpMiniViewVisible) {
         criarXpMiniView();
@@ -267,6 +267,14 @@
             // 2. Fallback de cálculo e leitura inteligente do DOM nativo do jogo
             let domPokePct = null;
             let domJogPct = null;
+            let domPokeLv = null;
+            let domJogLv = null;
+
+            const elPokeLv = document.getElementById('pp-poke-lv');
+            if (elPokeLv && elPokeLv.textContent) {
+              const mLv = elPokeLv.textContent.match(/(\d+)/);
+              if (mLv) domPokeLv = parseInt(mLv[1], 10);
+            }
 
             const domPokeTxt = document.getElementById('pp-poke-xptxt');
             if (domPokeTxt && domPokeTxt.textContent) {
@@ -279,22 +287,22 @@
               if (!isNaN(p)) domJogPct = p;
             }
 
-            try {
-              const allEls = document.querySelectorAll('div, span, p, b, strong, small');
-              for (let i = 0; i < allEls.length; i++) {
-                const txt = (allEls[i].textContent || '').trim();
-                if (!txt || txt.length > 100) continue;
-                if (domPokePct === null && /%\s*XP/i.test(txt)) {
-                  const m = txt.match(/(\d+(?:\.\d+)?)\s*%\s*XP/i);
-                  if (m) domPokePct = parseFloat(m[1]);
-                }
-                if (domJogPct === null && /EXP\s*\d+/i.test(txt)) {
-                  const m = txt.match(/EXP\s*(\d+(?:\.\d+)?)\s*%/i);
-                  if (m) domJogPct = parseFloat(m[1]);
-                }
-                if (domPokePct !== null && domJogPct !== null) break;
+            const targetArea = document.getElementById('player-panel') || document.getElementById('bottom-bar') || document.body;
+            if (targetArea) {
+              const txtAll = targetArea.textContent || '';
+              if (domPokePct === null) {
+                const m = txtAll.match(/(\d+(?:\.\d+)?)\s*%\s*XP/i);
+                if (m) domPokePct = parseFloat(m[1]);
               }
-            } catch(e) {}
+              if (domJogPct === null) {
+                const m = txtAll.match(/EXP\s*(\d+(?:\.\d+)?)\s*%/i);
+                if (m) domJogPct = parseFloat(m[1]);
+              }
+              if (domJogLv === null) {
+                const m = txtAll.match(/N[ií]vel\s*(\d+)/i);
+                if (m) domJogLv = parseInt(m[1], 10);
+              }
+            }
 
             const K = window.K || {};
             const player = K.player || {};
@@ -338,7 +346,7 @@
             return JSON.stringify({
               poke: {
                 name: active.name || 'Pokémon',
-                level: active.level || '--',
+                level: active.level || domPokeLv || '--',
                 shiny: !!(active.shiny || active.isShiny),
                 pct: finalPokePct,
                 pctText: Math.round(finalPokePct) + '%',
@@ -347,7 +355,7 @@
               },
               jog: {
                 name: player.name || 'Treinador',
-                level: player.level || '--',
+                level: player.level || domJogLv || '--',
                 pct: finalJogPct,
                 pctText: Math.round(finalJogPct) + '%',
                 falta: fmtFalta(xpRestanteJog, faltaJog),
