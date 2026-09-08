@@ -1,10 +1,12 @@
-
-// ===== 00-header-ipc-pin-debug.js =====
     const { ipcRenderer } = require('electron');
 
-    // === MENU HAMBÚRGUER FLUTUANTE DA TOPBAR ===
+    // Versao + autor na barra de titulo da janela: document.title dispara
+    // 'page-title-updated', que o Electron reflete no titulo nativo sozinho.
+    ipcRenderer.invoke('get-app-version').then(v => {
+        if (v) document.title = document.title + ' — v' + v + ' · @jesuscrizto';
+    }).catch(() => {});
 
-// ===== 01-menu-hamburguer-topbar.js =====
+    // === MENU HAMBÚRGUER FLUTUANTE DA TOPBAR ===
     function toggleHamburgerMenu(event) {
       if (event) event.stopPropagation();
       const menu = document.getElementById('dropdown-hamburger-menu');
@@ -22,8 +24,6 @@
     }
 
     // === MENU DROPDOWN IDLE SUITE DA SIDEBAR ===
-
-// ===== 04-fixar-desfixar-menu-lateral.js =====
     // =====================================================================
     // REGISTRO UNICO DAS FERRAMENTAS (fonte de verdade dos dois dropdowns)
     // =====================================================================
@@ -482,8 +482,6 @@
     }
 
     // === REORDENAÇÃO & ARRASTO DE BLOCOS MODULARES NA SIDEBAR ===
-
-// ===== 05-reordenacao-arrasto-blocos-sidebar.js =====
     // =====================================================================
     // 05-reordenacao-arrasto-blocos-sidebar.js — ORDEM DOS BLOCOS DA SIDEBAR
     // =====================================================================
@@ -756,8 +754,6 @@
     }
 
     // === COLAPSO / RECOLHIMENTO DE SEÇÕES DA SIDEBAR ===
-
-// ===== 06-colapso-secoes-sidebar.js =====
     function toggleBlockCollapse(blockId, event) {
       if (event) event.stopPropagation();
       const collapsedMap = obterBlocosColapsados();
@@ -826,10 +822,10 @@
     }
 
     // === SISTEMA DE FIXAR ITENS DA DASHBOARD ===
-
-// ===== 07-fixar-itens-dashboard.js =====
     const DASH_ITEMS = {
       'atualizar-tudo': { icon: '🔄', label: 'Atualizar Tudo', color: '#7dd3fc', action: 'atualizarDashboardCompleta()' },
+      'iniciar-hunts':  { icon: '⚔️', label: 'Iniciar Hunts', color: '#86efac', action: 'iniciarTodasHunts()' },
+      'pausar-hunts':   { icon: '⏸', label: 'Pausar Hunts', color: '#fef08a', action: 'pausarTodasHunts()' },
       'curar-contas':   { icon: '💊', label: 'Curar Contas', color: '#f9a8d4', action: 'curarTodasContas()' },
       'avaliador-meta': { icon: '🧬', label: 'Avaliador Meta', color: '#e2e8f0', action: 'abrirModalAvaliadorMeta()' }
     };
@@ -867,8 +863,6 @@
     }
 
     // === SISTEMA DE COLAPSO DA SIDEBAR ===
-
-// ===== 08-colapso-sidebar.js =====
     function toggleSidebarColapso() {
       const sidebar = document.getElementById('app-sidebar');
       if (!sidebar) return;
@@ -887,8 +881,6 @@
     })();
 
     // === WIDGET AUTO TOGGLES NA SIDEBAR (abaixo do XP Tracker) ===
-
-// ===== 09-widget-auto-toggles-sidebar.js =====
     let currentTab = 0;
     let isGridMode = false;
     let isMuted = localStorage.getItem('idlePokemonGlobalMuted') === '1';
@@ -896,17 +888,15 @@
     let editandoAbaIndex = 0;
 
     // ================================================================
-
-// ===== 10-proxy-pool-webshare.js =====
-    // Quantidade dinâmica de contas ativas (padrão: 4 contas)
-    let totalContas = 4;
+    // Quantidade dinâmica de contas ativas (padrão: 1 conta)
+    let totalContas = 1;
     try {
       const savedTotal = parseInt(localStorage.getItem('idlePokemonTotalContas'), 10);
       if (!isNaN(savedTotal) && savedTotal >= 1 && savedTotal <= 16) totalContas = savedTotal;
     } catch(e) {}
 
     // Nomes personalizados das abas
-    let nomesAbas = ['JesusCrizto', 'JudasPriest', 'DarkMatter', 'Nebulosa'];
+    let nomesAbas = [];
     try {
       const savedNames = localStorage.getItem('idlePokemonCustomTabNames');
       if (savedNames) {
@@ -1000,8 +990,6 @@
     let tabButtons = [];
 
     // ================================================================
-
-// ===== 11-renderizador-abas-webviews-dragdrop.js =====
     //  🛠️ RENDERIZADOR DINÂMICO DE ABAS E WEBVIEWS COM DRAG & DROP
     // ================================================================
     // Cor da aba: era só a posição no array (i % 8), então duas contas podiam
@@ -1111,9 +1099,7 @@
         const btn = document.createElement('button');
         btn.className = `tab-btn ${i === currentTab ? 'active' : ''}`;
         btn.id = `tab-${i}`;
-        // Sem `title`: o balao nativo do Chromium abria por cima do card do
-        // time (shell/50) com menos informacao do que ele. Nome, particao,
-        // pokemon ativo, ping e as dicas de uso sao todos do card agora.
+        btn.setAttribute('title', `${nome} (${listaParticoes[i] || ('persist:acc' + (i + 1))})\nPokémon: …\nArraste para reordenar • Clique duplo para gerenciar`);
         btn.setAttribute('draggable', 'true');
         btn.onclick = () => selectTab(i);
         btn.ondblclick = (e) => abrirModalRenomear(i, e);
@@ -1265,7 +1251,6 @@
       mover(listaParticoes);
       try { mover(inventariosContas); } catch (e) { }
       try { moverMapa(pokemonAtivoCache); } catch (e) { }
-      try { moverMapa(pingPorConta); } catch (e) { }
       try { moverMapa(_injetadoPorConta); } catch (e) { }
 
       // 2. Os elementos: renumeracao no lugar, sem tocar na arvore.
@@ -1594,8 +1579,6 @@
     }
 
     // ================================================================
-
-// ===== 12-arrasto-janela-renomear.js =====
     //  🪟 ARRASTO DA JANELA DE RENOMEAR (aba do personagem)
     // ================================================================
     function iniciarArrastoModalRenomear(e) {
@@ -1621,8 +1604,6 @@
     }
 
     // ================================================================
-
-// ===== 13-mini-dashboard-contas-ativas.js =====
     // ================================================================
     //  📊 MINI DASHBOARD — CONTAS ATIVAS (coleta + render)
     // ================================================================
@@ -1827,8 +1808,6 @@
 
     // ================================================================
 
-// ===== 18-verificador-ip-real-proxies.js =====
-
     function fecharModalSeFora(event, modalId) {
       if (event.target && event.target.id === modalId) {
         document.getElementById(modalId).classList.remove('active');
@@ -1847,27 +1826,42 @@
     });
 
     // Listener para teclas no input de quantidade do Trade
-
-// ===== 19-monitor-latencia-ping.js =====
     //  ⚡ MONITOR DE LATÊNCIA (PING MS) POR CONTA / PROXY
     // ================================================================
     let pingMonitoringTimer = null;
 
-    // O ponto de ping NAO tem mais tooltip proprio.
-    //
-    // Ele tinha um: um `<div>` flutuante no body, porque `title` nativo nao
-    // aparece em descendente de elemento `draggable` (a aba). O problema e que
-    // esse balao nascia colado ao ponto, ou seja, EM CIMA da aba — e o card do
-    // time (shell/50) abre ali tambem. Os dois se sobrepunham, e o de cima era
-    // justamente o que tinha menos informacao.
-    //
-    // A latencia agora e uma linha DENTRO do card. O ponto colorido continua
-    // sendo o aviso de relance ("bem / ruim / caiu"); o numero em ms mora no
-    // card, junto do resto do que se quer saber da conta.
-
-    // Ultima leitura de ping por conta, para o card do time. Indexado por
-    // conta, entao viaja junto na reordenacao de abas (`moverMapa`, shell/11).
-    const pingPorConta = {};
+    // Tooltip flutuante do ponto de ping. `title` nativo não serve: o botão
+    // da aba é draggable="true" (drag-and-drop de reordenar) e o Chromium
+    // suprime tooltip nativo em qualquer descendente de elemento arrastável
+    // — o `title` fica gravado no DOM mas nunca aparece no hover. Delegado
+    // no document (não no ponto em si) porque `renderizarAbasClient` recria
+    // os pontos a cada render; um listener direto morreria junto.
+    let _pingTipEl = null;
+    function _pingTipMostrar(dot) {
+      if (!_pingTipEl) {
+        _pingTipEl = document.createElement('div');
+        _pingTipEl.className = 'ping-tip-flutuante';
+        document.body.appendChild(_pingTipEl);
+      }
+      const texto = dot.getAttribute('data-tip');
+      if (!texto) return;
+      _pingTipEl.textContent = texto;
+      _pingTipEl.style.display = 'block';
+      const r = dot.getBoundingClientRect();
+      _pingTipEl.style.left = `${r.left + r.width / 2}px`;
+      _pingTipEl.style.top = `${r.bottom + 6}px`;
+    }
+    function _pingTipEsconder() {
+      if (_pingTipEl) _pingTipEl.style.display = 'none';
+    }
+    document.addEventListener('mouseover', (e) => {
+      const dot = e.target.closest && e.target.closest('.tab-ping-dot[data-tip]');
+      if (dot) _pingTipMostrar(dot);
+    });
+    document.addEventListener('mouseout', (e) => {
+      const dot = e.target.closest && e.target.closest('.tab-ping-dot[data-tip]');
+      if (dot) _pingTipEsconder();
+    });
 
     // Busca o Pokémon ativo de cada conta e atualiza a aba na sidebar
     const pokemonAtivoCache = {};
@@ -1887,12 +1881,6 @@
     function aplicarInfoPokeAba(index, d) {
       if (!d) return;
       try {
-        // O cache e gravado ANTES de qualquer condicao de pokemon ativo: o
-        // hover do time (shell/50) le daqui, e uma conta parada — sem pokemon
-        // ativo, mas com time montado — mostrava um balao vazio quando isto
-        // ficava dentro do `if (d.poke)`.
-        pokemonAtivoCache[index] = d;
-        if (typeof atualizarHoverTimeAba === 'function') atualizarHoverTimeAba(index);
         // O sprite da aba sai daqui: e o unico ponto onde o nome do pokemon
         // ativo chega, e ele muda sozinho quando o Auto Hunt troca de bicho.
         if (d.poke && typeof pintarSpriteAba === 'function') pintarSpriteAba(index, d.poke);
@@ -1903,16 +1891,17 @@
           const lvStr = d.lv ? ` Lv.${d.lv}` : '';
           pokeEl.textContent = `${d.poke}${lvStr}`;
           pokeEl.style.color = '#94a3b8';
+          pokemonAtivoCache[index] = d;
         } else if (pokeEl) {
           pokeEl.textContent = '…';
           pokeEl.style.color = '#475569';
         }
-        // O `title` nativo da aba foi REMOVIDO. Ele trazia treinador,
-        // particao, pokemon ativo e as dicas de uso — e o balao do Chromium
-        // nascia por cima do card do time, escondendo os sprites atras de um
-        // texto que o card ja diz melhor. Tudo isso agora e o cabecalho e o
-        // rodape do card (shell/50).
-        if (btnEl) btnEl.removeAttribute('title');
+        // Tooltip: nome do personagem + Pokémon ativo
+        if (btnEl) {
+          const t = d.trainer || nome;
+          const pk = d.poke ? `${d.poke}${d.lv ? ' Lv.'+d.lv : ''}` : '…';
+          btnEl.setAttribute('title', `${t} (persist:acc${index + 1})\n🎮 Pokémon: ${pk}\nArraste para reordenar • Clique duplo para gerenciar`);
+        }
       } catch(e) {}
     }
 
@@ -2001,11 +1990,12 @@
         dot.classList.add('ruim');
         texto = `Latência alta — ${pingMs} ms`;
       }
-      // Sem `title` e sem `data-tip` no ponto: o nativo nunca aparecia (ponto
-      // e descendente de elemento arrastavel) e o flutuante brigava com o card.
-      // O texto vai pro card do time.
-      pingPorConta[index] = { ms: pingMs, texto: texto, classe: dot.className.replace('tab-ping-dot', '').trim() };
-      if (typeof atualizarHoverTimeAba === 'function') atualizarHoverTimeAba(index);
+      dot.title = texto;
+      // ⚠️ O `title` nativo NUNCA aparece aqui: a aba (`.tab-btn`) tem
+      // `draggable="true"` pro drag-and-drop de reordenar, e o Chromium
+      // suprime o tooltip nativo em qualquer descendente de elemento
+      // arrastável. `data-tip` + CSS (`::after`) contorna isso.
+      dot.setAttribute('data-tip', texto);
     }
 
     // Detecção Automática do Nome do Personagem ao Logar
@@ -2119,8 +2109,8 @@
         const headerEl = document.getElementById(`header-title-${index}`);
         if (headerEl) headerEl.textContent = `🎮 ${nick} (persist:acc${index + 1})`;
 
-        // Nada de `title` na aba (ver acima): nome, particao e dicas de uso
-        // sao do card do time agora, e o balao nativo cobriria o card.
+        const tabBtn = document.getElementById(`tab-${index}`);
+        if (tabBtn) tabBtn.setAttribute('title', `${nick} (persist:acc${index + 1})\nArraste para reordenar • Clique duplo para gerenciar`);
 
         if (typeof mostrarToast === 'function') {
           mostrarToast(`Aba ${index + 1} renomeada para "${nick}"`, '🏷️', 'success', 2600);
@@ -2317,7 +2307,7 @@
       `).catch(() => {});
     }
 
-    // Carrega o script do tampermonkey da memória
+    // Carrega o script de injeção da memória
     async function carregarScriptTamper() {
       try {
         tamperScriptCache = await ipcRenderer.invoke('get-tamper-script');
@@ -2424,8 +2414,6 @@
 
 
     // === WATCHDOG & AUTO-RECONEXÃO INTELIGENTE (5 SEGUNDOS) ===
-
-// ===== 20-watchdog-auto-reconexao.js =====
     const reconexaoTimers = {};
     const reconexaoContadores = {};
 
@@ -2526,22 +2514,13 @@
         } catch(e) {}
         injetarScriptNaWebview(wv, idxAtual());
         // O zoom acima às vezes é sobrescrito pelo próprio carregamento da
-        // página um instante depois do dom-ready (a página ainda está de pé,
-        // algo nela mexe no viewport) — sintoma: reabrir em modo Grid mostra
-        // 100% até trocar pra Abas e voltar pro Grid manualmente. Reaplicando
-        // mais duas vezes, depois que a página já assentou, sem custo real
-        // (setZoomFactor é idempotente).
+        // página um instante depois do dom-ready — sintoma: reabrir em modo
+        // Grid mostra 100% até trocar pra Abas e voltar pro Grid manualmente.
+        // Reaplicando mais duas vezes depois que a página já assentou.
         setTimeout(() => { try { wv.setZoomFactor(zoomAlvoAtual()); } catch(e) {} }, 800);
         setTimeout(() => { try { wv.setZoomFactor(zoomAlvoAtual()); } catch(e) {} }, 2500);
         setTimeout(() => notificarAjusteGrid(isGridMode), 800);
         setTimeout(() => checarNomePersonagemWebview(idxAtual()), 2000);
-        setTimeout(() => {
-          try {
-            if (typeof sincronizarSilencioComWebview === 'function' && typeof isContaSilenciada === 'function') {
-              sincronizarSilencioComWebview(idxAtual(), isContaSilenciada(idxAtual()));
-            }
-          } catch (e) {}
-        }, 3000);
         setTimeout(() => checarNomePersonagemWebview(idxAtual()), 5000);
         setTimeout(() => checarNomePersonagemWebview(idxAtual()), 10000);
       });
@@ -2857,19 +2836,16 @@
     // que "Fechar Dashboard" volte pra ela em vez de jogar sempre na Conta 1.
     let abaAntesDaDashboard = 0;
 
-    function selectTab(index, force) {
+    function selectTab(index) {
       if (index < 0 || index > totalContas) return;
-      if (!force && index === currentTab && !isGridMode && wrappers[index] && wrappers[index].classList.contains('active')) {
-        try { if (webviews[index]) webviews[index].focus(); } catch (e) {}
-        return;
-      }
-      const prevTab = currentTab;
-      const tInicioTroca = performance.now();
       if (index === totalContas && currentTab !== totalContas) abaAntesDaDashboard = currentTab;
       currentTab = index;
       const isDashboardTab = (index === totalContas);
 
-      // O destaque da aba na sidebar vale nos DOIS modos.
+      // O destaque da aba na sidebar vale nos DOIS modos. Antes esta pintura
+      // morava dentro do `else` do modo Abas, entao no modo Grid a sidebar
+      // ficava com o `.active` congelado na ultima aba usada antes de entrar no
+      // grid — nao dava pra saber qual conta estava em foco.
       tabButtons.forEach((btn, i) => {
         if (btn) {
           if (i === index) btn.classList.add('active');
@@ -2900,43 +2876,21 @@
         atualizarDashboardCompleta();
         iniciarLoopAutoAtualizacaoDashboard();
       } else {
+        // Primeiro apresenta a nova conta; consultas auxiliares à webview ficam
+        // para o próximo frame, removendo o atraso sentido ao trocar de aba.
         if (dashboardAutoRefreshTimer) {
           clearInterval(dashboardAutoRefreshTimer);
           dashboardAutoRefreshTimer = null;
         }
-        // Frame 0: Garante renderização visual instantânea via troca de classes/GPU
         requestAnimationFrame(() => {
           if (currentTab !== index || isGridMode) return;
-          const duracaoVisual = +(performance.now() - tInicioTroca).toFixed(1);
-          window._perfUltimaTrocaAba = {
-            de: prevTab,
-            para: index,
-            ms: duracaoVisual,
-            em: Date.now()
-          };
-          if (!window._perfTrocasAba) window._perfTrocasAba = [];
-          window._perfTrocasAba.push(window._perfUltimaTrocaAba);
-          if (window._perfTrocasAba.length > 20) window._perfTrocasAba.shift();
-          // Evita recalcular zoom se o fator já for o mesmo (evita reflow síncrono no Chromium da webview)
+          try { if (webviews[index]) webviews[index].focus(); } catch (e) {}
           try {
             const wvSel = webviews[index];
-            if (wvSel && typeof wvSel.setZoomFactor === 'function') {
-              const zAlvo = zoomAlvoAtual();
-              if (wvSel.__lastZoomFactor !== zAlvo) {
-                wvSel.__lastZoomFactor = zAlvo;
-                wvSel.setZoomFactor(zAlvo);
-              }
-            }
+            if (wvSel && typeof wvSel.setZoomFactor === 'function') wvSel.setZoomFactor(zoomAlvoAtual());
           } catch (e) {}
-
-          // Frame subsequente (~40ms): Adia foco e IPCs auxiliares para não disputar tempo com o compositor
-          setTimeout(() => {
-            if (currentTab !== index || isGridMode) return;
-            try { if (webviews[index]) webviews[index].focus(); } catch (e) {}
-            if (xpMiniViewVisible) atualizarXpTrackerContaAtiva();
-            syncSidebarAutoToggles();
-            try { if (typeof atualizarBadgesNotificacoes === 'function') atualizarBadgesNotificacoes(); } catch (e) {}
-          }, 40);
+          if (xpMiniViewVisible) atualizarXpTrackerContaAtiva();
+          syncSidebarAutoToggles();
         });
       }
     }
@@ -3014,6 +2968,11 @@
       reloadWebview(currentTab);
     }
 
+    // Atalhos de teclado globais vindos do main.js (before-input-event)
+    ipcRenderer.on('toggle-grid', () => toggleGridMode());
+    ipcRenderer.on('reload-active', () => reloadActiveWebview());
+    ipcRenderer.on('reload-all', () => recarregarEAplicarTudo());
+
     // Recarregar todas e reaplicar ajustes de forma suave e rápida
     async function recarregarEAplicarTudo() {
       console.log('[IdleSuite] Recarregando e aplicando todas as contas...');
@@ -3089,8 +3048,6 @@
     }
 
     // === MINI XP VIEW (POKÉMON + TREINADOR) — DRAGGABLE ===
-
-// ===== 21-mini-xp-view-draggable.js =====
     let xpMiniViewVisible = false;
     let xpMiniPinnedToSidebar = false;
     try {
@@ -3532,8 +3489,6 @@
     } catch(e) {}
 
     // === FUNÇÕES DO EDITOR DE SCRIPTS ===
-
-// ===== 23-navegador-popup-interno.js =====
     // === NAVEGADOR DE POPUP INTERNO NO CLIENT ===
     // =====================================================
     let currentPopupUrl = '';
@@ -3591,8 +3546,6 @@
     }
 
     // =====================================================
-
-// ===== 24-central-votacao-topidle-4x.js =====
     // === CENTRAL DE VOTAÇÃO TOPIDLE 4X (COM PLAYER IDENTIFIER) ===
     // =====================================================
     function fecharDashboardCentral() {
@@ -3616,8 +3569,6 @@
       fecharDashboardCentral();
     });
 
-
-// ===== 25-central-trade-4x-coordenacao.js =====
     // === CENTRAL DE TRADE 4X DIRETO & COORDENAÇÃO DE CONTAS ===
     // =====================================================
     let tradeMainTarget = parseInt(localStorage.getItem('idlePokemonTradeMainTarget') || '0');
@@ -3978,13 +3929,9 @@
       if (inventariosContas[idx] && inventariosContas[idx].trainer && inventariosContas[idx].trainer !== 'Treinador') {
         return inventariosContas[idx].trainer;
       }
-      const nomesFixos = ['JesusCrizto', 'JudasPriest', 'DarkMatter', 'Nebulosa'];
-      if (nomesFixos[idx]) return nomesFixos[idx];
       if (nomesAbas[idx]) return nomesAbas[idx];
       return 'Conta ' + (idx + 1);
     }
-
-// ===== 29-toast-notifications-deteccao-conexao.js =====
     function mostrarToast(mensagem, icone = 'ℹ️', tipo = 'normal', duracaoMs = 4000) {
       const container = document.getElementById('toast-container');
       if (!container) return;
@@ -4473,8 +4420,6 @@
     });
 
     // ================================================================
-
-// ===== 30-dashboard-4x-command-center.js =====
     //  👑 DASHBOARD 4X COMMAND CENTER & SALA DE TROFÉUS SHINIES
     // ================================================================
     let dashboardData = Array.from({length: 16}, () => null);
@@ -4759,6 +4704,12 @@
                   ${totalCatches} <span style="font-size:8px; color:#94a3b8">(Sessão: ${huntCatches})</span>
                 </span>
               </div>
+              <div class="dash-stat-pill" title="Alvo configurado na caçada automática">
+                <span class="dash-stat-label">🎯 ALVO / HUNT:</span>
+                <span class="dash-stat-val" style="color:#a855f7; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                  ${huntActive ? '⚔️ ' : '⏸ '}${huntTarget}
+                </span>
+              </div>
             </div>
 
             <!-- ESTOQUE DE BALLS & POÇÕES -->
@@ -4817,6 +4768,9 @@
 
             <!-- BOTÕES DE AÇÃO INDIVIDUAIS -->
             <div class="dash-card-actions">
+              <button class="dash-btn ${huntActive ? 'dash-btn-yellow' : 'dash-btn-green'}" style="flex:1" onclick="toggleHuntConta(${i})">
+                <span>${huntActive ? '⏸ Pausar' : '⚔️ Caçar'}</span>
+              </button>
               <button class="dash-btn dash-btn-pink" style="flex:1" onclick="curarConta(${i})" title="Usar Poção">
                 <span>💊 Curar</span>
               </button>
@@ -4829,7 +4783,53 @@
       }).join('');
     }
 
+    // Ações Rápidas da Dashboard
+    async function iniciarTodasHunts() {
+      for (let i = 0; i < totalContas; i++) {
+        const wv = webviews[i];
+        if (!wv) continue;
+        wv.executeJavaScript(`
+          try {
+            if (window.gameState && window.gameState.auto) window.gameState.auto.hunt = true;
+            const btn = document.getElementById('btn-auto-hunt') || document.querySelector('[data-action="auto-hunt"]');
+            if (btn && !btn.classList.contains('active')) btn.click();
+          } catch(e) {}
+        `).catch(() => {});
+      }
+      mostrarToast(`⚔️ Auto-Hunt INICIADO nas ${totalContas} contas simultaneamente!`, '🚀', 'toast-success', 4000);
+      setTimeout(atualizarDashboardCompleta, 1000);
+    }
 
+    async function pausarTodasHunts() {
+      for (let i = 0; i < totalContas; i++) {
+        const wv = webviews[i];
+        if (!wv) continue;
+        wv.executeJavaScript(`
+          try {
+            if (window.gameState && window.gameState.auto) window.gameState.auto.hunt = false;
+            const btn = document.getElementById('btn-auto-hunt') || document.querySelector('[data-action="auto-hunt"]');
+            if (btn && btn.classList.contains('active')) btn.click();
+          } catch(e) {}
+        `).catch(() => {});
+      }
+      mostrarToast(`⏸ Auto-Hunt PAUSADO nas ${totalContas} contas.`, '⏸', 'normal', 3000);
+      setTimeout(atualizarDashboardCompleta, 1000);
+    }
+
+    async function toggleHuntConta(idx) {
+      const wv = webviews[idx];
+      if (!wv) return;
+      await wv.executeJavaScript(`
+        try {
+          if (window.gameState && window.gameState.auto) {
+            window.gameState.auto.hunt = !window.gameState.auto.hunt;
+          }
+          const btn = document.getElementById('btn-auto-hunt') || document.querySelector('[data-action="auto-hunt"]');
+          if (btn) btn.click();
+        } catch(e) {}
+      `).catch(() => {});
+      setTimeout(atualizarDashboardCompleta, 600);
+    }
 
     async function curarTodasContas() {
       for (let i = 0; i < totalContas; i++) {
@@ -4857,8 +4857,6 @@
     }
 
     // ================================================================
-
-// ===== 31-sala-trofeus-shinies-relatorios.js =====
     //  🌟 SALA DE TROFÉUS DE SHINIES & RELATÓRIOS (DISCORD / LOGS)
     // ================================================================
     function adicionarHistoricoShiny(index, nomeAba, charName, pokeName, tipo) {
@@ -5037,8 +5035,6 @@
 
     // =====================================================
     // === BANCO DE DADOS & MOTOR DO AVALIADOR DE POKÉMON META ===
-
-// ===== 32-banco-dados-avaliador-meta.js =====
     // =====================================================
     const META_POKEMON_DB = {
       'venusaur': {
@@ -5393,10 +5389,6 @@
             sell: pk.sell || 0,
             aura: pk.aura || null,
             catchInfo: pk.catchInfo || '',
-            // O servidor recusa Ditto em troca (o próprio jogo o esconde da
-            // grade de oferta). O Alto Comando precisa saber disso pra não
-            // planejar uma sessão de troca que já nasce recusada.
-            isDitto: !!pk.isDitto,
             isTeam: !!pk.isTeam,
             contaIdx: contaIdx,
             contaNome: nomesAbas[contaIdx] || `Conta ${contaIdx + 1}`,
@@ -5465,8 +5457,6 @@
     }
 
     // === GERENCIAMENTO DE SELEÇÃO EM MASSA (AVALIADOR META) ===
-
-// ===== 33-selecao-massa-avaliador-meta.js =====
     const pokesSelecionadosMeta = new Set();
 
     function aoTogglePokeSelecionado(key, checked) {
@@ -5603,8 +5593,6 @@
     }
 
     // === PAINEL LATERAL DE SELEÇÃO ===
-
-// ===== 34-painel-lateral-selecao.js =====
     function toggleEvalSidePanel() {
       const panel = document.getElementById('eval-side-panel');
       if (!panel) return;
@@ -6161,8 +6149,6 @@
     }
 
     // === AÇÕES DE GERENCIAMENTO DE POKÉMON (TRAVAR, TIME/BOX, VENDER, TROCAR AURA) ===
-
-// ===== 35-acoes-gerenciamento-pokemon.js =====
     async function alternarLockPoke(pokeId, contaIdx) {
       const wv = webviews[contaIdx];
       if (!wv) return;
@@ -6302,8 +6288,6 @@
     }
 
     // === CONTROLE DE ÁUDIO GLOBAL UNIFICADO ===
-
-// ===== 36-controle-audio-global.js =====
     function toggleGlobalAudio() {
       isMuted = !isMuted;
       try {
@@ -6328,8 +6312,6 @@
     }
 
     // Inicialização do Electron Client
-
-// ===== 37-bootstrap-inicializacao.js =====
     (async () => {
       renderizarAbasClient();
       renderizarWebviewsClient();
@@ -6344,8 +6326,6 @@
       renderizarGaleriaShiniesDashboard();
       iniciarLoopMonitoramentoPing();
     })();
-
-// ===== 38-modal-monitor-desempenho.js =====
 // =====================================================================
 // 31-modal-monitor-desempenho.js — MONITOR DE RECURSOS & DESEMPENHO
 // =====================================================================
@@ -6480,7 +6460,7 @@
     }
     if (elRamSent) {
       if (sentinelaStatus && sentinelaStatus.ativo) {
-        elRamSent.innerHTML = '<span style="color:#4ade80">🟢 Ativo (Auto >75%)</span>';
+        elRamSent.innerHTML = '<span style="color:#4ade80">🟢 Ativo (Auto >85%)</span>';
         if (elBtnSent) elBtnSent.textContent = 'Sentinela: Ativo';
       } else {
         elRamSent.innerHTML = '<span style="color:#94a3b8">⚪ Inativo / Pausado</span>';
@@ -6634,7 +6614,7 @@
             </div>
             <div class="perf-mon-stats-row">
               <span>Sentinela de RAM (2º Plano):</span>
-              <b id="perf-ram-sentinela" style="color:#4ade80">🟢 Ativo (Auto >75%)</b>
+              <b id="perf-ram-sentinela" style="color:#4ade80">🟢 Ativo (Auto >85%)</b>
             </div>
           </div>
 
@@ -6759,10 +6739,17 @@
       const { ipcRenderer } = require('electron');
       const res = await ipcRenderer.invoke('trim-memory-now', { all: false });
       if (res && res.ok) {
-        const mb = res.data?.economizado_processos_mb || 0;
+        // Ganho REAL de RAM livre no Windows. A soma da queda de working set
+        // (economizado_processos_mb) e enganosa: quase tudo volta por page fault.
+        const ganho = res.data?.ganho_real_mb ?? 0;
+        const aparado = res.data?.economizado_processos_mb || 0;
         const livre = res.data?.ram_depois?.livre_mb || 0;
         if (typeof mostrarToast === 'function') {
-          mostrarToast(`RAM Otimizada! ${mb} MB liberados nos processos (${livre} MB livres no Windows).`, '⚡', 'sucesso', 4500);
+          if (ganho >= 50) {
+            mostrarToast(`RAM Otimizada! +${ganho} MB livres de verdade (${livre} MB livres no Windows).`, '⚡', 'sucesso', 4500);
+          } else {
+            mostrarToast(`Pouco a liberar: ${aparado} MB de working set aparado rendeu ${ganho} MB reais. A RAM esta em uso, nao ociosa.`, '🟡', 'info', 5000);
+          }
         }
         if (typeof atualizarMonitorDesempenho === 'function') {
           atualizarMonitorDesempenho();
@@ -6785,7 +6772,7 @@
     }
     try {
       const { ipcRenderer } = require('electron');
-      const res = await ipcRenderer.invoke('abrir-sentinela-powershell', { loop: 60, threshold: 75 });
+      const res = await ipcRenderer.invoke('abrir-sentinela-powershell', { loop: 60, threshold: 85 });
       if (res && res.ok) {
         if (typeof mostrarToast === 'function') {
           mostrarToast('Sentinela ativado! Monitorando a cada 60s (auto-trim > 75%).', '🟢', 'sucesso', 4000);
@@ -6813,7 +6800,7 @@
         if (typeof mostrarToast === 'function') mostrarToast('Sentinela Automático de RAM ATIVADO (Auto-trim > 75%)', '🛡️', 'sucesso', 3500);
         if (badge) { badge.textContent = 'AUTO'; badge.style.color = '#4ade80'; }
         if (txtBtn) txtBtn.textContent = 'Sentinela: Ativo';
-        if (elSt) elSt.innerHTML = '<span style="color:#4ade80">🟢 Ativo (Auto >75%)</span>';
+        if (elSt) elSt.innerHTML = '<span style="color:#4ade80">🟢 Ativo (Auto >85%)</span>';
       } else {
         if (typeof mostrarToast === 'function') mostrarToast('Sentinela de RAM pausado.', '⏸️', 'info', 3000);
         if (badge) { badge.textContent = 'PAUSA'; badge.style.color = '#94a3b8'; }
@@ -6841,8 +6828,6 @@
     }
   };
 })();
-
-// ===== 40-mini-dashboard.js =====
     // =====================================================================
     // 40-mini-dashboard.js — JANELA DO MINI DASHBOARD
     // =====================================================================
@@ -6957,8 +6942,6 @@
     window.toggleMiniDashboardV2 = toggleMiniDashboard;
     window.toggleMiniDashViewModeV2 = toggleMiniDashViewMode;
     window.iniciarArrastoMiniDashV2 = iniciarArrastoMiniDash;
-
-// ===== 41-avaliador-meta-v2.js =====
     // =====================================================================
     // 41-avaliador-meta-v2.js — AVALIADOR DE METAS v2 (Beta)
     // =====================================================================
@@ -7007,8 +6990,6 @@
       panel.classList.toggle('open');
       if (panel.classList.contains('open') && typeof renderizarEvalSidePanel === 'function') renderizarEvalSidePanel();
     }
-
-// ===== 45-tipografia-sync.js =====
     // ===================================================================
     // 45-tipografia-sync.js — TIPOGRAFIA: casca do Electron ↔ webviews
     // ===================================================================
@@ -7241,6 +7222,411 @@
     iniciarTodasHunts: iniciarTodasHunts,
     pausarTodasHunts: pausarTodasHunts,
     toggleHuntConta: toggleHuntConta
+  };
+  for (var nome in tocos) {
+    if (typeof window[nome] === 'undefined') window[nome] = tocos[nome];
+  }
+})();
+    // ================================================================
+    //  🐾 HOVER DA ABA: O TIME DA CONTA (os 6 do Time & Box)
+    // ================================================================
+    // A aba mostrava só o pokémon ATIVO (sprite + nome). Com 11 contas, saber
+    // quem está com qual time exigia entrar em cada uma e abrir o Time & Box —
+    // 11 trocas de aba pra responder "quem tem o Dragonite?".
+    //
+    // Aqui o time inteiro aparece no hover da aba, sem clique e sem trocar de
+    // conta. O dado NÃO custa uma travessia de processo nova: ele veio junto do
+    // `__getTabInfo` que o loop de ping (shell/19) já pedia a cada 3,5 s, e
+    // mora em `pokemonAtivoCache[i].time`.
+    //
+    // ── POR QUE UM <div> NO BODY, E NÃO `title` NEM `::after` ──
+    // Os dois caminhos baratos estão fechados, pelo mesmo motivo já anotado no
+    // tooltip do ping (css/02, shell/19):
+    //   • `title` nativo: o Chromium suprime tooltip nativo em descendente de
+    //     elemento `draggable="true"` — e `.tab-btn` é arrastável (reordenar).
+    //   • `::after` preso à aba: `.tab-btn` tem `overflow:hidden` (degradê da
+    //     borda), então o balão sairia cortado.
+    // Sobra um único elemento fixo no `<body>`, posicionado por JS.
+    //
+    // ── ESTE CARD É O ÚNICO TOOLTIP DA ABA ──
+    // A aba tinha um `title` nativo (treinador, partição, pokémon ativo, dicas
+    // de uso) e o ponto de ping tinha um balão flutuante próprio. Os dois
+    // nasciam EM CIMA da aba, que é exatamente onde este card abre — o balão
+    // com menos informação cobria os sprites do que tinha mais. Os dois foram
+    // removidos (shell/11, shell/19) e o conteúdo deles está aqui: identidade
+    // e partição no cabeçalho, ping na linha de estado, dicas no rodapé.
+
+    let _hoverTimeEl = null;
+    let _hoverTimeIdx = -1;      // aba cujo balão está aberto (-1 = fechado)
+    let _hoverTimeTimer = null;  // atraso de abertura
+
+    // Atraso pra atravessar a lista de abas sem acender 11 balões pelo caminho.
+    const HOVER_TIME_ATRASO = 220;
+
+    function _hoverTimeGarantirEl() {
+        if (_hoverTimeEl) return _hoverTimeEl;
+        _hoverTimeEl = document.createElement('div');
+        _hoverTimeEl.className = 'hover-time-aba';
+        document.body.appendChild(_hoverTimeEl);
+        return _hoverTimeEl;
+    }
+
+    function _hoverTimeEsc(t) {
+        return String(t == null ? '' : t).replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    function _hoverTimeNum(n) {
+        const v = Number(n) || 0;
+        return v >= 1000 ? v.toLocaleString('pt-BR') : String(v);
+    }
+
+    // Um slot por vaga do time. O sprite é o mesmo caminho absoluto da aba
+    // (`urlSpriteAba`, shell/11) — a casca não está na origem do jogo, então
+    // caminho relativo não resolve aqui.
+    function _hoverTimeSlot(p) {
+        if (!p) return '<div class="hta-slot vazio"><span class="hta-vazio-ic">＋</span></div>';
+        const nome = p.n || '?';
+        const url = (typeof urlSpriteAba === 'function') ? urlSpriteAba(nome) : '';
+        const img = url
+            ? `<img class="hta-sprite" src="${_hoverTimeEsc(url)}" alt="" loading="lazy" onerror="this.remove()">`
+            : '';
+        // Shiny é ✨ e não sprite dourado: o acervo do jogo só tem a arte
+        // `normal`, então um caminho `shiny` daria imagem quebrada.
+        const shiny = p.s ? '<span class="hta-shiny" title="Shiny">✨</span>' : '';
+        const tier = p.t ? `<span class="hta-tier">${_hoverTimeEsc(p.t)}</span>` : '';
+        return `<div class="hta-slot${p.a ? ' ativo' : ''}">
+            <div class="hta-sprite-box">${img}${shiny}</div>
+            <div class="hta-nome" title="${_hoverTimeEsc(nome)}">${_hoverTimeEsc(nome)}</div>
+            <div class="hta-linha2">
+                <span class="hta-lv">Nv ${p.l | 0}</span>
+                ${p.p ? `<span class="hta-power">⚡${_hoverTimeNum(p.p)}</span>` : ''}
+                ${tier}
+            </div>
+        </div>`;
+    }
+
+    // As dicas de uso vinham do `title` da aba, que sumiu. Sem time pra
+    // resumir, o rodapé fica só com elas — mas fica: é o único lugar que ainda
+    // conta que a aba se arrasta e que o duplo clique gerencia a conta.
+    function _hoverTimeDica() {
+        return `<div class="hta-rodape">
+            <span class="hta-dica">Arraste para reordenar • Clique duplo para gerenciar</span>
+        </div>`;
+    }
+
+    function _hoverTimeHtml(index) {
+        const nome = (typeof nomesAbas !== 'undefined' && nomesAbas[index]) || `Conta ${index + 1}`;
+        let d = null;
+        try { d = (typeof pokemonAtivoCache !== 'undefined') ? pokemonAtivoCache[index] : null; } catch (e) { }
+        const treinador = (d && d.trainer) ? d.trainer : '';
+        const time = (d && Array.isArray(d.time)) ? d.time : null;
+
+        const cor = (typeof corDaAba === 'function') ? corDaAba(index) : '#10b981';
+        const particao = (typeof listaParticoes !== 'undefined' && listaParticoes[index])
+            || `persist:acc${index + 1}`;
+
+        // Ping: o mesmo texto que estava no balão do ponto ("Conexão boa /
+        // proxy estável — 118 ms"), com o pontinho da mesma cor da aba pra
+        // amarrar visualmente ao que está na lista.
+        let ping = null;
+        try { ping = (typeof pingPorConta !== 'undefined') ? pingPorConta[index] : null; } catch (e) { }
+
+        // Pokémon ativo com nome e nível: era a linha `🎮 Pokémon:` do `title`.
+        // Fica no cabeçalho e não só no slot marcado da grade porque a conta
+        // pode estar com o time carregado e o ativo ainda não lido.
+        const ativoTxt = (d && d.poke)
+            ? `${d.poke}${d.lv ? ` Nv ${d.lv}` : ''}`
+            : '—';
+
+        let html = `<div class="hta-topo" style="--cor-aba:${_hoverTimeEsc(cor)}">
+            <div class="hta-topo-l1">
+                <span class="hta-conta">${_hoverTimeEsc(nome)}</span>
+                ${treinador ? `<span class="hta-treinador">🧑 ${_hoverTimeEsc(treinador)}</span>` : ''}
+            </div>
+            <div class="hta-topo-l2">
+                <span class="hta-particao" title="${_hoverTimeEsc(particao)}">${_hoverTimeEsc(particao)}</span>
+                <span class="hta-ping">
+                    <i class="hta-ping-dot ${_hoverTimeEsc(ping ? (ping.classe || '') : '')}"></i>
+                    ${_hoverTimeEsc(ping ? ping.texto : 'Latência não medida ainda')}
+                </span>
+            </div>
+            <div class="hta-topo-l3">🎮 ${_hoverTimeEsc(ativoTxt)}</div>
+        </div>`;
+
+        if (!time) {
+            // Sem dado ainda ≠ time vazio. Dizer qual dos dois é evita a
+            // conclusão errada de que a conta está sem pokémon.
+            html += `<div class="hta-aviso">Time ainda não lido desta conta.<br>
+                <i>Chega na próxima varredura (até 3,5 s), se a conta estiver logada.</i></div>`;
+            return html + _hoverTimeDica();
+        }
+        if (!time.length) {
+            html += `<div class="hta-aviso">Nenhum pokémon no time.</div>`;
+            return html + _hoverTimeDica();
+        }
+
+        html += '<div class="hta-grade">';
+        for (let i = 0; i < 6; i++) html += _hoverTimeSlot(time[i] || null);
+        html += '</div>';
+        const somaPower = time.reduce((a, p) => a + (Number(p.p) || 0), 0);
+        html += `<div class="hta-rodape">
+            <span>${time.length}/6 no time · ⚡ soma ${_hoverTimeNum(somaPower)}</span>
+            <span class="hta-dica">Arraste para reordenar • Clique duplo para gerenciar</span>
+        </div>`;
+        return html;
+    }
+
+    // Colado na aba, à direita da sidebar. Se não couber à direita (sidebar
+    // fixada + janela estreita), vai pra esquerda; e nunca passa do topo nem do
+    // rodapé da janela.
+    function _hoverTimePosicionar(btn) {
+        const el = _hoverTimeEl;
+        if (!el || !btn) return;
+        const r = btn.getBoundingClientRect();
+        const cx = el.getBoundingClientRect();
+        const margem = 10;
+
+        let esq = r.right + margem;
+        if (esq + cx.width > window.innerWidth - 8) {
+            esq = r.left - margem - cx.width;
+            if (esq < 8) esq = Math.max(8, window.innerWidth - cx.width - 8);
+        }
+        let topo = r.top + r.height / 2 - cx.height / 2;
+        topo = Math.max(8, Math.min(topo, window.innerHeight - cx.height - 8));
+
+        el.style.left = `${Math.round(esq)}px`;
+        el.style.top = `${Math.round(topo)}px`;
+    }
+
+    function _hoverTimeMostrar(index) {
+        const btn = document.getElementById(`tab-${index}`);
+        if (!btn) return;
+        const el = _hoverTimeGarantirEl();
+        el.innerHTML = _hoverTimeHtml(index);
+        el.classList.add('visivel');
+        _hoverTimeIdx = index;
+        // Posiciona depois de o conteúdo existir: a altura do balão muda com o
+        // aviso ("time ainda não lido") em vez da grade de 6.
+        _hoverTimePosicionar(btn);
+    }
+
+    function fecharHoverTimeAba() {
+        if (_hoverTimeTimer) { clearTimeout(_hoverTimeTimer); _hoverTimeTimer = null; }
+        _hoverTimeIdx = -1;
+        if (_hoverTimeEl) _hoverTimeEl.classList.remove('visivel');
+    }
+
+    // Chamada pelo loop de ping (shell/19) a cada varredura: se o balão aberto
+    // é o desta conta, ele se redesenha com o dado novo em vez de congelar o
+    // time de 3 segundos atrás enquanto o mouse continua parado ali.
+    function atualizarHoverTimeAba(index) {
+        if (_hoverTimeIdx !== index || !_hoverTimeEl) return;
+        _hoverTimeEl.innerHTML = _hoverTimeHtml(index);
+        _hoverTimePosicionar(document.getElementById(`tab-${index}`));
+    }
+
+    // Delegado no document, e não em cada `.tab-btn`: `renderizarAbasClient`
+    // recria os botões a cada render (cor, reordenação, conta nova), e listener
+    // preso ao botão morreria junto com ele.
+    document.addEventListener('mouseover', (e) => {
+        const btn = e.target.closest && e.target.closest('.tab-btn');
+        if (!btn) return;
+        const m = /^tab-(\d+)$/.exec(btn.id || '');   // o `tab-dash` não entra
+        if (!m) return;
+        const idx = parseInt(m[1], 10);
+        if (idx === _hoverTimeIdx) return;
+        if (_hoverTimeTimer) clearTimeout(_hoverTimeTimer);
+        _hoverTimeTimer = setTimeout(() => _hoverTimeMostrar(idx), HOVER_TIME_ATRASO);
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const btn = e.target.closest && e.target.closest('.tab-btn');
+        if (!btn) return;
+        // `mouseout` dispara ao andar entre os filhos do próprio botão (sprite,
+        // título, ponto de ping); só fecha quando o ponteiro saiu do botão.
+        if (e.relatedTarget && btn.contains(e.relatedTarget)) return;
+        fecharHoverTimeAba();
+    });
+
+    // O balão é `pointer-events:none`, então ele nunca rouba o hover — mas
+    // arrastar, clicar e rolar a lista devem apagá-lo na hora.
+    document.addEventListener('dragstart', fecharHoverTimeAba, true);
+    document.addEventListener('mousedown', fecharHoverTimeAba, true);
+    window.addEventListener('blur', fecharHoverTimeAba);
+    document.addEventListener('scroll', fecharHoverTimeAba, true);
+
+// =====================================================================
+// 97-auto-update-notify.js -- AVISO DE ATUALIZACAO BAIXADA
+// =====================================================================
+// O main.js (electron-updater) baixa a atualizacao em segundo plano sem
+// interromper nada; quando termina, este aviso pede pra reiniciar. A
+// atualizacao so entra de verdade no PROXIMO restart do app (o updater
+// nunca troca arquivo de um processo rodando).
+//
+// Diferente do toast padrao (mostrarToast, scripts/29): esse não some
+// sozinho -- fica na tela ate a pessoa clicar em "Reiniciar agora" ou
+// "Depois", pra nao passar batido antes de decidir.
+// =====================================================================
+(function () {
+  'use strict';
+  if (typeof ipcRenderer === 'undefined' || !ipcRenderer) return;
+
+  function mostrarAvisoAtualizacao(versao) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-item toast-success';
+    toast.style.cssText = 'flex-direction:column; align-items:flex-start; gap:8px; max-width:320px; animation:none';
+    toast.innerHTML =
+      '<span>⬆️ Atualização v' + versao + ' baixada! Reinicie pra aplicar.</span>' +
+      '<div style="display:flex; gap:8px; width:100%">' +
+      '<button id="btn-update-restart-now" style="flex:1; background:#16a34a; border:none; border-radius:8px; color:#fff; font-size:11px; font-weight:800; padding:6px 10px; cursor:pointer">🔄 Reiniciar agora</button>' +
+      '<button id="btn-update-restart-later" style="background:rgba(148,163,184,.15); border:1px solid rgba(148,163,184,.3); border-radius:8px; color:#cbd5e1; font-size:11px; font-weight:700; padding:6px 10px; cursor:pointer">Depois</button>' +
+      '</div>';
+    container.appendChild(toast);
+
+    toast.querySelector('#btn-update-restart-now').onclick = () => {
+      ipcRenderer.send('restart-app');
+    };
+    toast.querySelector('#btn-update-restart-later').onclick = () => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 350);
+    };
+  }
+
+  ipcRenderer.on('update-downloaded', (event, versao) => {
+    mostrarAvisoAtualizacao(versao);
+  });
+})();
+
+// =====================================================================
+// 98-atalhos-alt-conta.js -- ALT+1..9 E ALT+0 TROCA DE CONTA
+// =====================================================================
+// Alt+1..Alt+9 vao pras contas 1-9; Alt+0 vai pra 10ª conta (mesma
+// convencao de aba de navegador/IDE com Ctrl+1..9,0).
+//
+// Alt e nao Ctrl porque Ctrl+1..9 e atalho de aba do proprio Chromium
+// dentro da webview: o jogo receberia o evento antes de nos.
+//
+// So vai ate a 10ª conta de proposito: o teclado numerico so tem 10
+// teclas (1-9 e 0). Contas alem da 10ª (o app aceita ate 16) so tem
+// troca por clique mesmo.
+//
+// DOIS caminhos pra mesma troca, e os dois sao necessarios:
+//   1. `keydown` aqui no document -- pega a tecla quando o FOCO esta no
+//      shell (sidebar, modais).
+//   2. IPC `idle-alt-switch-tab` -- pega quando o foco esta DENTRO de um
+//      <webview> (processo separado / guest do jogo). Depois de trocar
+//      de aba o foco vai pra la, e keydown no document do shell nunca
+//      mais dispara ate o usuario clicar fora de novo. O main.js
+//      intercepta a tecla direto no processo do webview (before-input-
+//      event) e manda pra ca -- funciona não importa onde o foco esteja.
+// =====================================================================
+(function () {
+  'use strict';
+
+  function trocarConta(idx) {
+    if (typeof totalContas !== 'number' || idx >= totalContas) return;
+    if (typeof selectTab !== 'function') return;
+    selectTab(idx);
+    if (typeof mostrarToast === 'function') {
+      const nome = (typeof nomesAbas !== 'undefined' && nomesAbas[idx]) || ('Conta ' + (idx + 1));
+      mostrarToast(nome, '⚡', 'normal', 1200);
+    }
+  }
+
+  // Digitando em campo de texto, Alt+numero pode ser acento morto ou
+  // caractere de layout -- nao roubamos a tecla de quem esta escrevendo.
+  function digitando(alvo) {
+    if (!alvo) return false;
+    const tag = (alvo.tagName || '').toUpperCase();
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || alvo.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    if (!ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+    if (digitando(ev.target)) return;
+
+    // ev.code em vez de ev.key: com Alt pressionado o layout ABNT2 entrega
+    // ev.key como caractere morto, mas o code segue Digit0..Digit9.
+    const m = /^Digit([0-9])$/.exec(ev.code || '');
+    if (!m) return;
+
+    const digito = parseInt(m[1], 10);
+    ev.preventDefault();
+    trocarConta(digito === 0 ? 9 : digito - 1);
+  });
+
+  if (typeof ipcRenderer !== 'undefined' && ipcRenderer) {
+    ipcRenderer.on('idle-alt-switch-tab', (event, idx) => trocarConta(idx));
+  }
+})();
+
+// =====================================================================
+// 99-stubs.js -- TOCOS PARA AS CHAMADAS QUE A PODA DEIXOU PENDURADAS
+// =====================================================================
+// ESTE ARQUIVO SO EXISTE NO CLIENTE. Ele e colado no fim de
+// shell.gerado.js por build_client.py.
+//
+// Por que precisa existir: o shell do dev e UM ESCOPO PLANO -- os modulos
+// se chamam livremente, sem import. Quando a allowlist do cliente corta um
+// modulo, o codigo que FICOU continua chamando funcoes que sumiram. Sem
+// toco, cada uma dessas chamadas e um ReferenceError que derruba a funcao
+// inteira que a continha (nao so a linha).
+//
+// Como manter: NAO escreva toco de cabeca. Rode
+//     python scripts_orfaos.py
+// depois de cada build; ele lista exatamente o que ficou pendurado. Toco a
+// mais e peso morto; toco a menos e tela quebrada na mao do cliente.
+//
+// Regra pros tocos: cada um imita o CONTRATO do original -- o que o
+// chamador faz com o retorno. `rotacionarProxyConta` devolve null porque o
+// chamador guarda o retorno e testa. Os de render nao devolvem nada porque
+// ninguem olha.
+// =====================================================================
+(function () {
+
+  // --- UI da Central de Trade -----------------------------------------
+  // Chamados de dentro de carregarInventariosTradeHub(), que o cliente USA
+  // (e o coletor de inventario do Avaliador Meta). O coletor termina
+  // redesenhando a tela do trade hub, que aqui nao existe.
+  function tradeLog() {}
+  function tradeSetProgress() {}
+  function atualizarStatsContas() {}
+  function renderizarGradeInventario() {}
+  function renderizarGradePokes() {}
+  function renderizarOfertasQueue() {}
+  function fecharTradeHubModal() {}
+
+  // --- Widget de Auto Toggles (Hunt/Catch/Sell/Buy) --------------------
+  // O widget e do Idle Suite e nao vem pro cliente, mas o watchdog e o
+  // sistema de itens fixaveis chamam essas tres no ciclo normal.
+  function renderizarWidgetAutoTogglesSidebar() {}
+  function syncSidebarAutoToggles() {}
+  function toggleWidgetAutoTogglesSidebarVisibilidade() {}
+
+  // --- Proxy -----------------------------------------------------------
+  // O cliente nao gerencia proxy. O watchdog e o mini dashboard chamam isto
+  // ao reconectar uma conta; devolver null e o mesmo que o original faz
+  // quando o pool esta vazio, entao o chamador ja sabe lidar.
+  function rotacionarProxyConta() { return null; }
+
+  // Publica no escopo global: o shell.gerado.js roda em escopo plano e as
+  // chamadas pendentes procuram estes nomes ali.
+  var tocos = {
+    tradeLog: tradeLog,
+    tradeSetProgress: tradeSetProgress,
+    atualizarStatsContas: atualizarStatsContas,
+    renderizarGradeInventario: renderizarGradeInventario,
+    renderizarGradePokes: renderizarGradePokes,
+    renderizarOfertasQueue: renderizarOfertasQueue,
+    fecharTradeHubModal: fecharTradeHubModal,
+    renderizarWidgetAutoTogglesSidebar: renderizarWidgetAutoTogglesSidebar,
+    syncSidebarAutoToggles: syncSidebarAutoToggles,
+    toggleWidgetAutoTogglesSidebarVisibilidade: toggleWidgetAutoTogglesSidebarVisibilidade,
+    rotacionarProxyConta: rotacionarProxyConta
   };
   for (var nome in tocos) {
     if (typeof window[nome] === 'undefined') window[nome] = tocos[nome];

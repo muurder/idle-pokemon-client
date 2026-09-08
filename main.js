@@ -557,7 +557,28 @@ ipcMain.handle('trim-memory-now', async (event, options) => {
         const scriptPath = path.join(__dirname, 'otimizador_memoria.py');
         const args = ['--json'];
         if (options && options.all) args.push('--all');
-        
+
+        // Antes do EmptyWorkingSet, libera o que o Chromium consegue devolver de
+        // verdade: cache HTTP e code cache das sessões vivas. Diferente do trim
+        // de working set, isso não volta por page fault segundos depois.
+        let cachesLimpos = 0;
+        if (!options || options.caches !== false) {
+            const sessoesVistas = new Set();
+            for (const wc of webContents.getAllWebContents()) {
+                try {
+                    const ses = wc.session;
+                    if (!ses || sessoesVistas.has(ses)) continue;
+                    sessoesVistas.add(ses);
+                    await ses.clearCache();
+                    // Sem clearCodeCaches aqui: jogar fora o code cache obriga o
+                    // V8 de cada webview a recompilar o jogo inteiro, o que custa
+                    // CPU e page fault justo quando a máquina já está apertada.
+                    cachesLimpos++;
+                } catch (e) { }
+            }
+            registrarLogDebug('TRIM-RAM', `Cache de ${cachesLimpos} sessões liberado antes do trim`);
+        }
+
         return new Promise((resolve) => {
             execFile('python', [scriptPath, ...args], { cwd: __dirname, timeout: 15000 }, (error, stdout, stderr) => {
                 if (error) {
@@ -565,6 +586,7 @@ ipcMain.handle('trim-memory-now', async (event, options) => {
                 } else {
                     try {
                         const data = JSON.parse(stdout);
+                        data.sessoes_cache_limpas = cachesLimpos;
                         resolve({ ok: true, data });
                     } catch(e) {
                         resolve({ ok: true, raw: stdout });
@@ -582,7 +604,7 @@ ipcMain.handle('abrir-sentinela-powershell', async (event, options) => {
     try {
         const { exec } = require('child_process');
         const loopSegundos = (options && options.loop) || 60;
-        const threshold = (options && options.threshold) || 75;
+        const threshold = (options && options.threshold) || 85;
         const batPath = path.join(__dirname, 'iniciar_sentinela_ram.bat');
         
         if (fs.existsSync(batPath)) {
@@ -602,6 +624,31 @@ ipcMain.handle('abrir-sentinela-powershell', async (event, options) => {
 
 let sentinelaRamProcess = null;
 
+// Sentinela aberto pelo .bat ou por uma sessão anterior do app não morre com ela:
+// achei um rodando havia 28 horas, com os parâmetros antigos, aparando os 3,4 GB
+// de working set a cada 60s por baixo do sentinela novo. Dois trims simultâneos
+// é a receita do thrash, então varre e mata antes de subir o nosso.
+function matarSentinelasOrfaos() {
+    if (process.platform !== 'win32') return 0;
+    try {
+        const { execSync } = require('child_process');
+        const meuPid = sentinelaRamProcess ? sentinelaRamProcess.pid : 0;
+        const ps = `Get-CimInstance Win32_Process -Filter "Name like '%python%'" | Where-Object { $_.CommandLine -like '*otimizador_memoria.py*' } | Select-Object -ExpandProperty ProcessId`;
+        const saida = execSync(`powershell.exe -NoProfile -NonInteractive -Command "${ps}"`,
+            { encoding: 'utf8', timeout: 10000, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+        const pids = saida.split(/\r?\n/).map(s => parseInt(s.trim(), 10))
+            .filter(n => Number.isFinite(n) && n > 0 && n !== meuPid);
+        for (const pid of pids) {
+            try { execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore', windowsHide: true }); } catch (e) { }
+        }
+        if (pids.length) registrarLogDebug('SENTINELA-RAM', `${pids.length} sentinela(s) órfão(s) encerrado(s): ${pids.join(', ')}`);
+        return pids.length;
+    } catch (e) {
+        registrarLogDebug('SENTINELA-RAM-ERR', 'Falha ao varrer sentinelas órfãos: ' + e.message);
+        return 0;
+    }
+}
+
 function iniciarSentinelaRamAutomatico() {
     if (sentinelaRamProcess) return;
     try {
@@ -609,8 +656,16 @@ function iniciarSentinelaRamAutomatico() {
         const scriptPath = path.join(__dirname, 'otimizador_memoria.py');
         if (!fs.existsSync(scriptPath)) return;
 
-        // Inicia o sentinela silencioso em segundo plano (-u para stdout sem buffer): verifica a cada 60s se RAM > 75%
-        sentinelaRamProcess = spawn('python', ['-u', scriptPath, '--loop', '60', '--threshold', '75'], {
+        matarSentinelasOrfaos();
+
+        // Sentinela silencioso em segundo plano (-u para stdout sem buffer).
+        // Gatilho em 85% E menos de 1500 MB livres. 75% fazia o trim rodar 24/7
+        // sem ganho; 900 MB era tarde demais — abaixo disso o Windows já pagina e
+        // a lentidão já apareceu. O script mede o ganho REAL, pula processo cuja
+        // memória está viva e se afasta sozinho quando não adianta.
+        sentinelaRamProcess = spawn('python', ['-u', scriptPath,
+            '--loop', '60', '--threshold', '85',
+            '--piso-livre', '1500', '--histerese', '8', '--ganho-min', '100'], {
             cwd: __dirname,
             stdio: ['ignore', 'pipe', 'pipe'],
             windowsHide: true
@@ -636,7 +691,7 @@ function iniciarSentinelaRamAutomatico() {
             sentinelaRamProcess = null;
         });
 
-        registrarLogDebug('SENTINELA-RAM', 'Sentinela de RAM iniciado automaticamente (verificando a cada 60s se RAM > 75%)');
+        registrarLogDebug('SENTINELA-RAM', 'Sentinela de RAM iniciado automaticamente (checa a cada 60s; dispara com RAM > 85% e < 1500 MB livres)');
     } catch (e) {
         registrarLogDebug('SENTINELA-RAM-ERR', `Erro ao iniciar sentinela automático: ${e.message}`);
     }

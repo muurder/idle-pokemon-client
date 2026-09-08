@@ -84,52 +84,139 @@
         menu: 'geral', grupo: 'Controle & Sistema', hotkey: 'Ctrl+Alt+R',
         desc: 'Fechar e reabrir o aplicativo completamente'
       },
+      'central-notificacoes': {
+        icon: '🔔', label: 'Painel de Notificações', color: '#38bdf8',
+        action: 'fecharIdleSuiteMenu(); abrirModalConfigNotificacoes()',
+        menu: 'gametools', categoria: 'audio', grupo: 'Áudio & Notificações', bold: true,
+        desc: 'Gerenciar popups, notificações do SO e sons detalhadamente por conta ou globalmente, com testes'
+      },
+      'silenciar-shinies-atual': {
+        icon: '🔕', label: 'Silenciar Janela Atual', color: '#f87171',
+        action: 'alternarSilenciarNotificacoesAbaAtual()',
+        menu: 'gametools', categoria: 'audio', grupo: 'Áudio & Notificações', bold: true,
+        desc: 'Silencia som, popups do Electron e notificações do SO apenas na conta ativa (continua registrando na Sala de Troféus)',
+        badgeHtml: '<span id="shiny-mute-atual-badge" style="font-size:9px; font-weight:900; color:#4ade80; background:rgba(34,197,94,0.18); padding:2px 6px; border-radius:10px; border:1px solid rgba(34,197,94,0.35); margin-right:4px">SOM</span>'
+      },
+      'silenciar-shinies-todas': {
+        icon: '🔇', label: 'Silenciar Todas as Abas', color: '#ef4444',
+        action: 'alternarSilenciarNotificacoesTodasAbas()',
+        menu: 'gametools', categoria: 'audio', grupo: 'Áudio & Notificações', bold: true,
+        desc: 'Silencia som, popups do Electron e notificações do SO em TODAS as contas abertas (continua registrando na Sala de Troféus)',
+        badgeHtml: '<span id="shiny-mute-todas-badge" style="font-size:9px; font-weight:900; color:#4ade80; background:rgba(34,197,94,0.18); padding:2px 6px; border-radius:10px; border:1px solid rgba(34,197,94,0.35); margin-right:4px">SOM</span>'
+      },
     };
+
+    // Categorias hierárquicas do Game Tools (desenham o leque com flyout à direita)
+    const GAMETOOLS_CATEGORIAS = [
+      { id: 'abas', icon: '📑', label: 'Abas da Suite', sub: 'Home, Rotas, Ginásios, Custo e Configs' },
+      { id: 'auto', icon: '⚙️', label: 'Automação & Farm', sub: 'Correio Automático e Toggles da Sidebar' },
+      { id: 'estrategia', icon: '⚔️', label: 'Estratégia & Trade', sub: 'Alto Comando, Forja, Trade e Proxies' },
+      { id: 'audio', icon: '🔔', label: 'Áudio & Notificações', sub: 'Painel Central e Mute de Shinies' },
+      { id: 'sistema', icon: '⚡', label: 'Desempenho & Sistema', sub: 'Monitor de Recursos, FPS, Ping e Logs' },
+    ];
 
     function escAtributo(v) {
       return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    }
+
+    function criarLinhaItemMenu(id, it) {
+      const titulo = escAtributo((it.desc || it.label) + (it.hotkey ? ` (${it.hotkey})` : ''));
+      const estilo = it.bold ? ` style="color:${it.color}; font-weight:800"` : '';
+      return `<div class="menu-item-row" data-menu-id="${id}">
+        <button class="menu-item-btn menu-item-btn-main"${it.btnId ? ` id="${it.btnId}"` : ''} onclick="${escAtributo(it.action)}" title="${titulo}">
+          <span${it.iconId ? ` id="${it.iconId}"` : ''}>${it.icon}</span> <span${it.labelId ? ` id="${it.labelId}"` : ''}${estilo}>${it.label}</span>
+          ${it.hotkey ? `<span class="menu-item-hotkey">${it.hotkey}</span>` : ''}
+        </button>
+        ${it.badgeHtml || ''}
+        <button class="menu-pin-btn" onclick="event.stopPropagation(); toggleFixarMenu('${id}')" title="Fixar no menu lateral">📌</button>
+      </div>`;
     }
 
     // Desenha as linhas dos dois dropdowns a partir do MENU_ITEMS. Chamada no
     // bootstrap e toda vez que um menu abre — assim uma entrada nova aparece
     // sem ninguem precisar mexer no index.html.
     function renderizarMenusDeFerramentas() {
-      const destinos = { geral: 'menu-itens-geral', gametools: 'menu-itens-gametools' };
-      for (const [menu, containerId] of Object.entries(destinos)) {
-        const box = document.getElementById(containerId);
-        if (!box) continue;
+      // 1. MENU GERAL (hambúrguer)
+      const boxGeral = document.getElementById('menu-itens-geral');
+      if (boxGeral) {
         let html = '';
         let grupoAtual = null;
         for (const [id, it] of Object.entries(MENU_ITEMS)) {
-          if ((it.menu || 'geral') !== menu) continue;
+          if ((it.menu || 'geral') !== 'geral') continue;
           if (it.grupo && it.grupo !== grupoAtual) {
             grupoAtual = it.grupo;
             html += `<div class="sidebar-menu-cat-title">${it.grupo}</div>`;
           }
-          const titulo = escAtributo((it.desc || it.label) + (it.hotkey ? ` (${it.hotkey})` : ''));
-          const estilo = it.bold ? ` style="color:${it.color}; font-weight:800"` : '';
-          html += `<div class="menu-item-row" data-menu-id="${id}">
-            <button class="menu-item-btn menu-item-btn-main"${it.btnId ? ` id="${it.btnId}"` : ''} onclick="${escAtributo(it.action)}" title="${titulo}">
-              <span${it.iconId ? ` id="${it.iconId}"` : ''}>${it.icon}</span> <span${it.labelId ? ` id="${it.labelId}"` : ''}${estilo}>${it.label}</span>
-              ${it.hotkey ? `<span class="menu-item-hotkey">${it.hotkey}</span>` : ''}
+          html += criarLinhaItemMenu(id, it);
+        }
+        boxGeral.innerHTML = html;
+      }
+
+      // 2. GAME TOOLS (hierárquico com flyout à direita e busca rápida)
+      const boxGameTools = document.getElementById('menu-itens-gametools');
+      if (boxGameTools) {
+        const inpExistente = document.getElementById('gametools-search-input');
+        const termoSalvo = inpExistente ? inpExistente.value : '';
+
+        let html = '';
+        // Campo de busca rápida
+        html += `<div class="gametools-search-wrap">
+          <div class="gametools-search-box">
+            <input type="text" id="gametools-search-input" class="gametools-search-input" placeholder="🔍 Buscar ferramenta..." oninput="window.filtrarGameTools(this.value)" autocomplete="off" value="${escAtributo(termoSalvo)}">
+            <button type="button" id="gametools-search-clear" class="gametools-search-clear" onclick="window.limparBuscaGameTools()" title="Limpar busca"${termoSalvo ? ' style="display:block"' : ''}>✕</button>
+          </div>
+        </div>`;
+
+        // Categorias principais
+        html += `<div id="gametools-cats-list" class="gametools-cats-list"${termoSalvo ? ' style="display:none"' : ''}>`;
+        for (const cat of GAMETOOLS_CATEGORIAS) {
+          const itensCat = Object.entries(MENU_ITEMS).filter(([_, it]) => it.menu === 'gametools' && (it.categoria === cat.id));
+          if (!itensCat.length) continue;
+          let itensHtml = '';
+          for (const [id, it] of itensCat) {
+            itensHtml += criarLinhaItemMenu(id, it);
+          }
+          html += `<div class="gametools-cat-row" data-cat-id="${cat.id}">
+            <button type="button" class="gametools-cat-btn" onclick="window.abrirFlyoutGameTools('${cat.id}', event)" title="${cat.label} — ${cat.sub}">
+              <div class="gametools-cat-main">
+                <span class="gametools-cat-icon">${cat.icon}</span>
+                <div class="gametools-cat-info">
+                  <span class="gametools-cat-title">${cat.label}</span>
+                  <span class="gametools-cat-sub">${cat.sub}</span>
+                </div>
+              </div>
+              <span class="gametools-cat-arrow">›</span>
             </button>
-            ${it.badgeHtml || ''}
-            <button class="menu-pin-btn" onclick="event.stopPropagation(); toggleFixarMenu('${id}')" title="Fixar no menu lateral">📌</button>
+            <div class="gametools-flyout" id="gametools-flyout-${cat.id}">
+              <div class="gametools-flyout-head">
+                <span>${cat.icon} ${cat.label}</span>
+                <span style="font-size:9px; color:#94a3b8; font-weight:700">${itensCat.length} itens</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                ${itensHtml}
+              </div>
+            </div>
           </div>`;
         }
-        box.innerHTML = html;
+        html += `</div>`;
+
+        // Resultados da busca
+        html += `<div id="gametools-search-results" class="gametools-search-results"${termoSalvo ? ' style="display:flex"' : ''}></div>`;
+
+        boxGameTools.innerHTML = html;
+
+        if (termoSalvo) {
+          window.filtrarGameTools(termoSalvo);
+        }
       }
+
       atualizarEstadoPinButtons();
-      // Tres linhas tem rotulo/icone que mudam com o estado do app. Como o
-      // innerHTML acima acabou de recriar esses elementos, eles voltam com o
-      // valor ESTATICO do registro — sem repintar, o menu abriria dizendo
-      // "Áudio Global" com o som mudo e "Grid Multi-Contas" já estando no grid.
+      // Atualizações dinâmicas de estado
       try { if (typeof renderizarEstadoAudio === 'function') renderizarEstadoAudio(); } catch (e) { }
       try { if (typeof atualizarBadgeXpTrackerMenu === 'function') atualizarBadgeXpTrackerMenu(); } catch (e) { }
       try { if (typeof atualizarBadgeCorreio === 'function') atualizarBadgeCorreio(); } catch (e) { }
+      try { if (typeof atualizarBadgeShinyMute === 'function') atualizarBadgeShinyMute(); } catch (e) { }
       try {
-        // O rotulo do Grid e escrito inline dentro de toggleGridMode(); nao ha
-        // funcao pra reaproveitar, entao a regra fica aqui, em um lugar so.
         if (typeof isGridMode !== 'undefined') {
           const t = document.getElementById('grid-txt-menu');
           const i = document.getElementById('grid-icon-menu');
@@ -139,11 +226,88 @@
       } catch (e) { }
     }
 
+    // Filtragem em tempo real das ferramentas
+    window.filtrarGameTools = function(termo) {
+      const q = String(termo || '').trim().toLowerCase();
+      const catsList = document.getElementById('gametools-cats-list');
+      const resultsBox = document.getElementById('gametools-search-results');
+      const clearBtn = document.getElementById('gametools-search-clear');
+      if (!catsList || !resultsBox) return;
+
+      if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
+      if (!q) {
+        catsList.style.display = 'flex';
+        resultsBox.style.display = 'none';
+        resultsBox.innerHTML = '';
+        return;
+      }
+
+      catsList.style.display = 'none';
+      resultsBox.style.display = 'flex';
+
+      const matches = [];
+      for (const [id, it] of Object.entries(MENU_ITEMS)) {
+        if (it.menu !== 'gametools') continue;
+        const matchLabel = (it.label || '').toLowerCase().includes(q);
+        const matchDesc = (it.desc || '').toLowerCase().includes(q);
+        const matchHotkey = (it.hotkey || '').toLowerCase().includes(q);
+        const matchGrupo = (it.grupo || '').toLowerCase().includes(q);
+        if (matchLabel || matchDesc || matchHotkey || matchGrupo) {
+          matches.push({ id, it });
+        }
+      }
+
+      if (matches.length === 0) {
+        resultsBox.innerHTML = `<div class="gametools-no-results">
+          <span style="font-size:16px; display:block; margin-bottom:4px">🔍</span>
+          Nenhuma ferramenta encontrada para "<b>${escAtributo(q)}</b>"
+        </div>`;
+        return;
+      }
+
+      let html = `<div class="sidebar-menu-cat-title" style="color:#38bdf8; font-size:9px; padding:2px 6px">RESULTADOS (${matches.length})</div>`;
+      for (const { id, it } of matches) {
+        html += criarLinhaItemMenu(id, it);
+      }
+      resultsBox.innerHTML = html;
+      atualizarEstadoPinButtons();
+    };
+
+    window.limparBuscaGameTools = function() {
+      const inp = document.getElementById('gametools-search-input');
+      if (inp) {
+        inp.value = '';
+        window.filtrarGameTools('');
+        inp.focus();
+      }
+    };
+
+    window.abrirFlyoutGameTools = function(catId, ev) {
+      if (ev) ev.stopPropagation();
+      const rows = document.querySelectorAll('.gametools-cat-row');
+      rows.forEach(r => {
+        if (r.getAttribute('data-cat-id') === catId) {
+          r.classList.toggle('active');
+        } else {
+          r.classList.remove('active');
+        }
+      });
+    };
+
+    // Fechar flyouts ativos ao clicar fora
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.gametools-cat-row')) {
+        document.querySelectorAll('.gametools-cat-row.active').forEach(r => r.classList.remove('active'));
+      }
+    });
+
     // IDs que sumiram do MENU_ITEMS mas podem estar salvos no localStorage de
     // quem ja usava o app. Sem isso o item fixado vira uma linha morta na
     // sidebar (renderizarFixadosSidebar nao acha a config e ignora).
     const MENU_ITEMS_LEGADO = {
-      'mini-dashboard-v2': 'mini-dashboard'   // v2 virou A tela do Mini Dashboard
+      'mini-dashboard-v2': 'mini-dashboard',   // v2 virou A tela do Mini Dashboard
+      'silenciar-shinies': 'silenciar-shinies-todas'
     };
 
     function obterItensFixados() {

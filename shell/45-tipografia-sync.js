@@ -105,3 +105,133 @@
       setInterval(ciclo, 3000);
       setTimeout(ciclo, 2500);
     })();
+
+// ===== client-assets/98-atalhos-alt-conta.js =====
+
+// =====================================================================
+// 98-atalhos-alt-conta.js -- ALT+1..9 TROCA DE CONTA
+// =====================================================================
+// SO NO CLIENTE, de proposito. O dev ja tem Ctrl+G, Ctrl+D, Ctrl+M, Ctrl+T
+// e Esc registrados; nao vale plantar um atalho global novo la sem pedido.
+// Pra promover isto pro dev depois, e mover o arquivo pra shell/48-... e
+// tirar daqui -- build_shell.py pega sozinho.
+//
+// Alt e nao Ctrl porque Ctrl+1..9 e atalho de aba do proprio Chromium
+// dentro da webview: o jogo receberia o evento antes de nos.
+//
+// Vai ate 9 e nao ate 3: o cliente tem contas dinamicas (botao "Nova
+// Conta"), entao amarrar em 3 seria amarrar no numero errado. Tecla acima
+// do numero de contas nao faz nada.
+// =====================================================================
+(function () {
+  'use strict';
+
+  // Digitando em campo de texto, Alt+numero pode ser acento morto ou
+  // caractere de layout -- nao roubamos a tecla de quem esta escrevendo.
+  function digitando(alvo) {
+    if (!alvo) return false;
+    const tag = (alvo.tagName || '').toUpperCase();
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || alvo.isContentEditable;
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    if (!ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+    if (digitando(ev.target)) return;
+
+    // ev.code em vez de ev.key: com Alt pressionado o layout ABNT2 entrega
+    // ev.key como caractere morto, mas o code segue Digit1..Digit9.
+    const m = /^Digit([1-9])$/.exec(ev.code || '');
+    if (!m) return;
+
+    const idx = parseInt(m[1], 10) - 1;
+    if (typeof totalContas !== 'number' || idx >= totalContas) return;
+    if (typeof selectTab !== 'function') return;
+
+    ev.preventDefault();
+    selectTab(idx);
+
+    if (typeof mostrarToast === 'function') {
+      const nome = (typeof nomesAbas !== 'undefined' && nomesAbas[idx]) || ('Conta ' + (idx + 1));
+      mostrarToast(nome, '⚡', 'normal', 1200);
+    }
+  });
+})();
+
+// ===== client-assets/99-stubs.js =====
+
+// =====================================================================
+// 99-stubs.js -- TOCOS PARA AS CHAMADAS QUE A PODA DEIXOU PENDURADAS
+// =====================================================================
+// ESTE ARQUIVO SO EXISTE NO CLIENTE. Ele e colado no fim de
+// shell.gerado.js por build_client.py.
+//
+// Por que precisa existir: o shell do dev e UM ESCOPO PLANO -- os modulos
+// se chamam livremente, sem import. Quando a allowlist do cliente corta um
+// modulo, o codigo que FICOU continua chamando funcoes que sumiram. Sem
+// toco, cada uma dessas chamadas e um ReferenceError que derruba a funcao
+// inteira que a continha (nao so a linha).
+//
+// Como manter: NAO escreva toco de cabeca. Rode
+//     python scripts_orfaos.py
+// depois de cada build; ele lista exatamente o que ficou pendurado. Toco a
+// mais e peso morto; toco a menos e tela quebrada na mao do cliente.
+//
+// Regra pros tocos: cada um imita o CONTRATO do original -- o que o
+// chamador faz com o retorno. `rotacionarProxyConta` devolve null porque o
+// chamador guarda o retorno e testa. Os de render nao devolvem nada porque
+// ninguem olha.
+// =====================================================================
+(function () {
+
+  // --- UI da Central de Trade -----------------------------------------
+  // Chamados de dentro de carregarInventariosTradeHub(), que o cliente USA
+  // (e o coletor de inventario do Avaliador Meta). O coletor termina
+  // redesenhando a tela do trade hub, que aqui nao existe.
+  function tradeLog() {}
+  function tradeSetProgress() {}
+  function atualizarStatsContas() {}
+  function renderizarGradeInventario() {}
+  function renderizarGradePokes() {}
+  function renderizarOfertasQueue() {}
+  function fecharTradeHubModal() {}
+
+  // --- Widget de Auto Toggles (Hunt/Catch/Sell/Buy) --------------------
+  // O widget e do Idle Suite e nao vem pro cliente, mas o watchdog e o
+  // sistema de itens fixaveis chamam essas tres no ciclo normal.
+  function renderizarWidgetAutoTogglesSidebar() {}
+  function syncSidebarAutoToggles() {}
+  function toggleWidgetAutoTogglesSidebarVisibilidade() {}
+
+  // --- Proxy -----------------------------------------------------------
+  // O cliente nao gerencia proxy. O watchdog e o mini dashboard chamam isto
+  // ao reconectar uma conta; devolver null e o mesmo que o original faz
+  // quando o pool esta vazio, entao o chamador ja sabe lidar.
+  function rotacionarProxyConta() { return null; }
+
+  // --- Ações de Hunt na Dashboard -------------------------------------
+  function iniciarTodasHunts() {}
+  function pausarTodasHunts() {}
+  function toggleHuntConta() {}
+
+  // Publica no escopo global: o shell.gerado.js roda em escopo plano e as
+  // chamadas pendentes procuram estes nomes ali.
+  var tocos = {
+    tradeLog: tradeLog,
+    tradeSetProgress: tradeSetProgress,
+    atualizarStatsContas: atualizarStatsContas,
+    renderizarGradeInventario: renderizarGradeInventario,
+    renderizarGradePokes: renderizarGradePokes,
+    renderizarOfertasQueue: renderizarOfertasQueue,
+    fecharTradeHubModal: fecharTradeHubModal,
+    renderizarWidgetAutoTogglesSidebar: renderizarWidgetAutoTogglesSidebar,
+    syncSidebarAutoToggles: syncSidebarAutoToggles,
+    toggleWidgetAutoTogglesSidebarVisibilidade: toggleWidgetAutoTogglesSidebarVisibilidade,
+    rotacionarProxyConta: rotacionarProxyConta,
+    iniciarTodasHunts: iniciarTodasHunts,
+    pausarTodasHunts: pausarTodasHunts,
+    toggleHuntConta: toggleHuntConta
+  };
+  for (var nome in tocos) {
+    if (typeof window[nome] === 'undefined') window[nome] = tocos[nome];
+  }
+})();
