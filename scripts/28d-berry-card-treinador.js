@@ -185,6 +185,10 @@
         let _berryFila = { ligado: false, itens: [], padrao: false };   // itens: [{chave, tier}]
         let _berryMochila = [];                          // consumíveis, do /api/helds
         let _berryPainel = null;                         // popover aberto
+        // Quais itens estão com a descrição aberta. A lista nasce toda
+        // recolhida: com seis consumíveis a descrição de cada um jogava os
+        // chips pra fora da área visível, e os chips são a razão do painel.
+        const _berryAbertos = new Set();
         let _berryUltimoUso = 0;
         let _berryUsando = false;
         let _berryAviso = '';                            // última falha, mostrada no painel
@@ -217,6 +221,34 @@
             return BERRY_PADRAO_TERMOS.some(t => alvo.indexOf(t) >= 0);
         }
 
+        // Os itens que a sugestão marcaria, na ordem em que marcaria. Existe
+        // separado de quem aplica porque a tela precisa NOMEAR o que vai
+        // acontecer: "berry de utilidade" não é o nome de nada que o jogador vê
+        // na mochila, e uma mensagem falando de uma categoria abstrata enquanto
+        // a lista logo abaixo mostra nomes próprios só confunde.
+        function berrySugestao() {
+            const escolhidos = [];
+            for (const it of _berryMochila) {
+                if (!berryEhUtilidade(it)) continue;
+                // Do tier mais alto pro mais baixo: gastar primeiro o melhor é
+                // o que o jogador faria à mão numa caçada.
+                Object.keys(it.porTier || {})
+                    .map(Number).filter(t => t > 0 && Number(it.porTier[t]) > 0)
+                    .sort((a, b) => b - a)
+                    .forEach(t => escolhidos.push({ chave: it.chave, tier: t, nome: it.nome || it.chave }));
+            }
+            return escolhidos;
+        }
+
+        // Os nomes distintos que a sugestão pegaria, pra escrever na tela.
+        function berrySugestaoNomes() {
+            const vistos = [];
+            for (const s of berrySugestao()) {
+                if (vistos.indexOf(s.nome) < 0) vistos.push(s.nome);
+            }
+            return vistos;
+        }
+
         // Chamada só depois de a mochila chegar do servidor: antes disso não há
         // como saber quais itens existem, e marcar no escuro daria fila com
         // chave inventada.
@@ -226,16 +258,7 @@
             _berryFila.padrao = true;          // a sugestão é de uma vez só
             if (_berryFila.itens.length) { berryFilaSalvar(); return; }
 
-            const escolhidos = [];
-            for (const it of _berryMochila) {
-                if (!berryEhUtilidade(it)) continue;
-                // Do tier mais alto pro mais baixo: gastar primeiro o melhor é
-                // o que o jogador faria à mão numa caçada.
-                Object.keys(it.porTier || {})
-                    .map(Number).filter(t => t > 0 && Number(it.porTier[t]) > 0)
-                    .sort((a, b) => b - a)
-                    .forEach(t => escolhidos.push({ chave: it.chave, tier: t }));
-            }
+            const escolhidos = berrySugestao().map(s => ({ chave: s.chave, tier: s.tier }));
             if (escolhidos.length) _berryFila.itens = escolhidos;
             berryFilaSalvar();
         }
@@ -458,11 +481,70 @@
             _berryPainel.style.top = Math.round(Math.max(8, topo)) + 'px';
         }
 
-        // Mesma chave que 28-auto-hunt-precos.js já lia pra decidir se pinta os
-        // selos de ETA. Antes só dava pra mudar pelo devtools ou pela aba de
-        // Configs do dev — que o client não tem.
-        function berryEtaNoCardLigado() {
-            try { return localStorage.getItem('idleSuiteEtaNoCard') !== '0'; } catch (e) { return true; }
+        // =====================================================================
+        // A LINHA DE ETA
+        // =====================================================================
+        // O ETA já existia no card, mas emendado no fim de linhas que não eram
+        // dele (28-auto-hunt-precos.js: um selo colado na tag de Lv. do
+        // pokémon, outro no fim de "EXP 68% · 0.8x stage"). Nos 244px úteis do
+        // card isso cortava o número no meio — "≈537x" virava "≈537" e sumia —
+        // e misturava duas contas diferentes na mesma linha.
+        //
+        // Aqui viram duas linhas próprias, em colunas alinhadas: quem sobe, em
+        // quanto tempo, e em quantos pokémons. O ETA do pokémon e o do treinador
+        // ficam um debaixo do outro, então dá pra comparar sem ler texto.
+        //
+        // O dado é o mesmo `window.__idleSuiteXpStatus` que o XP Tracker já
+        // publica — no dev vem de 28-auto-hunt-precos.js, no client de
+        // 28c-xp-status-client.js. Recalcular ETA aqui seria uma terceira conta
+        // discordando das outras duas.
+        const ETA_LINHA_KEY = 'idleSuiteEtaLinha';
+
+        function berryEtaLinhaLigada() {
+            try { return localStorage.getItem(ETA_LINHA_KEY) !== '0'; } catch (e) { return true; }
+        }
+
+        // A linha nova e os selos antigos mostram a MESMA conta. Deixar os dois
+        // ligados enche o card de duplicata, então quem liga um desliga o outro.
+        // `idleSuiteEtaNoCard` é a chave que 28/28c já liam pra decidir se
+        // pintam os selos — escrever nela aqui é usar o interruptor que já
+        // existe, não inventar um segundo.
+        function berryEtaDefinir(ligado) {
+            try {
+                localStorage.setItem(ETA_LINHA_KEY, ligado ? '1' : '0');
+                localStorage.setItem('idleSuiteEtaNoCard', '0');
+            } catch (e) { }
+        }
+
+        // Migração de uma vez só, no primeiro carregamento depois desta versão:
+        // sem isto o card apareceria com a linha nova E os selos velhos até
+        // alguém achar o toggle.
+        function berryEtaMigrar() {
+            try {
+                if (localStorage.getItem(ETA_LINHA_KEY) == null) berryEtaDefinir(true);
+            } catch (e) { }
+        }
+
+        function berryFmtEta(seg) {
+            if (!Number.isFinite(seg) || seg <= 0) return '—';
+            seg = Math.round(seg);
+            if (seg > 86400 * 3) return '> 72h';
+            const d = Math.floor(seg / 86400);
+            const h = Math.floor((seg % 86400) / 3600);
+            const m = Math.floor((seg % 3600) / 60);
+            const s = seg % 60;
+            if (d > 0) return d + 'd ' + h + 'h';
+            if (h > 0) return h + 'h ' + String(m).padStart(2, '0') + 'm';
+            if (m > 0) return m + 'm ' + String(s).padStart(2, '0') + 's';
+            return s + 's';
+        }
+
+        // `falta` chega pronto do XP Tracker como "≈ 537 pokes p/ subir". No
+        // card cabe só o número, e refazer a conta aqui daria um terceiro
+        // estimador — o problema que 01b-taxa-eta.js existe pra ter acabado.
+        function berryKillsDeFalta(txt) {
+            const m = /≈\s*~?\s*([\d.,]+\s*[KMB]?)/i.exec(String(txt || ''));
+            return m ? m[1].replace(/\s+/g, '') : '';
         }
 
         // Uma linha de ajuste: rótulo à esquerda, chavinha à direita. O <span>
@@ -484,7 +566,10 @@
             if (!p) return;
 
             const prox = berryProximaDaFila();
+            const sugeridos = berrySugestaoNomes();
+            const algumAberto = _berryMochila.some(it => _berryAbertos.has(it.chave));
             const linhas = _berryMochila.map(it => {
+                const aberto = _berryAbertos.has(it.chave);
                 const tiers = Object.keys(it.porTier || {})
                     .map(Number).filter(t => t > 0).sort((a, b) => b - a);
                 const chips = tiers.map(t => {
@@ -502,17 +587,31 @@
                         + '">' + (ordem ? ordem + '· ' : '') + 'T' + t + ' ×' + n + '</span>';
                 }).join('');
                 if (!chips) return '';
-                return '<div style="display:flex; gap:8px; align-items:flex-start; padding:7px 0;'
-                    + ' border-top:1px solid rgba(148,163,184,.13)">'
+                const naFila = _berryFila.itens.some(x => x.chave === it.chave);
+                // Recolhido mostra o essencial pra decidir: nome, quanto tem e
+                // se já está na fila. A descrição do efeito é o que ocupa três
+                // linhas cada, então é ela que fica atrás do clique.
+                return '<div style="border-top:1px solid rgba(148,163,184,.13)">'
+                    + '<div class="idle-berry-cab" data-chave="' + berryEsc(it.chave) + '" role="button" tabindex="0"'
+                    + ' title="' + berryEsc(aberto ? 'Recolher' : 'Ver o efeito') + '"'
+                    + ' style="cursor:pointer; display:flex; gap:8px; align-items:center; padding:7px 0 5px">'
                     + '<img src="sprites/item_' + (Number(it.icone) || 0) + '.png" width="22" height="22"'
-                    + ' style="width:22px;height:22px;image-rendering:pixelated;flex:none;margin-top:1px"'
+                    + ' style="width:22px;height:22px;image-rendering:pixelated;flex:none"'
                     + ' onerror="this.style.visibility=\'hidden\'" alt="">'
-                    + '<div style="flex:1; min-width:0">'
-                    + '<div style="font-size:11.5px; font-weight:700; color:#cdeee6">' + berryEsc(it.nome) + '</div>'
-                    + '<div style="font-size:10px; color:#8fb3ab; margin:1px 0 5px; line-height:1.35">'
-                    + berryEsc(it.desc || '') + (Number(it.horas) ? ' · ' + it.horas + 'h' : '') + '</div>'
-                    + '<div style="display:flex; flex-wrap:wrap; gap:4px">' + chips + '</div>'
-                    + '</div></div>';
+                    + '<span style="flex:1; min-width:0; font-size:11.5px; font-weight:700; color:'
+                    + (naFila ? '#a7f3d0' : '#cdeee6') + '; overflow:hidden; text-overflow:ellipsis;'
+                    + ' white-space:nowrap">' + berryEsc(it.nome) + '</span>'
+                    + '<span style="flex:none; font-size:9.5px; color:#7d97a0">'
+                    + (Number(it.horas) ? it.horas + 'h' : '') + '</span>'
+                    + '<span style="flex:none; font-size:9px; color:#7d97a0; width:9px; text-align:center;'
+                    + ' transform:rotate(' + (aberto ? '90' : '0') + 'deg); transition:transform .12s">▶</span>'
+                    + '</div>'
+                    + (aberto
+                        ? '<div style="font-size:10px; color:#8fb3ab; margin:0 0 6px 30px; line-height:1.4">'
+                        + berryEsc(it.desc || 'Sem descrição.') + '</div>'
+                        : '')
+                    + '<div style="display:flex; flex-wrap:wrap; gap:4px; margin:0 0 7px 30px">' + chips + '</div>'
+                    + '</div>';
             }).join('');
 
             p.innerHTML = ''
@@ -552,7 +651,19 @@
                     + '⚠️ ' + berryEsc(_berryAviso) + '</div>'
                     : '')
 
-                + '<div style="margin-top:8px">'
+                + '<div style="margin-top:10px; display:flex; align-items:center; gap:8px">'
+                + '<span style="flex:1; min-width:0; font-size:10px; font-weight:700; color:#8fb3ab">'
+                + 'Na mochila' + (_berryMochila.length ? ' (' + _berryMochila.length + ')' : '') + '</span>'
+                + (_berryMochila.length
+                    ? '<span id="idle-berry-expandir" role="button" tabindex="0"'
+                    + ' title="' + (algumAberto ? 'Recolher todas' : 'Ver o efeito de todas') + '"'
+                    + ' style="flex:none; cursor:pointer; user-select:none; font-size:9.5px; color:#7fd4c4;'
+                    + ' border:1px solid rgba(127,212,196,.4); border-radius:7px; padding:3px 7px; white-space:nowrap">'
+                    + (algumAberto ? 'recolher tudo' : 'expandir tudo') + '</span>'
+                    : '')
+                + '</div>'
+
+                + '<div style="margin-top:2px">'
                 + (linhas || '<div style="padding:14px 0; text-align:center; font-size:11px; color:#8fb3ab">'
                     + (_berryMochila.length ? 'Nenhum consumível com estoque.' : 'Carregando a mochila...') + '</div>')
                 + '</div>'
@@ -562,11 +673,14 @@
                 + '<span style="flex:1; min-width:0; font-size:9.5px; color:#7d97a0; line-height:1.4">'
                 + 'A berry é gasta na hora e não volta pra mochila. A fila só dispara com o slot vazio — '
                 + 'nunca por cima de uma que ainda está correndo.</span>'
-                + '<span id="idle-berry-padrao" role="button" tabindex="0"'
-                + ' title="Marca de novo as berrys de utilidade, do maior tier pro menor — é a sugestão que a fila usa quando nunca foi configurada."'
-                + ' style="flex:none; cursor:pointer; user-select:none; font-size:9.5px; color:#7fd4c4;'
-                + ' border:1px solid rgba(127,212,196,.4); border-radius:7px; padding:3px 7px; white-space:nowrap">'
-                + 'sugestão</span>'
+                + (sugeridos.length
+                    ? '<span id="idle-berry-padrao" role="button" tabindex="0"'
+                    + ' title="' + berryEsc('Marca ' + sugeridos.join(', ') + ', do maior tier pro menor.') + '"'
+                    + ' style="flex:none; cursor:pointer; user-select:none; font-size:9.5px; color:#7fd4c4;'
+                    + ' border:1px solid rgba(127,212,196,.4); border-radius:7px; padding:3px 7px; white-space:nowrap">'
+                    + 'marcar ' + berryEsc(sugeridos[0]) + (sugeridos.length > 1 ? ' +' + (sugeridos.length - 1) : '')
+                    + '</span>'
+                    : '')
                 + '</div>'
 
                 // Ajustes do card moram aqui, e não numa aba de configuração,
@@ -576,10 +690,12 @@
                 // só o dev enxerga.
                 + '<div style="margin-top:9px; padding-top:8px; border-top:1px solid rgba(148,163,184,.13)">'
                 + '<div style="font-size:10px; font-weight:700; color:#8fb3ab; margin-bottom:6px">Ajustes do card</div>'
-                + berryLinhaAjusteHtml('idle-berry-cfg-mapa', 'Botão de Mapa na tela', mapaVisivel(),
-                    'O Mapa (ADM) do jogo fica cravado em cima do card. Ligado, ele volta — mas ancorado logo abaixo do card, sem tapar nada.')
-                + berryLinhaAjusteHtml('idle-berry-cfg-eta', 'Selos de ETA no card', berryEtaNoCardLigado(),
-                    'O tempo e o nº de pokémons estimados pro próximo nível, ao lado do Lv. e do EXP.')
+                + berryLinhaAjusteHtml('idle-berry-cfg-mapa', 'Botão 🗺️ de mostrar minimapa', mapaVisivel(),
+                    'O botão "Mostrar minimapa" do jogo fica cravado em cima do card. Ligado, ele volta — '
+                    + 'mas ancorado logo abaixo do card, sem tapar nada. Desligado com o minimapa escondido, '
+                    + 'o caminho de volta pro minimapa é ligar isto aqui de novo.')
+                + berryLinhaAjusteHtml('idle-berry-cfg-eta', 'ETA do XP no card', berryEtaLinhaLigada(),
+                    'O tempo e o nº de pokémons estimados pro próximo nível do pokémon e do treinador.')
                 + '</div>';
 
             const fechar = p.querySelector('#idle-berry-fechar');
@@ -593,8 +709,9 @@
 
             const cfgEta = p.querySelector('#idle-berry-cfg-eta');
             if (cfgEta) cfgEta.onclick = function () {
-                try { localStorage.setItem('idleSuiteEtaNoCard', berryEtaNoCardLigado() ? '0' : '1'); } catch (e) { }
+                berryEtaDefinir(!berryEtaLinhaLigada());
                 berryPintarPainel();
+                atualizarTiraBerry();
             };
 
             const padrao = p.querySelector('#idle-berry-padrao');
@@ -602,7 +719,6 @@
                 _berryFila.itens = [];
                 _berryFila.padrao = false;
                 berryAplicarPadrao();
-                if (!_berryFila.itens.length) _berryAviso = 'Nenhuma berry de utilidade na mochila.';
                 berryPintarPainel();
                 atualizarTiraBerry();
             };
@@ -621,6 +737,24 @@
                     berryFilaAlternar(chip.getAttribute('data-chave'), Number(chip.getAttribute('data-tier')) || 1);
                 };
             });
+
+            p.querySelectorAll('.idle-berry-cab').forEach(cab => {
+                cab.onclick = function () {
+                    const c = cab.getAttribute('data-chave');
+                    if (_berryAbertos.has(c)) _berryAbertos.delete(c);
+                    else _berryAbertos.add(c);
+                    berryPintarPainel();
+                };
+            });
+
+            const expandir = p.querySelector('#idle-berry-expandir');
+            if (expandir) expandir.onclick = function () {
+                // "Recolher tudo" quando QUALQUER um está aberto: com a lista
+                // meio aberta, o que se quer é limpar, não abrir o resto.
+                if (algumAberto) _berryAbertos.clear();
+                else _berryMochila.forEach(it => _berryAbertos.add(it.chave));
+                berryPintarPainel();
+            };
         }
 
         // =====================================================================
@@ -663,11 +797,77 @@
                 + ' title="' + (on ? 'Fila automática ligada — clique para configurar' : 'Fila de berrys e ajustes do card') + '"'
                 + ' style="flex:none; cursor:pointer; user-select:none; width:17px; height:17px;'
                 + ' display:flex; align-items:center; justify-content:center; border-radius:50%;'
-                + ' font-size:12px; font-weight:700; line-height:1;'
                 + (on
                     ? ' background:rgba(52,211,153,.22); border:1px solid #34d399; color:#a7f3d0;'
                     : ' background:rgba(148,163,184,.12); border:1px solid rgba(148,163,184,.38); color:#94a3b8;')
-                + '">+</span>';
+                // "+" como TEXTO nunca fica no centro: a fonte reserva espaço
+                // abaixo da linha de base pros descendentes (p, g, y), e o
+                // glifo sobe. Dava pra empurrar com padding, mas o valor certo
+                // muda com a fonte do sistema. Desenhado, o cruzamento cai no
+                // centro geométrico do círculo e fica igual em toda máquina.
+                + '"><svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"'
+                + ' style="display:block; overflow:visible">'
+                + '<path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+                + '</svg></span>';
+        }
+
+        function berryEtaSubLinhaHtml(id, emoji, cor) {
+            return '<div style="display:flex; align-items:center; gap:6px">'
+                + '<span style="flex:none; font-size:10px; line-height:1">' + emoji + '</span>'
+                + '<span id="' + id + '-alvo" style="flex:1; min-width:0; font-size:9.5px; color:#8fb3ab;'
+                + ' overflow:hidden; text-overflow:ellipsis; white-space:nowrap"></span>'
+                + '<span id="' + id + '-t" style="flex:none; font-size:10.5px; font-weight:700; color:' + cor + ';'
+                + ' font-variant-numeric:tabular-nums; white-space:nowrap"></span>'
+                + '<span id="' + id + '-k" style="flex:none; font-size:9px; color:#7d97a0;'
+                + ' font-variant-numeric:tabular-nums; white-space:nowrap; min-width:34px; text-align:right"></span>'
+                + '</div>';
+        }
+
+        function berryEtaLinhaHtml() {
+            return '<div style="border:1px solid rgba(148,163,184,.22); background:rgba(148,163,184,.06);'
+                + ' border-radius:9px; padding:5px 8px 6px; display:flex; flex-direction:column; gap:3px">'
+                + berryEtaSubLinhaHtml('idle-eta-l-poke', '🐾', '#4ade80')
+                + berryEtaSubLinhaHtml('idle-eta-l-jog', '🧑', '#fbbf24')
+                + '</div>';
+        }
+
+        function berryPintarEtaLinha() {
+            const s = window.__idleSuiteXpStatus;
+            if (!s) return;
+
+            function preencher(id, dado, rotuloNivel) {
+                if (!dado) return;
+                const elAlvo = document.getElementById(id + '-alvo');
+                const elT = document.getElementById(id + '-t');
+                const elK = document.getElementById(id + '-k');
+                if (!elAlvo || !elT || !elK) return;
+
+                const lv = Number(dado.level);
+                const alvo = dado.xpCap
+                    ? (dado.name || '')
+                    : ((dado.name ? dado.name + ' · ' : '') + rotuloNivel + (Number.isFinite(lv) ? (lv + 1) : '--'));
+                if (elAlvo.textContent !== alvo) elAlvo.textContent = alvo;
+                elAlvo.title = dado.xpCap
+                    ? (dado.name || '') + ' está no nível máximo'
+                    : 'Falta ' + (dado.falta || '—') + ' para ' + rotuloNivel + (Number.isFinite(lv) ? (lv + 1) : '--');
+
+                let tempo, kills = '';
+                if (dado.xpCap) {
+                    tempo = '⭐ MAX';
+                } else if (dado.pausado) {
+                    tempo = '⏸️';
+                } else {
+                    tempo = berryFmtEta(Number(dado.segs));
+                    if (tempo === '—') tempo = 'calculando';
+                    const k = berryKillsDeFalta(dado.falta);
+                    if (k) kills = '≈' + k;
+                }
+                if (elT.textContent !== tempo) elT.textContent = tempo;
+                if (elK.textContent !== kills) elK.textContent = kills;
+            }
+
+            preencher('idle-eta-l-poke', s.poke, 'Lv.');
+            preencher('idle-eta-l-jog', s.jog, 'Nv.');
         }
 
         function berryLinhaHtml(id) {
@@ -749,6 +949,9 @@
             const tira = garantirTiraBerry();
             if (!tira) return;
 
+            // `idleSuiteBerryNoCard='0'` desliga a tira inteira — inclusive a
+            // linha de ETA, que mora dentro dela. É o interruptor geral, e quem
+            // o usa quer o card oficial sem nada nosso.
             if (!berryLigada()) {
                 tira.style.display = 'none';
                 tira.innerHTML = '';
@@ -775,12 +978,14 @@
 
             // Só reconstrói o HTML quando a lista de berrys muda; o tick normal
             // mexe em textContent e width, que não custam layout do card inteiro.
-            const marca = assinatura + '#' + (_berryFila.ligado ? '1' : '0');
+            const comEta = berryEtaLinhaLigada();
+            const marca = assinatura + '#' + (_berryFila.ligado ? '1' : '0') + (comEta ? 'e' : '');
             if (tira.getAttribute('data-chaves') !== marca) {
                 tira.setAttribute('data-chaves', marca);
-                tira.innerHTML = berrys.length
-                    ? berrys.map((b, i) => berryLinhaHtml('idle-berry-l' + i)).join('')
-                    : berryLinhaVaziaHtml();
+                tira.innerHTML = (comEta ? berryEtaLinhaHtml() : '')
+                    + (berrys.length
+                        ? berrys.map((b, i) => berryLinhaHtml('idle-berry-l' + i)).join('')
+                        : berryLinhaVaziaHtml());
                 // O "+" acompanha a última berry da lista, pra não repetir seis vezes.
                 if (berrys.length) {
                     const slot = document.getElementById('idle-berry-l' + (berrys.length - 1) + '-add');
@@ -846,10 +1051,12 @@
             });
 
             berryLigarBotaoAdd();
+            if (comEta) berryPintarEtaLinha();
             if (_berryPainel) berryPosicionarPainel();
             berryMotorFila();
         }
 
         berryFilaCarregar();
+        berryEtaMigrar();
         atualizarTiraBerry();
         setInterval(atualizarTiraBerry, 1000);
