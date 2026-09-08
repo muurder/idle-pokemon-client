@@ -39,7 +39,7 @@
     if (window.__bugSuiteCarregado) return;
     window.__bugSuiteCarregado = true;
 
-    window.__bugSuiteBuild = '2026-09-08 01:58:21';
+    window.__bugSuiteBuild = '2026-09-08 02:11:54';
         // =====================================================================
         // 09b-doca.js — DOCAS: cards soltos acoplados às bordas do painel
         // =====================================================================
@@ -1508,21 +1508,80 @@
                 return b;
             }
 
+            // ---------- Poképédia: SEMPRE o primeiro item do rail ----------
+            // Cravada à esquerda de tudo que o usuário fixou. Não entra na
+            // pinnedList (não é toggle, não some) e não participa do arrasto.
+            const PP_ICONE_POKEDEX =
+                '<svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block">'
+                + '<rect x="2" y="3" width="20" height="18" rx="3" fill="#e3350d" stroke="#7d1907" stroke-width="1"/>'
+                + '<path d="M2 6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v2H2z" fill="#c0290a"/>'
+                + '<circle cx="7" cy="6" r="2.1" fill="#8fd8ff" stroke="#fff" stroke-width=".7"/>'
+                + '<circle cx="6.4" cy="5.4" r=".6" fill="#eaffff"/>'
+                + '<circle cx="12.6" cy="6" r=".95" fill="#ffde59"/>'
+                + '<circle cx="15.6" cy="6" r=".95" fill="#7bed9f"/>'
+                + '<rect x="4.8" y="11.5" width="6.4" height="6.6" rx="1.1" fill="#2a1720"/>'
+                + '<rect x="13.2" y="12" width="5.2" height="1.7" rx=".85" fill="#2a1720"/>'
+                + '<rect x="13.2" y="15" width="5.2" height="1.7" rx=".85" fill="#2a1720"/>'
+                + '</svg>';
+
+            function criarBotaoPokepedia() {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'tb ic idle-pp-btn';
+                b.title = 'Poképédia — dex, mega, stats, itens, tipos e sistema (Clique para abrir)';
+                b.style.cssText = [
+                    'position:relative', 'display:flex', 'align-items:center', 'justify-content:center',
+                    'width:clamp(32px, 3.7vw, 52px)', 'height:clamp(32px, 3.7vw, 52px)',
+                    'padding:clamp(4px, .5vw, 7px)', 'border:none', 'border-radius:8px',
+                    'background:rgba(15,23,42,0.9)', 'color:#e2e8f0', 'cursor:pointer',
+                    'transition:all .15s ease', 'box-sizing:border-box',
+                    'box-shadow:0 2px 8px rgba(0,0,0,0.5)'
+                ].join(';');
+                b.innerHTML = '<span style="width:clamp(24px,2.9vw,36px);height:clamp(24px,2.9vw,36px);display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">' + PP_ICONE_POKEDEX + '</span>';
+                b.onmouseenter = () => { b.style.background = '#223047'; b.style.transform = 'translateY(-1px)'; };
+                b.onmouseleave = () => { b.style.background = 'rgba(15,23,42,0.9)'; b.style.transform = ''; };
+                b.onclick = () => { chamarFuncaoJogo('abrirPokepedia'); };
+                return b;
+            }
+
+            // ---------- Arrasto pra reordenar os itens fixados ----------
+            let _ppDragIdx = null;
+            function tornarArrastavel(botao, idx) {
+                botao.draggable = true;
+                botao.dataset.pinIdx = idx;
+                botao.addEventListener('dragstart', (e) => {
+                    _ppDragIdx = idx;
+                    botao.style.opacity = '0.4';
+                    try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch (er) {}
+                });
+                botao.addEventListener('dragend', () => { botao.style.opacity = ''; _ppDragIdx = null; });
+                botao.addEventListener('dragover', (e) => { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (er) {} });
+                botao.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const de = _ppDragIdx, para = idx;
+                    if (de == null || de === para) return;
+                    const [mov] = pinnedList.splice(de, 1);
+                    pinnedList.splice(para, 0, mov);
+                    salvarFixados();
+                    renderizarBarraFixada();
+                });
+            }
+
             function renderizarBarraFixada() {
                 rail.innerHTML = '';
-                if (!pinnedList.length) {
-                    rail.style.display = 'none';
-                    rail.style.visibility = 'hidden';
-                    rail.style.pointerEvents = 'none';
-                    return;
-                }
+                // A barra existe SEMPRE, por causa da Poképédia âncora.
                 rail.style.display = 'flex';
                 rail.style.visibility = 'visible';
                 rail.style.pointerEvents = 'auto';
+                try { rail.appendChild(criarBotaoPokepedia()); } catch (e) {}
                 // try/catch por item: um item com dado inesperado não pode derrubar
                 // o resto da barra no meio do forEach.
-                pinnedList.forEach(item => {
-                    try { rail.appendChild(criarBotaoFixado(item)); } catch(e) {}
+                pinnedList.forEach((item, idx) => {
+                    try {
+                        const b = criarBotaoFixado(item);
+                        tornarArrastavel(b, idx);
+                        rail.appendChild(b);
+                    } catch(e) {}
                 });
                 posicionarAoLadoDoHunt();
             }
@@ -1679,7 +1738,7 @@
             // Rede de segurança, bem mais espaçada (a injeção é idempotente/barata).
             setInterval(() => {
                 injetarPinsNosMenus();
-                if (pinnedList.length) posicionarAoLadoDoHunt();
+                posicionarAoLadoDoHunt(); // rail existe sempre (Poképédia âncora)
             }, 3000);
             window.addEventListener('resize', posicionarAoLadoDoHunt, { passive: true });
 
@@ -7397,5 +7456,1379 @@
             const w = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             w.__alternarDocaCusto = custoAlternarDoca;
         })();
+
+        // =====================================================================
+        // 40-pokepedia-dados.js — POKÉPÉDIA: camada de dados (sem DOM)
+        // =====================================================================
+        // A Poképédia é uma referência para NAVEGAR tudo que o servidor manda no
+        // /api/meta — os 599 da dex, os 235 held, os 72 TM, as 650+ zonas e a
+        // tabela de tipos — sem sair pro site. Este arquivo é só o dado: recebe
+        // o catálogo e devolve listas, buscas e cruzamentos prontos. Quem
+        // desenha é o 41. Sem DOM e sem global próprio: dá pra testar fora do
+        // navegador passando o meta na mão.
+        //
+        // ── DE ONDE VEM O META ──
+        // `S` (símbolo do jogo, ver EXTERNOS no checar_escopo) É o objeto do
+        // /api/meta em runtime — o MESMO que a doca do inventário lê em 35. Não
+        // buscamos nada pela rede: se o jogo carregou, o dado já está aqui, e a
+        // Poképédia funciona offline depois do primeiro load.
+        //
+        // ── A TABELA DE TIPOS SÓ TEM O SUPER-EFETIVO ──
+        // No meta, `typeChart[ataque]` é a LISTA de tipos defensores que aquele
+        // ataque bate FORTE (ex.: fire → [grass, bug, ice, steel]). Não há dado
+        // de resistência (0.5×) nem imunidade (0×). Então dá pra derivar, com
+        // honestidade:
+        //   • "forte atacando" de um pokémon = typeChart[tipo dele] (o que o
+        //     STAB dele arrebenta).
+        //   • "fraco contra" (defensivo) = todo tipo de ataque A tal que um dos
+        //     tipos do pokémon aparece em typeChart[A] — inversão da tabela.
+        // O que NÃO dá pra afirmar (resiste a / imune a) a tela não inventa.
+        // =====================================================================
+
+        function ppMeta() {
+            try { if (typeof S !== 'undefined' && S) return S; } catch (e) { }
+            return null;
+        }
+
+        // "Focus\nPunch" → "Focus Punch"; nomes do meta trazem \n literal.
+        function ppLimpo(t) {
+            return String(t == null ? '' : t).replace(/\s*\n\s*/g, ' ').trim();
+        }
+
+        function ppNorm(t) {
+            return ppLimpo(t).toLowerCase();
+        }
+
+        function ppDex() {
+            const m = ppMeta();
+            return (m && Array.isArray(m.dex)) ? m.dex : [];
+        }
+
+        function ppHelds() {
+            const m = ppMeta();
+            return (m && Array.isArray(m.heldItems)) ? m.heldItems
+                : (m && Array.isArray(m.helds)) ? m.helds : [];
+        }
+
+        function ppTms() {
+            const m = ppMeta();
+            return (m && Array.isArray(m.tms)) ? m.tms : [];
+        }
+
+        function ppZones() {
+            const m = ppMeta();
+            return (m && Array.isArray(m.zones)) ? m.zones : [];
+        }
+
+        function ppTypeChart() {
+            const m = ppMeta();
+            return (m && m.typeChart && typeof m.typeChart === 'object') ? m.typeChart : {};
+        }
+
+        // Lista fixa dos 18 tipos, na ordem canônica — usada quando a tela
+        // precisa iterar tipos mesmo que o typeChart venha capado.
+        const PP_TIPOS = ['normal', 'fire', 'water', 'grass', 'electric', 'ice',
+            'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock',
+            'ghost', 'dragon', 'dark', 'steel', 'fairy'];
+
+        // "forte atacando": o que o STAB desse(s) tipo(s) bate forte.
+        function ppForteAtacando(type1, type2) {
+            const tc = ppTypeChart();
+            const out = new Set();
+            for (const t of [type1, type2]) {
+                if (!t) continue;
+                for (const d of (tc[ppNorm(t)] || [])) out.add(ppNorm(d));
+            }
+            return [...out];
+        }
+
+        // "fraco contra" (defensivo): inversão da tabela. Um pokémon é fraco a
+        // um ataque A se algum tipo DELE está na lista de A.
+        function ppFracoContra(type1, type2) {
+            const tc = ppTypeChart();
+            const meus = [type1, type2].filter(Boolean).map(ppNorm);
+            const out = new Set();
+            for (const atk of PP_TIPOS) {
+                const bate = (tc[atk] || []).map(ppNorm);
+                if (meus.some(m => bate.includes(m))) out.add(atk);
+            }
+            return [...out];
+        }
+
+        // Onde caçar: zonas cujo spawn tem esse pokémon (casa por name/baseName,
+        // normalizado). Devolve [{ zona, region, reqLevel, weight }], ordenado
+        // pela chance (weight) desc — onde ele é mais comum primeiro.
+        function ppOndeAcha(nomeOuKey) {
+            const alvo = ppNorm(nomeOuKey);
+            if (!alvo) return [];
+            const out = [];
+            for (const z of ppZones()) {
+                for (const p of (z.pokemon || [])) {
+                    const bate = ppNorm(p.name) === alvo
+                        || ppNorm(p.baseName) === alvo;
+                    if (bate) {
+                        out.push({
+                            zona: z.name, region: z.region || '',
+                            reqLevel: z.reqLevel | 0, weight: p.weight | 0,
+                            index: z.index
+                        });
+                        break;
+                    }
+                }
+            }
+            return out.sort((a, b) => b.weight - a.weight);
+        }
+
+        // Held sugerido para um tipo: os held de "dano-tipo" costumam ter o tipo
+        // no meio do desc ("golpes do tipo X"). Casamento simples por texto —
+        // é uma DICA, não um veredito. Devolve [{ label, desc }].
+        function ppHeldsPorTipo(type1, type2) {
+            const tipos = [type1, type2].filter(Boolean).map(ppNorm);
+            if (!tipos.length) return [];
+            const PT = {
+                normal: 'normal', fire: 'fogo', water: 'água', grass: 'planta',
+                electric: 'elétr', ice: 'gelo', fighting: 'lutador', poison: 'veneno',
+                ground: 'terra', flying: 'voador', psychic: 'psíqui', bug: 'inseto',
+                rock: 'pedra', ghost: 'fantasma', dragon: 'dragão', dark: 'sombri',
+                steel: 'aço', fairy: 'fada'
+            };
+            const alvos = tipos.map(t => PT[t] || t);
+            const out = [];
+            for (const h of ppHelds()) {
+                if (ppNorm(h.funcao).indexOf('dano-tipo') < 0) continue;
+                const d = ppNorm(h.desc);
+                if (alvos.some(a => d.indexOf(a) >= 0)) {
+                    out.push({ label: h.label || ppLimpo(h.name), desc: ppLimpo(h.desc), cid: h.cid });
+                }
+            }
+            return out;
+        }
+
+        // ── Outras categorias de item do /api/meta (aba Itens) ──────────────
+        function ppStones()     { const m = ppMeta(); return (m && Array.isArray(m.stones))     ? m.stones     : []; }
+        function ppBalls()      { const m = ppMeta(); return (m && Array.isArray(m.balls))      ? m.balls      : []; }
+        function ppPotions()    { const m = ppMeta(); return (m && Array.isArray(m.potions))    ? m.potions    : []; }
+        function ppBaits()      { const m = ppMeta(); return (m && Array.isArray(m.baits))      ? m.baits      : []; }
+        function ppBossItems()  { const m = ppMeta(); return (m && Array.isArray(m.bossItems))  ? m.bossItems  : []; }
+        function ppTradeItems() { const m = ppMeta(); return (m && Array.isArray(m.tradeItems)) ? m.tradeItems : []; }
+        function ppOutfits()    { const m = ppMeta(); return (m && Array.isArray(m.outfits))    ? m.outfits    : []; }
+
+        // ── Megas: cruza a dex do meta com quem tem base stats de Mega (módulo
+        // 42). Devolve os pokémon da dex que possuem forma Mega, com os stats da
+        // base e da mega lado a lado. Depende de ppStatsDe/PP_MEGA_KEYS (42).
+        function ppMegas() {
+            if (typeof PP_MEGA_KEYS === 'undefined' || typeof ppStatsDe !== 'function') return [];
+            // Índice dos nomes da dex, normalizados, do mais longo pro mais curto,
+            // pra que 'megacharizardx' case com 'charizard' (e não com nada menor).
+            const dexNorm = ppDex().map(p => ({ p: p, n: ppNorm(p.name).replace(/[^a-z0-9]/g, '') }))
+                .sort((a, b) => b.n.length - a.n.length);
+            const out = [];
+            for (const key of PP_MEGA_KEYS) {
+                const bare = key.replace(/^mega/, '');            // ex.: 'charizardx'
+                const alvo = dexNorm.find(d => d.n && bare.indexOf(d.n) === 0);
+                if (!alvo) continue;
+                const p = alvo.p;
+                let label = ppLimpo(p.name);                       // nome-base por padrão
+                if (typeof PP_STATS_LABEL !== 'undefined' && PP_STATS_LABEL[key]) {
+                    label = PP_STATS_LABEL[key].replace(/^\s*mega\s+/i, ''); // 'Charizard X'
+                }
+                out.push({
+                    mkey: key, dex: p.dex, name: label, key: p.key, lookType: p.lookType,
+                    type1: p.type1, type2: p.type2, tier: p.tier,
+                    base: ppStatsDe(p.name), mega: ppStatsDe(key)
+                });
+            }
+            return out;
+        }
+
+        // Busca genérica por nome/label/move, com filtro opcional de tipo e tier.
+        function ppFiltrarDex(termo, tipo, tier) {
+            const q = ppNorm(termo);
+            const ft = tipo ? ppNorm(tipo) : '';
+            const fr = tier ? String(tier).toUpperCase() : '';
+            return ppDex().filter(p => {
+                if (q && ppNorm(p.name).indexOf(q) < 0 && String(p.dex) !== q) return false;
+                if (ft && ppNorm(p.type1) !== ft && ppNorm(p.type2) !== ft) return false;
+                if (fr && String(p.tier || '').toUpperCase() !== fr) return false;
+                return true;
+            });
+        }
+
+        // =====================================================================
+        // 41-pokepedia-ui.js — POKÉPÉDIA: botão flutuante + janela de busca
+        // =====================================================================
+        // Desenha a Poképédia. O DADO vem todo do 40 (que lê o /api/meta via S);
+        // aqui é só tela. É de propósito AUTO-CONTIDO: um botão 📚 próprio e uma
+        // janela (overlay) própria, sem tocar no painel-suite (07h/07o/08). Isso
+        // deixa o layout livre pra ocupar a tela toda — que é o que uma dex de
+        // 599 precisa — e mantém o módulo fácil de portar depois (o botão e o
+        // overlay nascem do body, não dependem da suite).
+        //
+        // ── SPRITES ──
+        // Pokémon: `window.loadSprite(lookType, px, shiny)` do jogo (mesmo
+        // caminho da doca da Equipe, 36) — pintado SÓ quando a linha entra na
+        // tela (IntersectionObserver), senão 599 canvases nascem de uma vez.
+        // Item (held/TM): o jogo resolve por imagem, `/sprites/item_<cid>.png`
+        // (ver 35). Held usa `cid`, TM usa `spriteCid`.
+        // =====================================================================
+
+        (function () {
+            if (typeof document === 'undefined') return;
+
+            const PP_COR_TIPO = {
+                normal: '#9fa19f', fire: '#e62829', water: '#2980ef', grass: '#3fa129',
+                electric: '#e0b000', ice: '#3dcef3', fighting: '#ff8000', poison: '#9141cb',
+                ground: '#b0722a', flying: '#81b9ef', psychic: '#ef4179', bug: '#91a119',
+                rock: '#afa981', ghost: '#704170', dragon: '#5060e1', dark: '#5a4a47',
+                steel: '#60a1b8', fairy: '#ef70ef'
+            };
+            const PP_TIER_COR = { S: '#ff5d8f', A: '#ffb020', B: '#54c1ff', C: '#8fd36b' };
+
+            function ppWin() {
+                try { return (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window; }
+                catch (e) { return window; }
+            }
+
+            function ppEsc(t) {
+                return String(t == null ? '' : t).replace(/[&<>"']/g, c => (
+                    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+                ));
+            }
+
+            function ppChipTipo(t) {
+                if (!t) return '';
+                const c = PP_COR_TIPO[String(t).toLowerCase()] || '#6b7280';
+                return `<span class="pp-tp" style="background:${c}">${ppEsc(String(t).toUpperCase())}</span>`;
+            }
+
+            function ppChipTier(t) {
+                if (!t) return '';
+                const c = PP_TIER_COR[String(t).toUpperCase()] || '#6b7280';
+                return `<span class="pp-tier" style="color:${c};border-color:${c}">${ppEsc(String(t).toUpperCase())}</span>`;
+            }
+
+            // ── CSS (uma vez) ─────────────────────────────────────────────────
+            function ppCss() {
+                if (document.getElementById('pp-css')) return;
+                const st = document.createElement('style');
+                st.id = 'pp-css';
+                st.textContent = `
+                    .pp-ov {
+                        position: fixed; inset: 0; z-index: 2147483100; display: none;
+                        background: rgba(6,5,16,.72); backdrop-filter: blur(4px);
+                        align-items: center; justify-content: center;
+                        font-family: 'Segoe UI', system-ui, sans-serif;
+                    }
+                    .pp-ov.on { display: flex; }
+                    .pp-win {
+                        width: min(1120px, 95vw); height: min(880px, 90vh);
+                        display: flex; flex-direction: column; overflow: hidden;
+                        background: linear-gradient(165deg, #171233, #0d0a1e);
+                        border: 1px solid rgba(148,120,246,.34); border-radius: 18px;
+                        box-shadow: 0 30px 80px rgba(0,0,0,.6); color: #e6e2f4;
+                    }
+                    .pp-head {
+                        display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+                        border-bottom: 1px solid rgba(148,120,246,.2);
+                        background: rgba(124,58,237,.12); flex: none;
+                    }
+                    .pp-h-tit { font-size: 15px; font-weight: 900; color: #d6ccff; letter-spacing: .3px; }
+                    .pp-nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+                    .pp-nav-b {
+                        background: rgba(148,163,184,.1); border: 1px solid rgba(148,163,184,.18);
+                        color: #b6add6; border-radius: 9px; padding: 6px 12px; cursor: pointer;
+                        font-size: 12px; font-weight: 700; font-family: inherit; transition: all .15s;
+                    }
+                    .pp-nav-b:hover { background: rgba(148,163,184,.2); }
+                    .pp-nav-b.on { background: rgba(124,58,237,.34); border-color: rgba(167,139,250,.7); color: #fff; }
+                    .pp-x {
+                        background: rgba(239,68,68,.16); border: 1px solid rgba(239,68,68,.4);
+                        color: #fca5a5; border-radius: 9px; width: 32px; height: 30px; cursor: pointer;
+                        font-size: 14px; font-weight: 900; flex: none;
+                    }
+                    .pp-tool {
+                        display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+                        border-bottom: 1px solid rgba(148,120,246,.14); flex-wrap: wrap; flex: none;
+                    }
+                    .pp-search {
+                        flex: 1; min-width: 180px; background: #0c0a1c; color: #fff;
+                        border: 1px solid rgba(148,120,246,.3); border-radius: 10px;
+                        padding: 9px 12px; font-size: 13px; font-family: inherit; outline: none;
+                    }
+                    .pp-search:focus { border-color: rgba(167,139,250,.8); }
+                    .pp-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+                    .pp-chip {
+                        background: rgba(148,163,184,.1); border: 1px solid rgba(148,163,184,.22);
+                        color: #b6add6; border-radius: 999px; padding: 5px 11px; cursor: pointer;
+                        font-size: 11px; font-weight: 700; font-family: inherit; transition: all .12s;
+                    }
+                    .pp-chip:hover { background: rgba(148,163,184,.2); }
+                    .pp-chip.on { background: rgba(124,58,237,.4); border-color: rgba(167,139,250,.8); color: #fff; }
+                    .pp-body { display: flex; flex: 1; min-height: 0; }
+                    .pp-list { flex: 1; min-width: 0; overflow-y: auto; padding: 12px; }
+                    .pp-detail {
+                        width: 340px; flex: none; overflow-y: auto; padding: 16px;
+                        border-left: 1px solid rgba(148,120,246,.18); background: rgba(12,10,28,.5);
+                        display: none;
+                    }
+                    .pp-detail.on { display: block; }
+                    .pp-count { font-size: 11px; color: #8b81b0; padding: 0 4px 8px; }
+                    .pp-grid {
+                        display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                        gap: 8px;
+                    }
+                    .pp-card {
+                        background: rgba(30,24,58,.6); border: 1px solid rgba(148,120,246,.16);
+                        border-radius: 12px; padding: 10px; cursor: pointer; transition: all .12s;
+                        display: flex; flex-direction: column; align-items: center; gap: 4px;
+                    }
+                    .pp-card:hover { border-color: rgba(167,139,250,.6); background: rgba(45,35,84,.7); transform: translateY(-1px); }
+                    .pp-card.sel { border-color: #a78bfa; box-shadow: 0 0 0 1px #a78bfa inset; }
+                    .pp-spr { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; image-rendering: pixelated; }
+                    .pp-spr img, .pp-spr canvas { max-width: 56px; max-height: 56px; image-rendering: pixelated; }
+                    .pp-nm { font-size: 12px; font-weight: 800; color: #ece8fb; text-align: center; line-height: 1.15; }
+                    .pp-dex-n { font-size: 9.5px; color: #7d73a6; font-weight: 700; }
+                    .pp-tps { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
+                    .pp-tp { font-size: 8.5px; font-weight: 800; color: #fff; padding: 2px 6px; border-radius: 6px; letter-spacing: .3px; }
+                    .pp-tier { font-size: 9px; font-weight: 900; border: 1px solid; border-radius: 5px; padding: 1px 5px; }
+                    .pp-row {
+                        display: flex; align-items: center; gap: 10px; padding: 9px 11px;
+                        background: rgba(30,24,58,.5); border: 1px solid rgba(148,120,246,.14);
+                        border-radius: 10px; margin-bottom: 6px; cursor: pointer; transition: all .12s;
+                    }
+                    .pp-row:hover { border-color: rgba(167,139,250,.5); background: rgba(45,35,84,.6); }
+                    .pp-row-ic { width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center; }
+                    .pp-row-ic img { max-width: 34px; max-height: 34px; image-rendering: pixelated; }
+                    .pp-row-main { flex: 1; min-width: 0; }
+                    .pp-row-nm { font-size: 13px; font-weight: 800; color: #ece8fb; }
+                    .pp-row-sub { font-size: 11px; color: #9990c0; margin-top: 2px; line-height: 1.4; }
+                    .pp-badge { font-size: 9px; font-weight: 800; background: rgba(124,58,237,.3); color: #d6ccff; padding: 2px 7px; border-radius: 6px; }
+                    .pp-d-spr { display: flex; justify-content: center; margin-bottom: 8px; }
+                    .pp-d-spr img, .pp-d-spr canvas { width: 96px; height: 96px; image-rendering: pixelated; }
+                    .pp-d-nm { font-size: 18px; font-weight: 900; color: #fff; text-align: center; }
+                    .pp-d-sec { margin-top: 14px; }
+                    .pp-d-lbl { font-size: 10px; font-weight: 800; color: #8b81b0; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+                    .pp-d-txt { font-size: 12.5px; color: #cfc8ea; line-height: 1.5; }
+                    .pp-d-zona { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid rgba(148,120,246,.1); color: #cfc8ea; }
+                    .pp-d-zona b { color: #a78bfa; font-weight: 800; }
+                    .pp-empty { text-align: center; color: #7d73a6; font-size: 13px; padding: 40px 20px; }
+                    .pp-mais {
+                        display: block; margin: 12px auto 4px; background: rgba(124,58,237,.28);
+                        border: 1px solid rgba(167,139,250,.5); color: #d6ccff; border-radius: 10px;
+                        padding: 8px 20px; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit;
+                    }
+                    .pp-mais:hover { background: rgba(124,58,237,.42); }
+                    .pp-tbl-wrap { overflow-x: auto; }
+                    .pp-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+                    .pp-tbl th, .pp-tbl td { padding: 6px 8px; text-align: center; white-space: nowrap; }
+                    .pp-tbl thead th { position: sticky; top: 0; background: #1a1436; color: #b6add6; font-size: 11px; cursor: pointer; user-select: none; border-bottom: 1px solid rgba(148,120,246,.25); }
+                    .pp-tbl thead th.on { color: #fff; }
+                    .pp-tbl th.pp-l, .pp-tbl td.pp-l { text-align: left; }
+                    .pp-tbl tbody tr { border-bottom: 1px solid rgba(148,120,246,.08); }
+                    .pp-tbl tbody tr:hover { background: rgba(124,58,237,.14); }
+                    .pp-tbl .pp-rk { color: #7d73a6; font-size: 11px; }
+                    .pp-tbl .pp-tnm { font-weight: 800; color: #ece8fb; }
+                    .pp-tbl .pp-bst { font-weight: 900; color: #ffd964; }
+                    .pp-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+                    .pp-bar-lbl { width: 52px; font-size: 10.5px; color: #9990c0; flex: none; }
+                    .pp-bar-num { width: 62px; font-size: 11.5px; color: #ece8fb; font-weight: 700; flex: none; text-align: right; }
+                    .pp-bar-trk { flex: 1; height: 7px; background: rgba(148,120,246,.14); border-radius: 4px; overflow: hidden; }
+                    .pp-bar-fill { display: block; height: 100%; border-radius: 4px; }
+                    .pp-kv { margin-top: 4px; }
+                    .pp-kv-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid rgba(148,120,246,.1); color: #cfc8ea; }
+                    .pp-kv-row b { color: #a78bfa; font-weight: 800; text-align: right; }
+                `;
+                document.head.appendChild(st);
+            }
+
+            // ── ESTADO ────────────────────────────────────────────────────────
+            const PP_SECOES = [
+                { id: 'dex', rot: 'Pokédex' }, { id: 'mega', rot: 'Mega' },
+                { id: 'stats', rot: 'Stats' }, { id: 'item', rot: 'Itens' },
+                { id: 'tipo', rot: 'Tipos' }, { id: 'sistema', rot: 'Sistema' }
+            ];
+            const PP_ITEM_CATS = [
+                { id: 'held', rot: 'Helds' }, { id: 'tm', rot: 'TMs' },
+                { id: 'stone', rot: 'Stones' }, { id: 'ball', rot: 'Balls' },
+                { id: 'potion', rot: 'Poções' }, { id: 'bait', rot: 'Iscas' },
+                { id: 'boss', rot: 'Boss' }
+            ];
+            const PP_STAT_COLS = [
+                ['hp', 'HP'], ['atk', 'Atq'], ['def', 'Def'],
+                ['spa', 'Atq.Esp'], ['spd', 'Def.Esp'], ['spe', 'Vel'], ['bst', 'BST']
+            ];
+            let ppSecao = 'dex', ppTermo = '', ppFiltroTipo = '', ppFiltroTier = '';
+            let ppLimite = 120, ppSel = null;
+            let ppItemCat = 'held';
+            let ppStatSort = 'bst', ppStatDir = -1, ppStatExtra = false;
+            let ppObs = null;
+
+            let ovEl = null, listEl = null, detEl = null, toolEl = null, searchEl = null, navEl = null;
+
+            // Pinta sprites de pokémon só quando entram na tela.
+            function ppObserver() {
+                if (ppObs) ppObs.disconnect();
+                ppObs = new IntersectionObserver(ents => {
+                    for (const e of ents) {
+                        if (!e.isIntersecting) continue;
+                        const el = e.target;
+                        ppObs.unobserve(el);
+                        const look = Number(el.dataset.look);
+                        if (!look && look !== 0) continue;
+                        try {
+                            const w = ppWin();
+                            if (typeof w.loadSprite === 'function') {
+                                const spr = w.loadSprite(look, 56, el.dataset.shiny === '1');
+                                if (spr) { el.textContent = ''; el.appendChild(spr); }
+                            }
+                        } catch (err) { }
+                    }
+                }, { root: listEl, rootMargin: '120px' });
+            }
+
+            function ppItemImg(cid, px) {
+                const c = Number(cid) || 0;
+                if (!c) return '<span style="font-size:20px">🎒</span>';
+                return `<img src="/sprites/item_${c}.png?v=walk1" width="${px}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('🎒'))" />`;
+            }
+
+            // ── RENDER: cabeçalho da toolbar (chips dependem da seção) ─────────
+            const PP_TIPOS_CHIP = ['', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting',
+                'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost',
+                'dragon', 'dark', 'steel', 'fairy', 'normal'];
+
+            function ppRenderTool() {
+                let extra = '';
+                if (ppSecao === 'dex') {
+                    extra = '<div class="pp-chips">' + PP_TIPOS_CHIP.map(t =>
+                        `<span class="pp-chip${ppFiltroTipo === t ? ' on' : ''}" data-tipo="${t}"${t ? ` style="border-color:${PP_COR_TIPO[t]}"` : ''}>${t ? ppEsc(t.toUpperCase()) : 'Todos'}</span>`
+                    ).join('') + '</div><div class="pp-chips">' + ['', 'S', 'A', 'B', 'C'].map(t =>
+                        `<span class="pp-chip${ppFiltroTier === t ? ' on' : ''}" data-tier="${t}">${t ? ('Tier ' + t) : 'Tier•'}</span>`
+                    ).join('') + '</div>';
+                } else if (ppSecao === 'item') {
+                    extra = '<div class="pp-chips">' + PP_ITEM_CATS.map(c =>
+                        `<span class="pp-chip${ppItemCat === c.id ? ' on' : ''}" data-cat="${c.id}">${ppEsc(c.rot)}</span>`
+                    ).join('') + '</div>';
+                } else if (ppSecao === 'stats') {
+                    extra = `<div class="pp-chips"><span class="pp-chip${ppStatExtra ? ' on' : ''}" id="pp-stat-extra">Incluir Megas & Lendários</span></div>`;
+                }
+                const semBusca = ppSecao === 'sistema';
+                const ph = ppSecao === 'tipo' ? 'Filtrar tipo…'
+                    : ppSecao === 'item' ? 'Buscar item…'
+                        : ppSecao === 'stats' ? 'Buscar pokémon…'
+                            : ppSecao === 'mega' ? 'Buscar mega…' : 'Buscar pokémon ou nº…';
+                toolEl.innerHTML = (semBusca ? '' : `<input class="pp-search" placeholder="${ph}" value="${ppEsc(ppTermo)}" />`) + extra;
+                searchEl = toolEl.querySelector('.pp-search');
+                if (searchEl) searchEl.oninput = () => { ppTermo = searchEl.value; ppLimite = 120; ppRenderList(); };
+                toolEl.querySelectorAll('.pp-chip[data-tipo]').forEach(c => c.onclick = () => {
+                    ppFiltroTipo = c.dataset.tipo; ppLimite = 120; ppRenderTool(); ppRenderList();
+                });
+                toolEl.querySelectorAll('.pp-chip[data-tier]').forEach(c => c.onclick = () => {
+                    ppFiltroTier = c.dataset.tier; ppLimite = 120; ppRenderTool(); ppRenderList();
+                });
+                toolEl.querySelectorAll('.pp-chip[data-cat]').forEach(c => c.onclick = () => {
+                    ppItemCat = c.dataset.cat; ppLimite = 120; ppRenderTool(); ppRenderList();
+                });
+                const be = toolEl.querySelector('#pp-stat-extra');
+                if (be) be.onclick = () => { ppStatExtra = !ppStatExtra; ppRenderTool(); ppRenderList(); };
+            }
+
+            // ── RENDER: lista central ─────────────────────────────────────────
+            function ppRenderList() {
+                ppObserver();
+                if (ppSecao === 'dex') return ppRenderDex();
+                if (ppSecao === 'mega') return ppRenderMega();
+                if (ppSecao === 'stats') return ppRenderStats();
+                if (ppSecao === 'item') return ppRenderItens();
+                if (ppSecao === 'tipo') return ppRenderTipo();
+                if (ppSecao === 'sistema') return ppRenderSistema();
+            }
+
+            function ppMaisBtn(total) {
+                if (total <= ppLimite) return '';
+                return `<button class="pp-mais" id="pp-mais">Mostrar mais (${total - ppLimite} restantes)</button>`;
+            }
+            function ppLigarMais() {
+                const b = listEl.querySelector('#pp-mais');
+                if (b) b.onclick = () => { ppLimite += 200; ppRenderList(); };
+            }
+
+            function ppRenderDex() {
+                const todos = ppFiltrarDex(ppTermo, ppFiltroTipo, ppFiltroTier);
+                const vis = todos.slice(0, ppLimite);
+                let h = `<div class="pp-count">${todos.length} pokémon</div><div class="pp-grid">`;
+                for (const p of vis) {
+                    h += `<div class="pp-card${ppSel === 'dex:' + p.dex ? ' sel' : ''}" data-dex="${p.dex}">
+                        <div class="pp-spr" data-look="${p.lookType == null ? '' : p.lookType}"></div>
+                        <div class="pp-dex-n">#${String(p.dex).padStart(3, '0')} ${ppChipTier(p.tier).replace(/class="pp-tier"/, 'class="pp-tier" ') || ''}</div>
+                        <div class="pp-nm">${ppEsc(ppLimpo(p.name))}</div>
+                        <div class="pp-tps">${ppChipTipo(p.type1)}${ppChipTipo(p.type2)}</div>
+                    </div>`;
+                }
+                h += '</div>' + ppMaisBtn(todos.length);
+                if (!todos.length) h = '<div class="pp-empty">Nada encontrado.</div>';
+                listEl.innerHTML = h;
+                listEl.querySelectorAll('.pp-spr[data-look]').forEach(el => { if (el.dataset.look !== '') ppObs.observe(el); });
+                listEl.querySelectorAll('.pp-card[data-dex]').forEach(c => c.onclick = () => ppAbrirDex(Number(c.dataset.dex)));
+                ppLigarMais();
+            }
+
+            // ── ITENS (sub-categorias do /api/meta) ───────────────────────────
+            function ppItensDaCat() {
+                const c = ppItemCat;
+                if (c === 'held') return ppHelds().map(it => ({ icon: ppItemImg(it.cid, 34), nm: it.label || ppLimpo(it.name), badge: it.funcao, sub: ppLimpo(it.desc), nome: it.label || it.name }));
+                if (c === 'tm') return ppTms().map(t => { const s = t.officialSource || {}; const f = s.detail ? ppLimpo(s.detail) : (s.method || ''); return { icon: ppItemImg(t.spriteCid, 34), nm: ppLimpo(t.move), extra: ppChipTipo(t.type) + ' ' + ppChipTier(t.tier), sub: (t.kind ? String(t.kind).toUpperCase() : '') + (f ? ' · ' + f : ''), nome: ppLimpo(t.move) }; });
+                if (c === 'stone') return ppStones().map(s => ({ icon: ppItemImg(s.itemId, 34), nm: ppLimpo(s.name), sub: s.gold ? ('💰 ' + Number(s.gold).toLocaleString('pt-BR')) : '', nome: s.name }));
+                if (c === 'ball') return ppBalls().map(b => ({ icon: ppItemImg(b.itemId, 34), nm: b.label || b.key, sub: ppLimpo(b.desc) || [b.gold ? ('💰 ' + Number(b.gold).toLocaleString('pt-BR')) : '', b.diamonds ? ('💎 ' + b.diamonds) : ''].filter(Boolean).join(' · '), nome: b.label || b.key }));
+                if (c === 'potion') return ppPotions().map(p => ({ icon: ppItemImg(p.itemId, 34), nm: p.label || p.key, sub: [p.gold ? ('💰 ' + Number(p.gold).toLocaleString('pt-BR')) : '', p.heal ? ('cura ' + p.heal) : ''].filter(Boolean).join(' · '), nome: p.label || p.key }));
+                if (c === 'bait') return ppBaits().map(b => ({ icon: '<span style="font-size:20px">' + (b.emoji || '🪝') + '</span>', nm: b.label || b.key, sub: ['Lv ' + (b.reqLevel | 0) + '+', b.gold ? ('💰 ' + Number(b.gold).toLocaleString('pt-BR')) : '', b.exp ? ('exp ' + b.exp) : ''].filter(Boolean).join(' · '), nome: b.label || b.key }));
+                if (c === 'boss') return ppBossItems().map(b => ({ icon: ppItemImg(b.cid, 34), nm: ppLimpo(b.name), sub: '', nome: b.name }));
+                return [];
+            }
+            function ppRenderItens() {
+                const q = ppNorm(ppTermo);
+                const todos = ppItensDaCat().filter(it => !q || ppNorm(it.nome).indexOf(q) >= 0 || ppNorm(it.sub).indexOf(q) >= 0);
+                const vis = todos.slice(0, ppLimite);
+                let h = `<div class="pp-count">${todos.length} itens</div>`;
+                for (const it of vis) {
+                    h += `<div class="pp-row">
+                        <div class="pp-row-ic">${it.icon}</div>
+                        <div class="pp-row-main">
+                            <div class="pp-row-nm">${ppEsc(it.nm)} ${it.extra || ''}${it.badge ? '<span class="pp-badge">' + ppEsc(it.badge) + '</span>' : ''}</div>
+                            <div class="pp-row-sub">${ppEsc(it.sub) || ''}</div>
+                        </div>
+                    </div>`;
+                }
+                h += ppMaisBtn(todos.length);
+                if (!todos.length) h = '<div class="pp-empty">Nada nessa categoria.</div>';
+                listEl.innerHTML = h;
+                ppLigarMais();
+            }
+
+            // ── STATS (base stats, do módulo 42) ──────────────────────────────
+            let _ppDexTipoMap = null;
+            function ppDexTipoMap() {
+                if (_ppDexTipoMap) return _ppDexTipoMap;
+                const m = {};
+                for (const p of ppDex()) m[ppNorm(p.name).replace(/[^a-z0-9]/g, '')] = { t1: p.type1, t2: p.type2, dex: p.dex };
+                _ppDexTipoMap = m;
+                return m;
+            }
+            function ppRenderStats() {
+                const q = ppNorm(ppTermo);
+                const tmap = ppDexTipoMap();
+                const LBL = (typeof PP_STATS_LABEL !== 'undefined') ? PP_STATS_LABEL : {};
+                let linhas = (typeof ppTodasStats === 'function') ? ppTodasStats() : [];
+                linhas = linhas.filter(r => {
+                    if (!ppStatExtra && (r.mega || !tmap[r.key])) return false;
+                    if (q && (LBL[r.key] || r.key).toLowerCase().indexOf(q) < 0) return false;
+                    return true;
+                });
+                linhas.sort((a, b) => (a[ppStatSort] - b[ppStatSort]) * ppStatDir);
+                const vis = linhas.slice(0, ppLimite);
+                let h = `<div class="pp-count">${linhas.length} — clique numa coluna pra ordenar</div>`;
+                h += '<div class="pp-tbl-wrap"><table class="pp-tbl"><thead><tr><th>#</th><th class="pp-l">Pokémon</th><th>Tipos</th>';
+                for (const [k, lbl] of PP_STAT_COLS) h += `<th data-sort="${k}" class="${ppStatSort === k ? 'on' : ''}">${lbl}${ppStatSort === k ? (ppStatDir < 0 ? ' ▾' : ' ▴') : ''}</th>`;
+                h += '</tr></thead><tbody>';
+                vis.forEach((r, i) => {
+                    const nm = LBL[r.key] || r.key; const tp = tmap[r.key] || {};
+                    h += `<tr><td class="pp-rk">${i + 1}</td><td class="pp-l pp-tnm">${ppEsc(nm)}${r.mega ? ' <span class="pp-badge">M</span>' : ''}</td><td>${ppChipTipo(tp.t1)}${ppChipTipo(tp.t2)}</td>`;
+                    for (const [k] of PP_STAT_COLS) h += `<td class="${k === 'bst' ? 'pp-bst' : ''}">${r[k]}</td>`;
+                    h += '</tr>';
+                });
+                h += '</tbody></table></div>' + ppMaisBtn(linhas.length);
+                listEl.innerHTML = h;
+                listEl.querySelectorAll('th[data-sort]').forEach(th => th.onclick = () => {
+                    const k = th.dataset.sort;
+                    if (ppStatSort === k) ppStatDir = -ppStatDir; else { ppStatSort = k; ppStatDir = -1; }
+                    ppLimite = 120; ppRenderList();
+                });
+                ppLigarMais();
+            }
+
+            // ── MEGA ──────────────────────────────────────────────────────────
+            function ppRenderMega() {
+                const q = ppNorm(ppTermo);
+                const todos = (typeof ppMegas === 'function' ? ppMegas() : []).filter(m => !q || ppNorm(m.name).indexOf(q) >= 0);
+                let h = `<div class="pp-count">${todos.length} Mega Evoluções</div><div class="pp-grid">`;
+                for (const m of todos) {
+                    h += `<div class="pp-card${ppSel === 'mega:' + m.mkey ? ' sel' : ''}" data-mkey="${m.mkey}">
+                        <div class="pp-spr" data-look="${m.lookType == null ? '' : m.lookType}"></div>
+                        <div class="pp-nm">Mega ${ppEsc(ppLimpo(m.name))}</div>
+                        <div class="pp-tps">${ppChipTipo(m.type1)}${ppChipTipo(m.type2)}</div>
+                        ${m.mega ? `<div class="pp-dex-n">BST ${m.base ? m.base.bst : '?'} → <b style="color:#7bed9f">${m.mega.bst}</b></div>` : ''}
+                    </div>`;
+                }
+                h += '</div>';
+                if (!todos.length) h = '<div class="pp-empty">Sem megas.</div>';
+                listEl.innerHTML = h;
+                listEl.querySelectorAll('.pp-spr[data-look]').forEach(el => { if (el.dataset.look !== '') ppObs.observe(el); });
+                listEl.querySelectorAll('.pp-card[data-mkey]').forEach(c => c.onclick = () => ppAbrirMega(c.dataset.mkey));
+            }
+
+            // ── SISTEMA ───────────────────────────────────────────────────────
+            function ppRenderSistema() {
+                const lista = (typeof PP_SISTEMA !== 'undefined') ? PP_SISTEMA : [];
+                let h = '<div class="pp-count">Mecânicas do jogo — clique pra abrir</div><div class="pp-grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">';
+                for (const s of lista) {
+                    h += `<div class="pp-card" style="align-items:flex-start;text-align:left" data-sis="${s.id}">
+                        <div style="font-size:22px">${s.icone || '📘'}</div>
+                        <div class="pp-nm" style="text-align:left">${ppEsc(s.rot)}</div>
+                        <div class="pp-row-sub">${ppEsc(s.resumo || '')}</div>
+                    </div>`;
+                }
+                h += '</div>';
+                if (!lista.length) h = '<div class="pp-empty">Conteúdo de sistema indisponível.</div>';
+                listEl.innerHTML = h;
+                listEl.querySelectorAll('.pp-card[data-sis]').forEach(c => c.onclick = () => ppAbrirSistema(c.dataset.sis));
+            }
+
+            function ppRenderTipo() {
+                const q = ppNorm(ppTermo);
+                const tc = ppTypeChart();
+                const tipos = PP_TIPOS.filter(t => !q || t.indexOf(q) >= 0);
+                let h = '<div class="pp-count">tabela de tipos — o que cada tipo bate forte</div><div class="pp-grid" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">';
+                for (const t of tipos) {
+                    const bate = (tc[t] || []).map(x => ppChipTipo(x)).join('') || '<span style="color:#7d73a6;font-size:11px">— nada super-efetivo —</span>';
+                    h += `<div class="pp-card" style="align-items:stretch;cursor:default">
+                        <div style="text-align:center;margin-bottom:6px">${ppChipTipo(t)}</div>
+                        <div class="pp-d-lbl">Forte contra</div>
+                        <div class="pp-tps" style="justify-content:flex-start">${bate}</div>
+                    </div>`;
+                }
+                h += '</div>';
+                listEl.innerHTML = h;
+            }
+
+            // ── DETALHE ───────────────────────────────────────────────────────
+            const PP_STAT_BARRA = [
+                ['hp', 'HP', '#7bed9f'], ['atk', 'Atq', '#ff8f6b'], ['def', 'Def', '#ffd964'],
+                ['spa', 'Atq.Esp', '#7fb8ff'], ['spd', 'Def.Esp', '#a78bfa'], ['spe', 'Vel', '#f38fd0']
+            ];
+            function ppStatBarsHtml(st, cmp) {
+                if (!st) return '';
+                let h = '<div class="pp-d-sec"><div class="pp-d-lbl">📊 Base stats</div>';
+                for (const [k, lbl, cor] of PP_STAT_BARRA) {
+                    const v = st[k] | 0, w = Math.max(3, Math.min(100, v / 200 * 100));
+                    const cv = cmp ? (cmp[k] | 0) : null;
+                    const delta = cv != null && cv !== v ? ` <span style="color:${cv > v ? '#7bed9f' : '#fca5a5'};font-size:10px">${cv > v ? '+' : ''}${cv - v}</span>` : '';
+                    h += `<div class="pp-bar-row"><span class="pp-bar-lbl">${lbl}</span><span class="pp-bar-num">${v}${delta}</span><span class="pp-bar-trk"><span class="pp-bar-fill" style="width:${w}%;background:${cor}"></span></span></div>`;
+                }
+                h += `<div class="pp-bar-row" style="margin-top:5px"><span class="pp-bar-lbl">BST</span><span class="pp-bar-num" style="color:#ffd964;font-weight:900">${st.bst | 0}${cmp ? ` <span style="color:${cmp.bst > st.bst ? '#7bed9f' : '#fca5a5'};font-size:10px">${cmp.bst > st.bst ? '+' : ''}${cmp.bst - st.bst}</span>` : ''}</span><span></span></div></div>`;
+                return h;
+            }
+
+            function ppAbrirDex(dex) {
+                const p = ppDex().find(x => x.dex === dex);
+                if (!p) return;
+                ppSel = 'dex:' + dex;
+                listEl.querySelectorAll('.pp-card').forEach(c => c.classList.toggle('sel', Number(c.dataset.dex) === dex));
+                const fraco = ppFracoContra(p.type1, p.type2);
+                const forte = ppForteAtacando(p.type1, p.type2);
+                const zonas = ppOndeAcha(p.name).slice(0, 12);
+                const helds = ppHeldsPorTipo(p.type1, p.type2).slice(0, 4);
+                const st = (typeof ppStatsDe === 'function') ? ppStatsDe(p.name) : null;
+                let h = `<div class="pp-d-spr" data-look="${p.lookType == null ? '' : p.lookType}"></div>
+                    <div class="pp-d-nm">${ppEsc(ppLimpo(p.name))}</div>
+                    <div style="text-align:center;margin-top:4px">#${String(p.dex).padStart(3, '0')} ${ppChipTipo(p.type1)}${ppChipTipo(p.type2)} ${ppChipTier(p.tier)}</div>
+                    <div style="text-align:center;font-size:11px;color:#8b81b0;margin-top:6px">${(p.points | 0)} pts de dex</div>`;
+                h += ppStatBarsHtml(st);
+                h += `<div class="pp-d-sec"><div class="pp-d-lbl">⚠️ Fraco contra</div><div class="pp-tps" style="justify-content:flex-start">${fraco.map(ppChipTipo).join('') || '<span class="pp-d-txt">—</span>'}</div></div>`;
+                h += `<div class="pp-d-sec"><div class="pp-d-lbl">💥 Forte atacando (STAB)</div><div class="pp-tps" style="justify-content:flex-start">${forte.map(ppChipTipo).join('') || '<span class="pp-d-txt">—</span>'}</div></div>`;
+                if (helds.length) {
+                    h += `<div class="pp-d-sec"><div class="pp-d-lbl">🧤 Held sugerido</div>`
+                        + helds.map(x => `<div class="pp-d-txt" style="margin-bottom:5px"><b style="color:#dcefb4">${ppEsc(x.label)}</b> — ${ppEsc(x.desc)}</div>`).join('') + '</div>';
+                }
+                h += `<div class="pp-d-sec"><div class="pp-d-lbl">📍 Onde caçar (${ppOndeAcha(p.name).length})</div>`;
+                if (zonas.length) {
+                    h += zonas.map(z => `<div class="pp-d-zona"><span>${ppEsc(ppLimpo(z.zona))} <span style="color:#7d73a6">Lv${z.reqLevel}+</span></span><b>${z.weight}%</b></div>`).join('');
+                } else h += '<div class="pp-d-txt">Não aparece em spawn de zona.</div>';
+                h += '</div>';
+                detEl.innerHTML = h;
+                detEl.classList.add('on');
+                // sprite grande
+                try {
+                    const w = ppWin();
+                    const sl = detEl.querySelector('.pp-d-spr[data-look]');
+                    if (sl && sl.dataset.look !== '' && typeof w.loadSprite === 'function') {
+                        const spr = w.loadSprite(Number(sl.dataset.look), 96, false);
+                        if (spr) sl.appendChild(spr);
+                    }
+                } catch (e) { }
+            }
+
+            function ppAbrirMega(mkey) {
+                const m = (typeof ppMegas === 'function' ? ppMegas() : []).find(x => x.mkey === mkey);
+                if (!m) return;
+                ppSel = 'mega:' + mkey;
+                listEl.querySelectorAll('.pp-card').forEach(c => c.classList.toggle('sel', c.dataset.mkey === mkey));
+                const fraco = ppFracoContra(m.type1, m.type2);
+                const forte = ppForteAtacando(m.type1, m.type2);
+                let h = `<div class="pp-d-spr" data-look="${m.lookType == null ? '' : m.lookType}"></div>
+                    <div class="pp-d-nm">Mega ${ppEsc(ppLimpo(m.name))}</div>
+                    <div style="text-align:center;margin-top:4px">#${String(m.dex).padStart(3, '0')} ${ppChipTipo(m.type1)}${ppChipTipo(m.type2)} ${ppChipTier(m.tier)}</div>`;
+                if (m.mega) h += ppStatBarsHtml(m.mega, m.base);
+                if (m.base && m.mega) h += `<div class="pp-d-txt" style="text-align:center;margin-top:4px">BST base ${m.base.bst} → <b style="color:#7bed9f">${m.mega.bst}</b> (${m.mega.bst - m.base.bst > 0 ? '+' : ''}${m.mega.bst - m.base.bst})</div>`;
+                h += `<div class="pp-d-sec"><div class="pp-d-lbl">⚠️ Fraco contra</div><div class="pp-tps" style="justify-content:flex-start">${fraco.map(ppChipTipo).join('') || '<span class="pp-d-txt">—</span>'}</div></div>`;
+                h += `<div class="pp-d-sec"><div class="pp-d-lbl">💥 Forte atacando (STAB)</div><div class="pp-tps" style="justify-content:flex-start">${forte.map(ppChipTipo).join('') || '<span class="pp-d-txt">—</span>'}</div></div>`;
+                detEl.innerHTML = h;
+                detEl.classList.add('on');
+                try {
+                    const w = ppWin();
+                    const sl = detEl.querySelector('.pp-d-spr[data-look]');
+                    if (sl && sl.dataset.look !== '' && typeof w.loadSprite === 'function') {
+                        const spr = w.loadSprite(Number(sl.dataset.look), 96, false);
+                        if (spr) sl.appendChild(spr);
+                    }
+                } catch (e) { }
+            }
+
+            function ppAbrirSistema(id) {
+                const lista = (typeof PP_SISTEMA !== 'undefined') ? PP_SISTEMA : [];
+                const s = lista.find(x => x.id === id);
+                if (!s) return;
+                ppSel = 'sis:' + id;
+                let h = `<div class="pp-d-nm" style="font-size:17px">${s.icone || '📘'} ${ppEsc(s.rot)}</div>
+                    <div class="pp-d-txt" style="text-align:center;margin-top:4px;color:#8b81b0">${ppEsc(s.resumo || '')}</div>`;
+                for (const b of (s.blocos || [])) {
+                    h += `<div class="pp-d-sec"><div class="pp-d-lbl">${ppEsc(b.h || '')}</div>`;
+                    for (const ln of (b.linhas || [])) h += `<div class="pp-d-txt" style="margin-bottom:4px">• ${ppEsc(ln)}</div>`;
+                    if (b.tabela) {
+                        h += '<div class="pp-kv">';
+                        for (const [a, c] of b.tabela) h += `<div class="pp-kv-row"><span>${ppEsc(a)}</span><b>${ppEsc(c)}</b></div>`;
+                        h += '</div>';
+                    }
+                    h += '</div>';
+                }
+                detEl.innerHTML = h;
+                detEl.classList.add('on');
+            }
+
+            // ── SHELL: nav + abrir/fechar ─────────────────────────────────────
+            function ppRenderNav() {
+                navEl.innerHTML = PP_SECOES.map(s =>
+                    `<button class="pp-nav-b${ppSecao === s.id ? ' on' : ''}" data-sec="${s.id}">${s.rot}</button>`
+                ).join('');
+                navEl.querySelectorAll('.pp-nav-b').forEach(b => b.onclick = () => {
+                    ppSecao = b.dataset.sec; ppTermo = ''; ppFiltroTipo = ''; ppFiltroTier = '';
+                    ppLimite = 120; ppSel = null; detEl.classList.remove('on');
+                    ppRenderNav(); ppRenderTool(); ppRenderList();
+                });
+            }
+
+            function ppMontar() {
+                if (ovEl) return;
+                ppCss();
+                ovEl = document.createElement('div');
+                ovEl.className = 'pp-ov';
+                ovEl.innerHTML = `
+                    <div class="pp-win">
+                        <div class="pp-head">
+                            <span class="pp-h-tit">📚 Poképédia</span>
+                            <div class="pp-nav" id="pp-nav"></div>
+                            <button class="pp-x" id="pp-x">✕</button>
+                        </div>
+                        <div class="pp-tool" id="pp-tool"></div>
+                        <div class="pp-body">
+                            <div class="pp-list" id="pp-list"></div>
+                            <div class="pp-detail" id="pp-detail"></div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(ovEl);
+                navEl = ovEl.querySelector('#pp-nav');
+                toolEl = ovEl.querySelector('#pp-tool');
+                listEl = ovEl.querySelector('#pp-list');
+                detEl = ovEl.querySelector('#pp-detail');
+                ovEl.querySelector('#pp-x').onclick = ppFechar;
+                ovEl.onclick = e => { if (e.target === ovEl) ppFechar(); };
+            }
+
+            function ppAbrir() {
+                ppMontar();
+                ovEl.classList.add('on');
+                ppRenderNav(); ppRenderTool(); ppRenderList();
+                setTimeout(() => { if (searchEl) searchEl.focus(); }, 30);
+            }
+            function ppFechar() { if (ovEl) ovEl.classList.remove('on'); }
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && ovEl && ovEl.classList.contains('on')) ppFechar();
+            });
+
+            // NÃO há botão flutuante próprio: o gatilho é o botão-âncora da barra
+            // de fixados (ver instalarSistemaPinTopbar em 20-cidade-utils.js), que
+            // chama `abrirPokepedia()`. Mantido só o CSS pronto pra quando abrir.
+            if (document.body) ppCss();
+            else document.addEventListener('DOMContentLoaded', ppCss);
+
+            // Atalho global — é o que a barra de fixados (e o console) chamam.
+            try { ppWin().abrirPokepedia = ppAbrir; } catch (e) { }
+        })();
+
+        // =====================================================================
+        // 42-pokepedia-stats.js — POKÉPÉDIA: base stats (dado do server oficial)
+        // =====================================================================
+        // Base stats da FICHA da espécie (HP/Atq/Def/Atq.Esp/Def.Esp/Vel + BST),
+        // antes de nível, IV, raridade ou item — exatamente como a página
+        // /pokepedia/stats do idlepokemoon.com.br mostra. Extraído de lá em
+        // 2026-09-08. Chave = nome normalizado (minúsculo, só letras/números),
+        // pra casar com o `name` da dex do /api/meta. Sem DOM.
+        //
+        // Inclui as 34 Mega (chave "mega<base>") e os lendários. ppStatsDe casa
+        // por nome normalizado, com apelidos p/ nomes quebrados (Nidoran etc.).
+        // =====================================================================
+
+        const PP_BASE_STATS = {
+            "slaking":[150,160,100,95,65,100,670],"dragonite":[91,134,95,100,100,80,600],"tyranitar":[100,134,110,95,100,61,600],"salamence":[95,135,80,110,80,100,600],
+            "metagross":[80,135,130,95,90,70,600],"garchomp":[108,130,95,80,85,102,600],"hydreigon":[92,105,90,125,90,98,600],"archeops":[75,140,65,112,65,110,567],
+            "arcanine":[90,110,80,100,80,95,555],"volcarona":[85,60,65,135,105,100,550],"togekiss":[85,50,95,120,115,80,545],"gyarados":[95,125,79,60,100,81,540],
+            "snorlax":[160,110,65,65,110,30,540],"kingdra":[75,95,95,95,95,85,540],"blissey":[255,10,10,75,135,55,540],"milotic":[95,60,79,100,125,81,540],
+            "electivire":[75,123,67,95,85,95,540],"magmortar":[75,95,67,125,95,83,540],"haxorus":[76,147,90,60,70,97,540],"lapras":[130,85,80,85,95,60,535],
+            "crobat":[85,90,80,70,80,130,535],"swampert":[100,110,90,85,90,60,535],"magnezone":[70,70,115,130,90,60,535],"rhyperior":[115,140,130,55,55,40,535],
+            "tangrowth":[100,100,125,110,50,50,535],"porygonz":[85,80,70,135,75,90,535],"vanilluxe":[71,95,85,110,95,79,535],"charizard":[78,84,78,109,85,100,534],
+            "typhlosion":[78,84,78,109,85,100,534],"infernape":[76,104,71,104,71,108,534],"blastoise":[79,83,100,85,105,78,530],"exeggutor":[95,95,85,125,75,55,530],
+            "feraligatr":[85,105,100,79,83,78,530],"sceptile":[70,85,65,105,85,120,530],"blaziken":[80,120,70,110,70,80,530],"aggron":[70,110,180,60,60,50,530],
+            "walrein":[110,80,90,95,90,65,530],"empoleon":[84,86,88,111,101,60,530],"mamoswine":[110,130,80,70,60,80,530],"serperior":[75,75,95,75,95,113,528],
+            "emboar":[110,123,65,100,65,65,528],"samurott":[95,100,85,108,70,70,528],"venusaur":[80,82,83,100,100,80,525],"cloyster":[50,95,180,85,45,70,525],
+            "vaporeon":[130,65,60,110,95,65,525],"jolteon":[65,65,60,110,95,130,525],"flareon":[65,130,60,95,110,65,525],"meganium":[80,82,100,83,100,80,525],
+            "espeon":[65,65,60,130,95,110,525],"umbreon":[95,65,110,60,130,65,525],"torterra":[95,109,105,75,85,56,525],"lucario":[70,110,70,115,70,90,525],
+            "hippowdon":[108,112,118,68,72,47,525],"leafeon":[65,110,130,60,65,95,525],"glaceon":[65,60,110,130,95,65,525],"probopass":[60,55,145,75,150,40,525],
+            "dusknoir":[45,100,135,65,135,45,525],"sylveon":[95,65,65,110,130,60,525],"luxray":[80,120,79,95,79,70,523],"starmie":[60,75,85,100,85,115,520],
+            "flygon":[80,100,80,80,80,100,520],"klinklang":[60,100,115,70,85,90,520],"chandelure":[60,55,90,145,90,80,520],"krookodile":[95,117,80,65,70,92,519],
+            "gardevoir":[68,65,65,125,115,80,518],"gallade":[68,125,65,65,115,80,518],"tentacruel":[80,70,65,80,120,100,515],"aerodactyl":[80,105,65,60,75,130,515],
+            "porygon2":[85,80,90,105,95,60,515],"roserade":[60,70,65,125,105,90,515],"lickilicky":[110,85,95,80,95,50,515],"yanmega":[86,76,86,116,56,95,515],
+            "gigalith":[85,135,130,60,80,25,515],"eelektross":[85,115,80,105,80,50,515],"poliwrath":[90,95,95,70,90,70,510],"ampharos":[90,75,85,115,90,55,510],
+            "steelix":[75,85,200,55,65,30,510],"weavile":[70,120,65,45,85,125,510],"gliscor":[75,95,125,45,75,95,510],"zoroark":[60,105,60,120,60,105,510],
+            "mienshao":[65,125,60,95,60,105,510],"braviary":[100,123,75,57,75,80,510],"mandibuzz":[110,65,105,55,95,80,510],"seismitoad":[105,95,75,85,75,74,509],
+            "excadrill":[110,135,60,50,65,88,508],"nidoqueen":[90,92,87,75,85,76,505],"nidoking":[81,102,77,85,75,85,505],"ninetales":[73,76,75,81,100,100,505],
+            "machamp":[90,130,80,65,85,55,505],"shuckle":[20,10,230,10,230,5,505],"honchkrow":[100,125,52,105,52,71,505],"conkeldurr":[105,140,95,55,65,45,505],
+            "beartic":[95,130,80,70,80,50,505],"golduck":[80,82,78,95,80,85,500],"alakazam":[55,50,45,135,95,120,500],"rapidash":[65,100,70,80,80,105,500],
+            "muk":[105,105,75,65,100,50,500],"gengar":[60,65,60,130,75,110,500],"scyther":[70,110,80,55,80,105,500],"politoed":[90,75,75,90,100,70,500],
+            "scizor":[70,130,100,55,80,65,500],"ursaring":[90,130,75,75,75,55,500],"houndoom":[75,90,50,110,80,95,500],"donphan":[90,120,120,60,60,50,500],
+            "wailord":[170,90,45,90,45,60,500],"claydol":[60,70,105,70,120,75,500],"bronzong":[67,89,116,79,116,33,500],"drapion":[70,90,110,60,75,95,500],
+            "stoutland":[85,110,90,45,90,80,500],"leavanny":[75,103,80,70,80,92,500],"drifblim":[150,80,44,90,54,80,498],"simisage":[75,98,63,98,63,101,498],
+            "simisear":[75,98,63,98,63,101,498],"simipour":[75,98,63,98,63,101,498],"zebstrika":[75,100,63,80,63,116,497],"golem":[80,120,130,55,65,45,495],
+            "magmar":[65,95,57,100,85,93,495],"omastar":[70,60,125,115,70,55,495],"kabutops":[60,115,105,65,70,80,495],"cradily":[86,81,97,81,107,43,495],
+            "armaldo":[75,125,100,70,80,45,495],"rampardos":[97,165,60,65,50,58,495],"bastiodon":[60,52,168,47,138,30,495],"floatzel":[85,105,55,85,50,115,495],
+            "mismagius":[60,60,60,105,105,105,495],"carracosta":[74,108,133,83,65,32,495],"escavalier":[70,135,105,60,105,20,495],"accelgor":[80,70,40,100,60,145,495],
+            "abomasnow":[90,92,75,92,85,60,494],"vileplume":[75,80,85,110,90,50,490],"victreebel":[80,105,65,100,70,70,490],"slowbro":[95,75,110,100,80,30,490],
+            "electrode":[60,50,70,80,80,150,490],"weezing":[65,90,120,85,70,60,490],"kangaskhan":[105,95,80,40,80,90,490],"electabuzz":[65,83,57,95,85,105,490],
+            "tauros":[75,100,95,40,70,110,490],"bellossom":[75,80,95,90,100,50,490],"slowking":[95,75,80,100,110,30,490],"miltank":[95,80,105,40,70,100,490],
+            "exploud":[104,91,63,91,73,68,490],"altaria":[75,70,90,70,105,80,490],"toxicroak":[83,106,65,86,65,85,490],"sigilyph":[72,58,80,103,80,97,490],
+            "gothitelle":[70,55,95,95,110,65,490],"reuniclus":[110,65,75,125,85,30,490],"bisharp":[65,125,100,60,70,70,490],"bouffalant":[95,110,95,40,95,55,490],
+            "ferrothorn":[74,94,131,54,116,20,489],"unfezant":[80,115,80,65,55,93,488],"scrafty":[65,90,115,45,115,58,488],"musharna":[116,55,85,107,95,29,487],
+            "raichu":[60,90,55,90,80,110,485],"rhydon":[105,130,120,45,45,40,485],"mantine":[85,40,70,80,140,70,485],"huntail":[55,104,105,94,75,52,485],
+            "gorebyss":[55,84,105,114,75,52,485],"relicanth":[100,90,130,45,65,55,485],"staraptor":[85,120,70,50,60,100,485],"scolipede":[60,100,89,55,69,112,485],
+            "crustle":[70,105,125,65,75,45,485],"beheeyem":[75,75,75,125,95,40,485],"cryogonal":[70,50,30,95,135,105,485],"druddigon":[77,120,90,60,90,48,485],
+            "heatmor":[85,97,66,105,66,65,484],"durant":[58,109,112,48,48,109,484],"clefable":[95,70,73,95,90,60,483],"hypno":[85,73,70,73,115,67,483],
+            "cofagrigus":[58,50,145,95,105,30,483],"golurk":[89,124,80,55,80,55,483],"ambipom":[75,100,66,60,66,115,482],"octillery":[75,105,75,105,75,45,480],
+            "ludicolo":[80,70,70,90,100,70,480],"shiftry":[90,100,60,90,60,80,480],"glalie":[80,80,80,80,80,80,480],"lopunny":[65,76,84,54,96,105,480],
+            "froslass":[70,80,70,80,70,110,480],"whimsicott":[60,67,85,77,75,116,480],"lilligant":[70,60,75,110,75,90,480],"darmanitan":[105,140,55,30,55,95,480],
+            "jellicent":[100,60,70,85,105,60,480],"pidgeot":[83,80,75,70,70,101,479],"skuntank":[103,93,67,71,61,84,479],"dewgong":[90,70,80,70,95,70,475],
+            "kingler":[55,130,115,50,50,75,475],"manectric":[70,75,60,105,60,105,475],"cacturne":[70,115,60,115,60,55,475],"gastrodon":[111,83,68,92,82,39,475],
+            "sawsbuck":[80,100,70,60,70,95,475],"hariyama":[144,120,60,40,60,50,474],"vespiquen":[70,80,102,80,102,40,474],"garbodor":[80,95,82,60,82,75,474],
+            "swanna":[75,87,63,87,63,98,473],"galvantula":[70,77,60,97,60,108,472],"stunfisk":[109,66,84,81,99,32,471],"dodrio":[60,110,70,60,60,110,470],
+            "xatu":[65,75,70,95,70,95,470],"torkoal":[70,85,140,85,70,20,470],"grumpig":[80,45,65,90,110,80,470],"cinccino":[75,95,60,65,60,115,470],
+            "alomomola":[165,75,80,40,45,65,470],"whiscash":[110,78,73,76,71,60,468],"crawdaunt":[63,120,85,90,55,55,468],"swalot":[100,73,83,73,83,55,467],
+            "magneton":[50,60,95,120,70,70,465],"forretress":[75,90,140,60,60,40,465],"skarmory":[65,80,140,40,70,70,465],"stantler":[73,95,62,85,65,85,465],
+            "absol":[65,130,60,75,60,75,465],"throh":[120,100,85,30,85,45,465],"sawk":[75,125,75,30,75,85,465],"amoonguss":[114,85,70,85,80,30,464],
+            "maractus":[75,86,67,106,67,60,461],"mrmime":[40,45,65,100,120,90,460],"lanturn":[125,58,58,76,76,67,460],"jumpluff":[75,55,70,55,95,110,460],
+            "breloom":[60,130,80,60,60,70,460],"sharpedo":[70,120,40,95,40,95,460],"camerupt":[70,100,70,105,75,40,460],"lunatone":[90,55,65,95,85,70,460],
+            "solrock":[90,95,85,55,65,70,460],"tropius":[99,68,83,72,87,51,460],"lumineon":[69,69,76,69,86,91,460],"basculin":[70,92,65,80,55,98,460],
+            "zangoose":[73,115,60,60,60,90,458],"seviper":[73,100,60,100,60,65,458],"ninjask":[61,90,45,50,50,160,456],"golbat":[75,80,70,65,75,90,455],
+            "primeape":[65,105,60,60,70,95,455],"hitmonlee":[50,120,53,35,110,87,455],"hitmonchan":[50,105,79,35,110,76,455],"jynx":[65,50,35,115,95,95,455],
+            "girafarig":[70,80,65,90,65,85,455],"hitmontop":[50,95,95,35,110,70,455],"swellow":[60,85,60,75,50,125,455],"banette":[64,115,65,83,63,65,455],
+            "dusclops":[40,70,130,60,130,25,455],"chimecho":[75,50,80,95,90,65,455],"masquerain":[70,60,62,100,82,80,454],"carnivine":[74,100,72,90,72,46,454],
+            "noctowl":[100,50,50,86,96,70,452],"purugly":[71,82,64,64,59,112,452],"sandslash":[75,100,110,45,55,65,450],"venomoth":[70,65,60,90,75,90,450],
+            "chansey":[250,5,5,35,105,50,450],"seaking":[80,92,65,65,80,68,450],"granbull":[90,120,75,60,60,45,450],"piloswine":[100,100,80,60,60,50,450],
+            "cherrim":[70,60,70,87,78,85,450],"arbok":[60,95,69,65,79,80,448],"liepard":[64,88,50,88,50,106,446],"audino":[103,60,86,60,86,50,445],
+            "fearow":[65,90,65,61,61,100,442],"persian":[65,70,60,65,65,115,440],"seadra":[55,65,95,95,45,85,440],"qwilfish":[65,95,85,55,55,85,440],
+            "pelipper":[60,50,100,95,70,65,440],"vigoroth":[80,80,80,55,55,90,440],"kecleon":[60,90,70,60,120,40,440],"rotom":[50,50,77,95,77,91,440],
+            "klang":[60,80,95,70,85,50,440],"wigglytuff":[140,70,45,85,50,45,435],"tangela":[65,55,115,100,40,60,435],"quagsire":[95,85,85,65,65,35,430],
+            "gligar":[65,75,105,35,65,85,430],"sneasel":[55,95,55,35,75,115,430],"magcargo":[60,50,120,90,80,30,430],"lairon":[60,90,140,50,50,40,430],
+            "volbeat":[65,73,75,47,85,85,430],"illumise":[65,47,75,73,85,85,430],"emolga":[55,75,60,75,60,103,428],"dugtrio":[35,100,50,50,70,120,425],
+            "marowak":[60,80,110,50,80,45,425],"sunflora":[75,75,55,105,85,30,425],"swoobat":[67,57,55,77,55,114,425],"wormadam":[60,59,85,79,105,36,424],
+            "mothim":[70,94,50,94,50,66,424],"dragonair":[61,84,65,70,70,70,420],"azumarill":[100,50,80,60,80,50,420],"mightyena":[70,90,70,60,60,70,420],
+            "linoone":[78,70,61,50,61,100,420],"castform":[70,70,70,70,70,70,420],"shelgon":[65,95,100,60,50,50,420],"metang":[60,75,100,55,80,50,420],
+            "watchog":[60,85,69,60,69,77,420],"zweilous":[72,85,70,65,70,58,420],"pignite":[90,93,55,70,55,55,418],"furret":[85,76,64,45,55,90,415],
+            "dunsparce":[100,70,70,65,65,45,415],"raticate":[55,81,60,50,70,97,413],"servine":[60,60,75,60,75,83,413],"dewott":[75,75,60,83,60,60,413],
+            "chatot":[76,65,45,92,42,91,411],"ponyta":[50,85,55,65,65,90,410],"sudowoodo":[70,100,115,30,65,30,410],"corsola":[65,55,95,65,95,35,410],
+            "pupitar":[70,84,70,65,70,51,410],"medicham":[60,60,75,60,75,80,410],"sealeo":[90,60,70,75,70,45,410],"bibarel":[79,85,60,55,60,71,410],
+            "gabite":[68,90,65,50,55,82,410],"fraxure":[66,117,70,40,50,67,410],"ivysaur":[60,62,63,80,80,60,405],"charmeleon":[58,64,58,80,65,80,405],
+            "wartortle":[59,63,80,65,80,58,405],"parasect":[60,95,80,60,80,30,405],"machoke":[80,100,70,50,60,45,405],"haunter":[45,50,45,115,55,95,405],
+            "bayleef":[60,62,80,63,80,60,405],"quilava":[58,64,58,80,65,80,405],"croconaw":[65,80,80,59,63,58,405],"togetic":[55,40,85,80,105,40,405],
+            "murkrow":[60,85,42,85,42,91,405],"wobbuffet":[190,33,58,33,58,33,405],"grovyle":[50,65,45,85,65,95,405],"combusken":[60,85,60,85,60,55,405],
+            "marshtomp":[70,85,70,60,70,50,405],"plusle":[60,50,40,85,75,95,405],"minun":[60,40,50,75,85,95,405],"grotle":[75,89,85,55,65,36,405],
+            "monferno":[64,78,52,78,52,81,405],"prinplup":[64,66,68,81,76,50,405],"pachirisu":[60,45,70,45,90,95,405],"gurdurr":[85,105,85,40,50,40,405],
+            "eelektrik":[65,85,70,75,70,40,405],"archen":[55,112,45,74,45,70,401],"kadabra":[40,35,30,120,70,105,400],"ariados":[70,90,70,60,70,40,400],
+            "delcatty":[70,65,65,55,55,90,400],"roselia":[50,60,45,100,80,65,400],"wailmer":[130,70,35,70,35,60,400],"butterfree":[60,45,50,90,80,70,395],
+            "beedrill":[65,90,40,45,80,75,395],"gloom":[60,65,70,85,75,40,395],"porygon":[65,60,70,85,75,40,395],"beautifly":[60,70,50,100,50,65,395],
+            "vanillish":[51,65,65,80,75,59,395],"weepinbell":[65,90,50,85,45,55,390],"graveler":[55,95,115,45,45,35,390],"ledian":[55,35,50,55,110,85,390],
+            "yanma":[65,65,45,75,45,95,390],"munchlax":[135,85,40,40,85,5,390],"boldore":[70,105,105,50,40,20,390],"gothorita":[60,45,70,75,85,55,390],
+            "poliwhirl":[65,65,65,50,50,90,385],"onix":[35,45,160,30,45,70,385],"lickitung":[90,55,75,60,75,30,385],"dustox":[60,50,70,50,90,65,385],
+            "kricketune":[77,85,51,55,51,65,384],"palpitoad":[75,65,55,65,55,69,384],"sableye":[50,75,75,65,65,50,380],"mawile":[50,85,85,55,55,50,380],
+            "swadloon":[55,63,90,50,80,42,380],"farfetchd":[52,90,55,58,62,60,377],"nosepass":[30,45,135,45,90,30,375],"herdier":[65,80,65,35,65,60,370],
+            "duosion":[65,40,50,125,60,30,370],"lampent":[60,40,60,95,60,55,370],"vullaby":[70,55,75,45,65,60,370],"nidorina":[70,62,67,55,55,56,365],
+            "nidorino":[61,72,57,55,55,65,365],"flaaffy":[70,55,55,80,60,45,365],"magby":[45,75,37,70,55,83,365],"luxio":[60,85,49,60,49,60,363],
+            "aipom":[55,70,55,40,55,85,360],"elekid":[45,63,37,65,55,95,360],"loudred":[84,71,43,71,43,48,360],"spinda":[60,60,60,60,60,60,360],
+            "whirlipede":[40,55,99,40,79,47,360],"larvesta":[55,85,55,50,55,60,360],"tranquill":[62,77,62,50,42,65,358],"omanyte":[35,40,100,90,55,35,355],
+            "kabuto":[30,80,90,55,45,55,355],"lileep":[66,41,77,61,87,23,355],"anorith":[45,95,50,40,50,75,355],"tirtouga":[54,78,103,53,45,22,355],
+            "krokorok":[60,82,45,45,45,74,351],"growlithe":[55,70,45,70,50,60,350],"cranidos":[67,125,40,30,30,58,350],"shieldon":[30,42,118,42,88,30,350],
+            "buneary":[55,66,44,44,56,85,350],"mienfoo":[45,85,50,55,50,65,350],"rufflet":[70,83,50,37,50,60,350],"pidgeotto":[63,60,55,50,50,71,349],
+            "drifloon":[90,50,34,60,44,70,348],"scraggy":[50,75,70,35,70,48,348],"rhyhorn":[80,85,95,30,30,25,345],"clamperl":[35,64,85,74,55,32,345],
+            "mantyke":[45,20,50,60,120,50,345],"koffing":[40,65,95,60,45,35,340],"staryu":[30,45,55,70,55,85,340],"skiploom":[55,45,50,45,65,80,340],
+            "lombre":[60,50,50,60,70,50,340],"nuzleaf":[70,70,40,60,40,60,340],"vibrava":[50,70,50,50,50,70,340],"staravia":[55,75,50,40,40,80,340],
+            "pawniard":[45,85,70,40,40,60,340],"tentacool":[40,40,35,50,100,70,335],"cacnea":[50,85,40,85,40,35,335],"deerling":[60,60,50,40,50,75,335],
+            "frillish":[55,40,50,65,85,40,335],"elgyem":[55,55,55,85,55,30,335],"snover":[60,62,50,62,60,40,334],"voltorb":[40,30,50,55,55,100,330],
+            "chinchou":[75,38,38,56,56,67,330],"teddiursa":[60,80,50,50,50,40,330],"delibird":[45,55,45,65,45,75,330],"houndour":[45,60,30,80,50,65,330],
+            "phanpy":[90,60,60,40,40,40,330],"aron":[50,70,100,40,40,30,330],"spoink":[60,25,35,70,80,60,330],"luvdisc":[43,30,55,40,65,97,330],
+            "buizel":[55,65,35,60,30,85,330],"hippopotas":[68,72,78,38,42,32,330],"skorupi":[40,50,90,30,55,65,330],"finneon":[49,49,56,49,61,66,330],
+            "zorua":[40,65,40,80,40,65,330],"stunky":[63,63,47,41,41,74,329],"trubbish":[50,50,62,40,62,65,329],"drowzee":[60,48,45,43,90,42,328],
+            "drilbur":[60,85,40,30,45,68,328],"magnemite":[25,35,70,95,55,45,325],"seel":[65,45,55,45,70,45,325],"grimer":[80,80,50,40,50,25,325],
+            "krabby":[30,105,90,25,25,50,325],"exeggcute":[60,40,80,60,45,40,325],"eevee":[55,55,50,45,65,55,325],"shellos":[76,48,48,57,62,34,325],
+            "dwebble":[50,65,85,35,35,55,325],"clefairy":[70,45,48,60,65,35,323],"woobat":[65,45,43,55,43,72,323],"pikachu":[35,55,40,50,50,90,320],
+            "oddish":[45,50,55,75,65,30,320],"psyduck":[50,52,48,65,50,55,320],"cubone":[50,50,95,40,50,35,320],"goldeen":[45,67,60,35,50,63,320],
+            "natu":[40,50,45,70,45,70,320],"axew":[46,87,60,30,40,57,320],"joltik":[50,47,50,57,50,65,319],"bulbasaur":[45,49,49,65,65,45,318],
+            "chikorita":[45,49,65,49,65,45,318],"turtwig":[55,68,64,45,55,31,318],"pansage":[50,53,48,53,48,64,316],"pansear":[50,53,48,53,48,64,316],
+            "panpour":[50,53,48,53,48,64,316],"slowpoke":[90,65,65,40,40,15,315],"darumaka":[70,90,45,15,45,50,315],"karrablast":[50,75,45,40,45,60,315],
+            "squirtle":[44,48,65,50,64,43,314],"totodile":[50,65,64,44,48,43,314],"piplup":[53,51,53,61,56,40,314],"abra":[25,20,15,105,55,90,310],
+            "doduo":[35,85,45,35,35,75,310],"gastly":[30,35,30,100,35,80,310],"treecko":[40,45,35,65,55,70,310],"torchic":[45,60,40,70,50,45,310],
+            "mudkip":[50,70,50,50,50,40,310],"swablu":[45,40,60,40,75,50,310],"glameow":[49,55,42,42,37,85,310],"mimejr":[20,25,45,70,90,60,310],
+            "sewaddle":[45,53,70,40,60,42,310],"charmander":[39,52,43,60,50,65,309],"cyndaquil":[39,52,43,60,50,65,309],"chimchar":[44,58,44,58,44,61,309],
+            "corphish":[43,80,65,50,35,35,308],"snivy":[45,45,55,45,55,63,308],"tepig":[65,63,45,45,45,45,308],"oshawott":[55,55,45,63,45,45,308],
+            "venonat":[60,55,50,40,55,45,305],"mankey":[40,80,35,35,45,70,305],"machop":[70,80,50,35,35,35,305],"shellder":[30,65,100,45,25,40,305],
+            "smoochum":[45,30,15,85,65,65,305],"carvanha":[45,90,20,65,20,65,305],"numel":[60,60,40,65,45,35,305],"timburr":[75,80,55,25,35,35,305],
+            "ducklett":[62,44,50,44,50,55,305],"vanillite":[36,50,50,65,60,44,305],"ferroseed":[44,50,91,24,86,10,305],"cubchoo":[55,70,40,60,40,40,305],
+            "shelmet":[50,40,85,40,65,25,305],"yamask":[38,30,85,55,65,30,303],"golett":[59,74,50,35,50,35,303],"gulpin":[70,43,53,43,53,40,302],
+            "sandshrew":[50,75,85,20,30,40,300],"poliwag":[40,50,40,40,40,90,300],"bellsprout":[50,75,35,70,30,40,300],"geodude":[40,80,100,30,30,20,300],
+            "dratini":[41,64,45,50,50,50,300],"snubbull":[60,80,50,40,40,30,300],"remoraid":[35,65,35,65,35,65,300],"larvitar":[50,64,50,45,50,41,300],
+            "baltoy":[40,40,55,40,70,55,300],"snorunt":[50,50,50,50,50,50,300],"bagon":[45,75,60,40,30,50,300],"beldum":[40,55,80,35,60,30,300],
+            "bronzor":[57,24,86,24,86,23,300],"gible":[58,70,45,40,45,42,300],"croagunk":[48,61,40,61,40,50,300],"minccino":[55,50,40,40,40,75,300],
+            "klink":[40,55,70,45,60,30,300],"deino":[52,65,50,45,50,38,300],"vulpix":[38,41,40,50,65,65,299],"horsea":[30,40,70,70,25,60,295],
+            "shroomish":[60,40,60,40,60,35,295],"electrike":[40,45,40,65,40,65,295],"shuppet":[44,75,35,63,33,45,295],"duskull":[20,40,90,30,90,25,295],
+            "blitzle":[45,60,32,50,32,76,295],"tympole":[50,50,40,50,40,64,294],"foongus":[69,55,45,55,55,15,294],"munna":[76,25,45,67,55,24,292],
+            "sandile":[50,72,35,35,35,65,292],"meowth":[40,45,35,40,40,90,290],"pineco":[50,65,90,35,35,15,290],"trapinch":[45,100,45,45,45,10,290],
+            "spheal":[70,40,50,55,50,25,290],"bonsly":[50,80,95,10,45,10,290],"gothita":[45,30,50,55,65,45,290],"solosis":[45,30,40,105,50,20,290],
+            "ekans":[35,60,44,40,54,55,288],"barboach":[50,48,43,46,41,60,288],"paras":[35,70,55,45,55,25,285],"chingling":[45,30,50,65,50,45,285],
+            "riolu":[40,70,40,35,40,60,285],"purrloin":[41,50,37,50,37,66,281],"mareep":[55,40,40,65,45,35,280],"slakoth":[60,60,60,35,35,30,280],
+            "meditite":[30,40,55,40,55,60,280],"budew":[40,30,35,50,70,55,280],"roggenrola":[55,75,85,25,25,15,280],"cottonee":[40,27,60,37,50,66,280],
+            "petilil":[45,35,50,70,50,30,280],"kirlia":[38,35,35,65,55,50,278],"cherubi":[45,35,45,62,53,35,275],"lillipup":[45,60,45,25,45,55,275],
+            "tynamo":[35,55,40,45,40,60,275],"litwick":[50,30,55,65,55,20,275],"nidoranfemale":[46,57,40,40,40,50,273],"nidoranmale":[46,57,40,40,40,50,273],
+            "jigglypuff":[115,45,20,45,25,20,270],"taillow":[40,55,30,30,30,85,270],"wingull":[40,30,30,55,30,85,270],"surskit":[40,30,32,50,52,65,269],
+            "nincada":[31,45,90,30,30,40,266],"diglett":[10,55,25,35,45,95,265],"ledyba":[40,20,30,40,80,55,265],"pidove":[50,55,50,36,30,43,264],
+            "shinx":[45,65,34,40,34,45,263],"spearow":[40,60,30,31,31,70,262],"hoothoot":[60,30,30,36,56,50,262],"skitty":[50,45,45,35,35,50,260],
+            "wynaut":[95,23,48,23,48,23,260],"venipede":[30,45,59,30,39,57,260],"patrat":[45,55,39,35,39,42,255],"rattata":[30,56,35,25,35,72,253],
+            "pidgey":[40,45,40,35,35,56,251],"spinarak":[40,60,40,40,40,30,250],"marill":[70,20,50,20,50,40,250],"hoppip":[35,35,40,35,55,50,250],
+            "slugma":[40,40,40,70,40,20,250],"swinub":[50,50,40,30,30,50,250],"smeargle":[55,20,35,20,45,75,250],"bidoof":[59,45,40,35,40,31,250],
+            "zubat":[40,45,35,30,40,55,245],"togepi":[35,20,65,40,65,20,245],"starly":[40,55,30,30,30,60,245],"combee":[30,30,42,30,42,70,244],
+            "zigzagoon":[38,30,41,30,41,60,240],"whismur":[64,51,23,51,23,28,240],"makuhita":[72,60,30,20,30,25,237],"shedinja":[1,90,45,30,30,40,236],
+            "burmy":[40,29,45,29,45,36,224],"poochyena":[35,55,35,30,30,35,220],"lotad":[40,30,30,40,50,30,220],"seedot":[40,40,50,30,30,30,220],
+            "happiny":[100,5,5,15,65,30,220],"cleffa":[50,25,28,45,55,15,218],"sentret":[35,46,34,35,45,20,215],"igglybuff":[90,30,15,40,20,15,210],
+            "wooper":[55,45,45,25,25,15,210],"tyrogue":[35,35,35,35,35,35,210],"metapod":[50,20,55,25,25,30,205],"kakuna":[45,25,50,25,25,35,205],
+            "pichu":[20,40,15,35,35,60,205],"silcoon":[50,35,55,25,25,15,205],"cascoon":[50,35,55,25,25,15,205],"feebas":[20,15,20,10,55,80,200],
+            "ralts":[28,25,25,45,35,40,198],"caterpie":[45,30,35,20,20,45,195],"weedle":[40,35,30,20,20,50,195],"wurmple":[45,45,35,20,30,20,195],
+            "kricketot":[37,25,41,25,41,25,194],"azurill":[50,20,40,20,40,20,190],"sunkern":[30,30,30,30,30,30,180],"arceus":[120,120,120,120,120,120,720],
+            "mewtwo":[106,110,90,154,90,130,680],"lugia":[106,90,130,90,154,110,680],"hooh":[106,130,90,110,154,90,680],"dialga":[100,120,120,150,100,90,680],
+            "giratina":[150,100,120,100,120,90,680],"palkia":[90,120,100,150,120,100,680],"rayquaza":[105,150,90,150,90,95,680],"reshiram":[100,120,100,150,120,90,680],
+            "zekrom":[100,150,120,120,100,90,680],"groudon":[100,150,140,100,90,90,670],"kyogre":[100,100,90,150,140,90,670],"regigigas":[110,160,110,80,110,100,670],
+            "kyurem":[125,130,90,130,90,95,660],"mew":[100,100,100,100,100,100,600],"celebi":[100,100,100,100,100,100,600],"heatran":[91,90,106,130,106,77,600],
+            "cresselia":[120,70,120,75,130,85,600],"darkrai":[70,90,90,135,90,125,600],"deoxys":[50,150,50,150,50,150,600],"genesect":[71,120,95,120,95,99,600],
+            "jirachi":[100,100,100,100,100,100,600],"landorus":[89,125,90,115,80,101,600],"latias":[80,80,90,110,130,110,600],"latios":[80,90,80,130,110,110,600],
+            "manaphy":[100,100,100,100,100,100,600],"meloetta":[100,77,77,128,128,90,600],"shaymin":[100,100,100,100,100,100,600],"victini":[100,100,100,100,100,100,600],
+            "articuno":[90,85,100,95,125,85,580],"zapdos":[90,90,85,125,90,100,580],"moltres":[90,100,90,125,85,90,580],"raikou":[90,85,75,115,100,115,580],
+            "entei":[115,115,85,90,75,100,580],"suicune":[100,75,115,90,115,85,580],"azelf":[75,125,70,125,70,115,580],"cobalion":[91,90,129,90,72,108,580],
+            "keldeo":[91,72,90,129,90,108,580],"mesprit":[80,105,105,105,105,80,580],"regice":[80,50,100,100,200,50,580],"regirock":[80,100,200,50,100,50,580],
+            "registeel":[80,75,150,75,150,50,580],"terrakion":[91,129,90,72,90,108,580],"thundurus":[79,115,70,125,80,111,580],"tornadus":[79,115,70,125,80,111,580],
+            "uxie":[75,75,130,75,130,95,580],"virizion":[91,90,72,90,129,108,580],"phione":[80,80,80,80,80,80,480],"megagarchomp":[108,170,115,120,95,92,700],
+            "megametagross":[80,145,150,105,110,110,700],"megasalamence":[95,145,130,120,90,120,700],"megatyranitar":[100,164,150,95,120,71,700],
+            "megagyarados":[95,155,109,70,130,81,640],"megaswampert":[100,150,110,95,110,70,635],"megacharizardx":[78,130,111,130,85,100,634],
+            "megacharizardy":[78,104,78,159,115,100,634],"megaaggron":[70,140,230,60,80,50,630],"megablastoise":[79,103,120,135,115,78,630],
+            "megablaziken":[80,160,80,130,80,100,630],"megasceptile":[70,110,75,145,85,145,630],"megalucario":[70,145,88,140,70,112,625],
+            "megavenusaur":[80,100,123,122,120,80,625],"megagardevoir":[68,85,65,165,135,100,618],"megaaerodactyl":[80,135,85,70,95,150,615],
+            "megaampharos":[90,95,105,165,110,45,610],"megasteelix":[75,125,230,55,95,30,610],"megaalakazam":[55,50,65,175,105,150,600],
+            "megagengar":[60,65,80,170,95,130,600],"megahoundoom":[75,90,90,140,90,115,600],"megascizor":[70,150,140,65,100,75,600],
+            "megaabomasnow":[90,132,105,132,105,30,594],"megaslowbro":[95,75,180,130,80,30,590],"megaglalie":[80,120,80,120,80,100,580],
+            "megapidgeot":[83,80,80,135,80,121,579],"megamanectric":[70,75,80,135,80,135,575],"megaabsol":[65,150,60,115,60,115,565],
+            "megacamerupt":[70,120,100,145,105,20,560],"megaaudino":[103,60,126,80,126,50,545],"megamedicham":[60,100,85,80,85,100,510],
+            "megabeedrill":[65,150,40,15,80,145,495],"megamawile":[50,105,125,55,95,50,480],"megasableye":[50,85,125,85,115,20,480]
+        };
+        // 4 espécies da dex que a página oficial de stats não listou — base
+        // canônica preenchida à mão pra ficha não vir vazia (Pinsir, Heracross,
+        // Misdreavus, Spiritomb).
+        Object.assign(PP_BASE_STATS, {
+            "pinsir": [65, 125, 100, 55, 70, 85, 500], "heracross": [80, 125, 75, 40, 95, 85, 500],
+            "misdreavus": [60, 60, 60, 85, 85, 85, 435], "spiritomb": [50, 92, 108, 92, 108, 35, 485]
+        });
+        const PP_MEGA_KEYS = ["megagarchomp", "megametagross", "megasalamence", "megatyranitar", "megagyarados", "megaswampert", "megacharizardx", "megacharizardy", "megaaggron", "megablastoise", "megablaziken", "megasceptile", "megalucario", "megavenusaur", "megagardevoir", "megaaerodactyl", "megaampharos", "megasteelix", "megaalakazam", "megagengar", "megahoundoom", "megascizor", "megaabomasnow", "megaslowbro", "megaglalie", "megapidgeot", "megamanectric", "megaabsol", "megacamerupt", "megaaudino", "megamedicham", "megabeedrill", "megamawile", "megasableye"];
+
+        function ppNorm2(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); }
+        const PP_STATS_ALIAS = {
+            'nidoranf':'nidoranfemale', 'nidoranm':'nidoranmale',
+            'hooh':'hooh', 'porygonz':'porygonz'
+        };
+        function ppStatsDe(nome){
+            let k = ppNorm2(nome);
+            if (PP_STATS_ALIAS[k]) k = PP_STATS_ALIAS[k];
+            const v = PP_BASE_STATS[k];
+            if (!v) return null;
+            return { hp:v[0], atk:v[1], def:v[2], spa:v[3], spd:v[4], spe:v[5], bst:v[6] };
+        }
+        function ppTodasStats(){
+            const out = [];
+            for (const k in PP_BASE_STATS){
+                const v = PP_BASE_STATS[k];
+                out.push({ key:k, hp:v[0], atk:v[1], def:v[2], spa:v[3], spd:v[4], spe:v[5], bst:v[6], mega: PP_MEGA_KEYS.indexOf(k)>=0 });
+            }
+            return out;
+        }
+        const PP_STATS_LABEL = {};
+        Object.assign(PP_STATS_LABEL, {
+            "slaking":"Slaking","dragonite":"Dragonite","tyranitar":"Tyranitar","salamence":"Salamence","metagross":"Metagross","garchomp":"Garchomp",
+            "hydreigon":"Hydreigon","archeops":"Archeops","arcanine":"Arcanine","volcarona":"Volcarona","togekiss":"Togekiss","gyarados":"Gyarados","snorlax":"Snorlax",
+            "kingdra":"Kingdra","blissey":"Blissey","milotic":"Milotic","electivire":"Electivire","magmortar":"Magmortar","haxorus":"Haxorus","lapras":"Lapras",
+            "crobat":"Crobat","swampert":"Swampert","magnezone":"Magnezone","rhyperior":"Rhyperior","tangrowth":"Tangrowth","porygonz":"Porygon-Z",
+            "vanilluxe":"Vanilluxe","charizard":"Charizard","typhlosion":"Typhlosion","infernape":"Infernape","blastoise":"Blastoise","exeggutor":"Exeggutor",
+            "feraligatr":"Feraligatr","sceptile":"Sceptile","blaziken":"Blaziken","aggron":"Aggron","walrein":"Walrein","empoleon":"Empoleon","mamoswine":"Mamoswine",
+            "serperior":"Serperior","emboar":"Emboar","samurott":"Samurott","venusaur":"Venusaur","cloyster":"Cloyster","vaporeon":"Vaporeon","jolteon":"Jolteon",
+            "flareon":"Flareon","meganium":"Meganium","espeon":"Espeon","umbreon":"Umbreon","torterra":"Torterra","lucario":"Lucario","hippowdon":"Hippowdon",
+            "leafeon":"Leafeon","glaceon":"Glaceon","probopass":"Probopass","dusknoir":"Dusknoir","sylveon":"Sylveon","luxray":"Luxray","starmie":"Starmie",
+            "flygon":"Flygon","klinklang":"Klinklang","chandelure":"Chandelure","krookodile":"Krookodile","gardevoir":"Gardevoir","gallade":"Gallade",
+            "tentacruel":"Tentacruel","aerodactyl":"Aerodactyl","porygon2":"Porygon2","roserade":"Roserade","lickilicky":"Lickilicky","yanmega":"Yanmega",
+            "gigalith":"Gigalith","eelektross":"Eelektross","poliwrath":"Poliwrath","ampharos":"Ampharos","steelix":"Steelix","weavile":"Weavile","gliscor":"Gliscor",
+            "zoroark":"Zoroark","mienshao":"Mienshao","braviary":"Braviary","mandibuzz":"Mandibuzz","seismitoad":"Seismitoad","excadrill":"Excadrill",
+            "nidoqueen":"Nidoqueen","nidoking":"Nidoking","ninetales":"Ninetales","machamp":"Machamp","shuckle":"Shuckle","honchkrow":"Honchkrow",
+            "conkeldurr":"Conkeldurr","beartic":"Beartic","golduck":"Golduck","alakazam":"Alakazam","rapidash":"Rapidash","muk":"Muk","gengar":"Gengar",
+            "scyther":"Scyther","politoed":"Politoed","scizor":"Scizor","ursaring":"Ursaring","houndoom":"Houndoom","donphan":"Donphan","wailord":"Wailord",
+            "claydol":"Claydol","bronzong":"Bronzong","drapion":"Drapion","stoutland":"Stoutland","leavanny":"Leavanny","drifblim":"Drifblim","simisage":"Simisage",
+            "simisear":"Simisear","simipour":"Simipour","zebstrika":"Zebstrika","golem":"Golem","magmar":"Magmar","omastar":"Omastar","kabutops":"Kabutops",
+            "cradily":"Cradily","armaldo":"Armaldo","rampardos":"Rampardos","bastiodon":"Bastiodon","floatzel":"Floatzel","mismagius":"Mismagius",
+            "carracosta":"Carracosta","escavalier":"Escavalier","accelgor":"Accelgor","abomasnow":"Abomasnow","vileplume":"Vileplume","victreebel":"Victreebel",
+            "slowbro":"Slowbro","electrode":"Electrode","weezing":"Weezing","kangaskhan":"Kangaskhan","electabuzz":"Electabuzz","tauros":"Tauros","bellossom":"Bellossom",
+            "slowking":"Slowking","miltank":"Miltank","exploud":"Exploud","altaria":"Altaria","toxicroak":"Toxicroak","sigilyph":"Sigilyph","gothitelle":"Gothitelle",
+            "reuniclus":"Reuniclus","bisharp":"Bisharp","bouffalant":"Bouffalant","ferrothorn":"Ferrothorn","unfezant":"Unfezant","scrafty":"Scrafty",
+            "musharna":"Musharna","raichu":"Raichu","rhydon":"Rhydon","mantine":"Mantine","huntail":"Huntail","gorebyss":"Gorebyss","relicanth":"Relicanth",
+            "staraptor":"Staraptor","scolipede":"Scolipede","crustle":"Crustle","beheeyem":"Beheeyem","cryogonal":"Cryogonal","druddigon":"Druddigon","heatmor":"Heatmor",
+            "durant":"Durant","clefable":"Clefable","hypno":"Hypno","cofagrigus":"Cofagrigus","golurk":"Golurk","ambipom":"Ambipom","octillery":"Octillery",
+            "ludicolo":"Ludicolo","shiftry":"Shiftry","glalie":"Glalie","lopunny":"Lopunny","froslass":"Froslass","whimsicott":"Whimsicott","lilligant":"Lilligant",
+            "darmanitan":"Darmanitan","jellicent":"Jellicent","pidgeot":"Pidgeot","skuntank":"Skuntank","dewgong":"Dewgong","kingler":"Kingler","manectric":"Manectric",
+            "cacturne":"Cacturne","gastrodon":"Gastrodon","sawsbuck":"Sawsbuck","hariyama":"Hariyama","vespiquen":"Vespiquen","garbodor":"Garbodor","swanna":"Swanna",
+            "galvantula":"Galvantula","stunfisk":"Stunfisk","dodrio":"Dodrio","xatu":"Xatu","torkoal":"Torkoal","grumpig":"Grumpig","cinccino":"Cinccino",
+            "alomomola":"Alomomola","whiscash":"Whiscash","crawdaunt":"Crawdaunt","swalot":"Swalot","magneton":"Magneton","forretress":"Forretress","skarmory":"Skarmory",
+            "stantler":"Stantler","absol":"Absol","throh":"Throh","sawk":"Sawk","amoonguss":"Amoonguss","maractus":"Maractus","mrmime":"Mr.Mime","lanturn":"Lanturn",
+            "jumpluff":"Jumpluff","breloom":"Breloom","sharpedo":"Sharpedo","camerupt":"Camerupt","lunatone":"Lunatone","solrock":"Solrock","tropius":"Tropius",
+            "lumineon":"Lumineon","basculin":"Basculin","zangoose":"Zangoose","seviper":"Seviper","ninjask":"Ninjask","golbat":"Golbat","primeape":"Primeape",
+            "hitmonlee":"Hitmonlee","hitmonchan":"Hitmonchan","jynx":"Jynx","girafarig":"Girafarig","hitmontop":"Hitmontop","swellow":"Swellow","banette":"Banette",
+            "dusclops":"Dusclops","chimecho":"Chimecho","masquerain":"Masquerain","carnivine":"Carnivine","noctowl":"Noctowl","purugly":"Purugly","sandslash":"Sandslash",
+            "venomoth":"Venomoth","chansey":"Chansey","seaking":"Seaking","granbull":"Granbull","piloswine":"Piloswine","cherrim":"Cherrim","arbok":"Arbok",
+            "liepard":"Liepard","audino":"Audino","fearow":"Fearow","persian":"Persian","seadra":"Seadra","qwilfish":"Qwilfish","pelipper":"Pelipper",
+            "vigoroth":"Vigoroth","kecleon":"Kecleon","rotom":"Rotom","klang":"Klang","wigglytuff":"Wigglytuff","tangela":"Tangela","quagsire":"Quagsire",
+            "gligar":"Gligar","sneasel":"Sneasel","magcargo":"Magcargo","lairon":"Lairon","volbeat":"Volbeat","illumise":"Illumise","emolga":"Emolga","dugtrio":"Dugtrio",
+            "marowak":"Marowak","sunflora":"Sunflora","swoobat":"Swoobat","wormadam":"Wormadam","mothim":"Mothim","dragonair":"Dragonair","azumarill":"Azumarill",
+            "mightyena":"Mightyena","linoone":"Linoone","castform":"Castform","shelgon":"Shelgon","metang":"Metang","watchog":"Watchog","zweilous":"Zweilous",
+            "pignite":"Pignite","furret":"Furret","dunsparce":"Dunsparce","raticate":"Raticate","servine":"Servine","dewott":"Dewott","chatot":"Chatot","ponyta":"Ponyta",
+            "sudowoodo":"Sudowoodo","corsola":"Corsola","pupitar":"Pupitar","medicham":"Medicham","sealeo":"Sealeo","bibarel":"Bibarel","gabite":"Gabite",
+            "fraxure":"Fraxure","ivysaur":"Ivysaur","charmeleon":"Charmeleon","wartortle":"Wartortle","parasect":"Parasect","machoke":"Machoke","haunter":"Haunter",
+            "bayleef":"Bayleef","quilava":"Quilava","croconaw":"Croconaw","togetic":"Togetic","murkrow":"Murkrow","wobbuffet":"Wobbuffet","grovyle":"Grovyle",
+            "combusken":"Combusken","marshtomp":"Marshtomp","plusle":"Plusle","minun":"Minun","grotle":"Grotle","monferno":"Monferno","prinplup":"Prinplup",
+            "pachirisu":"Pachirisu","gurdurr":"Gurdurr","eelektrik":"Eelektrik","archen":"Archen","kadabra":"Kadabra","ariados":"Ariados","delcatty":"Delcatty",
+            "roselia":"Roselia","wailmer":"Wailmer","butterfree":"Butterfree","beedrill":"Beedrill","gloom":"Gloom","porygon":"Porygon","beautifly":"Beautifly",
+            "vanillish":"Vanillish","weepinbell":"Weepinbell","graveler":"Graveler","ledian":"Ledian","yanma":"Yanma","munchlax":"Munchlax","boldore":"Boldore",
+            "gothorita":"Gothorita","poliwhirl":"Poliwhirl","onix":"Onix","lickitung":"Lickitung","dustox":"Dustox","kricketune":"Kricketune","palpitoad":"Palpitoad",
+            "sableye":"Sableye","mawile":"Mawile","swadloon":"Swadloon","farfetchd":"Farfetchd","nosepass":"Nosepass","herdier":"Herdier","duosion":"Duosion",
+            "lampent":"Lampent","vullaby":"Vullaby","nidorina":"Nidorina","nidorino":"Nidorino","flaaffy":"Flaaffy","magby":"Magby","luxio":"Luxio","aipom":"Aipom",
+            "elekid":"Elekid","loudred":"Loudred","spinda":"Spinda","whirlipede":"Whirlipede","larvesta":"Larvesta","tranquill":"Tranquill","omanyte":"Omanyte",
+            "kabuto":"Kabuto","lileep":"Lileep","anorith":"Anorith","tirtouga":"Tirtouga","krokorok":"Krokorok","growlithe":"Growlithe","cranidos":"Cranidos",
+            "shieldon":"Shieldon","buneary":"Buneary","mienfoo":"Mienfoo","rufflet":"Rufflet","pidgeotto":"Pidgeotto","drifloon":"Drifloon","scraggy":"Scraggy",
+            "rhyhorn":"Rhyhorn","clamperl":"Clamperl","mantyke":"Mantyke","koffing":"Koffing","staryu":"Staryu","skiploom":"Skiploom","lombre":"Lombre",
+            "nuzleaf":"Nuzleaf","vibrava":"Vibrava","staravia":"Staravia","pawniard":"Pawniard","tentacool":"Tentacool","cacnea":"Cacnea","deerling":"Deerling",
+            "frillish":"Frillish","elgyem":"Elgyem","snover":"Snover","voltorb":"Voltorb","chinchou":"Chinchou","teddiursa":"Teddiursa","delibird":"Delibird",
+            "houndour":"Houndour","phanpy":"Phanpy","aron":"Aron","spoink":"Spoink","luvdisc":"Luvdisc","buizel":"Buizel","hippopotas":"Hippopotas","skorupi":"Skorupi",
+            "finneon":"Finneon","zorua":"Zorua","stunky":"Stunky","trubbish":"Trubbish","drowzee":"Drowzee","drilbur":"Drilbur","magnemite":"Magnemite","seel":"Seel",
+            "grimer":"Grimer","krabby":"Krabby","exeggcute":"Exeggcute","eevee":"Eevee","shellos":"Shellos","dwebble":"Dwebble","clefairy":"Clefairy","woobat":"Woobat",
+            "pikachu":"Pikachu","oddish":"Oddish","psyduck":"Psyduck","cubone":"Cubone","goldeen":"Goldeen","natu":"Natu","axew":"Axew","joltik":"Joltik",
+            "bulbasaur":"Bulbasaur","chikorita":"Chikorita","turtwig":"Turtwig","pansage":"Pansage","pansear":"Pansear","panpour":"Panpour","slowpoke":"Slowpoke",
+            "darumaka":"Darumaka","karrablast":"Karrablast","squirtle":"Squirtle","totodile":"Totodile","piplup":"Piplup","abra":"Abra","doduo":"Doduo","gastly":"Gastly",
+            "treecko":"Treecko","torchic":"Torchic","mudkip":"Mudkip","swablu":"Swablu","glameow":"Glameow","mimejr":"Mime Jr.","sewaddle":"Sewaddle",
+            "charmander":"Charmander","cyndaquil":"Cyndaquil","chimchar":"Chimchar","corphish":"Corphish","snivy":"Snivy","tepig":"Tepig","oshawott":"Oshawott",
+            "venonat":"Venonat","mankey":"Mankey","machop":"Machop","shellder":"Shellder","smoochum":"Smoochum","carvanha":"Carvanha","numel":"Numel","timburr":"Timburr",
+            "ducklett":"Ducklett","vanillite":"Vanillite","ferroseed":"Ferroseed","cubchoo":"Cubchoo","shelmet":"Shelmet","yamask":"Yamask","golett":"Golett",
+            "gulpin":"Gulpin","sandshrew":"Sandshrew","poliwag":"Poliwag","bellsprout":"Bellsprout","geodude":"Geodude","dratini":"Dratini","snubbull":"Snubbull",
+            "remoraid":"Remoraid","larvitar":"Larvitar","baltoy":"Baltoy","snorunt":"Snorunt","bagon":"Bagon","beldum":"Beldum","bronzor":"Bronzor","gible":"Gible",
+            "croagunk":"Croagunk","minccino":"Minccino","klink":"Klink","deino":"Deino","vulpix":"Vulpix","horsea":"Horsea","shroomish":"Shroomish",
+            "electrike":"Electrike","shuppet":"Shuppet","duskull":"Duskull","blitzle":"Blitzle","tympole":"Tympole","foongus":"Foongus","munna":"Munna",
+            "sandile":"Sandile","meowth":"Meowth","pineco":"Pineco","trapinch":"Trapinch","spheal":"Spheal","bonsly":"Bonsly","gothita":"Gothita","solosis":"Solosis",
+            "ekans":"Ekans","barboach":"Barboach","paras":"Paras","chingling":"Chingling","riolu":"Riolu","purrloin":"Purrloin","mareep":"Mareep","slakoth":"Slakoth",
+            "meditite":"Meditite","budew":"Budew","roggenrola":"Roggenrola","cottonee":"Cottonee","petilil":"Petilil","kirlia":"Kirlia","cherubi":"Cherubi",
+            "lillipup":"Lillipup","tynamo":"Tynamo","litwick":"Litwick","nidoranfemale":"Nidoran Female","nidoranmale":"Nidoran Male","jigglypuff":"Jigglypuff",
+            "taillow":"Taillow","wingull":"Wingull","surskit":"Surskit","nincada":"Nincada","diglett":"Diglett","ledyba":"Ledyba","pidove":"Pidove","shinx":"Shinx",
+            "spearow":"Spearow","hoothoot":"Hoothoot","skitty":"Skitty","wynaut":"Wynaut","venipede":"Venipede","patrat":"Patrat","rattata":"Rattata","pidgey":"Pidgey",
+            "spinarak":"Spinarak","marill":"Marill","hoppip":"Hoppip","slugma":"Slugma","swinub":"Swinub","smeargle":"Smeargle","bidoof":"Bidoof","zubat":"Zubat",
+            "togepi":"Togepi","starly":"Starly","combee":"Combee","zigzagoon":"Zigzagoon","whismur":"Whismur","makuhita":"Makuhita","shedinja":"Shedinja","burmy":"Burmy",
+            "poochyena":"Poochyena","lotad":"Lotad","seedot":"Seedot","happiny":"Happiny","cleffa":"Cleffa","sentret":"Sentret","igglybuff":"Igglybuff","wooper":"Wooper",
+            "tyrogue":"Tyrogue","metapod":"Metapod","kakuna":"Kakuna","pichu":"Pichu","silcoon":"Silcoon","cascoon":"Cascoon","feebas":"Feebas","ralts":"Ralts",
+            "caterpie":"Caterpie","weedle":"Weedle","wurmple":"Wurmple","kricketot":"Kricketot","azurill":"Azurill","sunkern":"Sunkern","arceus":"Arceus",
+            "mewtwo":"Mewtwo","lugia":"Lugia","hooh":"Ho-Oh","dialga":"Dialga","giratina":"Giratina","palkia":"Palkia","rayquaza":"Rayquaza","reshiram":"Reshiram",
+            "zekrom":"Zekrom","groudon":"Groudon","kyogre":"Kyogre","regigigas":"Regigigas","kyurem":"Kyurem","mew":"Mew","celebi":"Celebi","heatran":"Heatran",
+            "cresselia":"Cresselia","darkrai":"Darkrai","deoxys":"Deoxys","genesect":"Genesect","jirachi":"Jirachi","landorus":"Landorus","latias":"Latias",
+            "latios":"Latios","manaphy":"Manaphy","meloetta":"Meloetta","shaymin":"Shaymin","victini":"Victini","articuno":"Articuno","zapdos":"Zapdos",
+            "moltres":"Moltres","raikou":"Raikou","entei":"Entei","suicune":"Suicune","azelf":"Azelf","cobalion":"Cobalion","keldeo":"Keldeo","mesprit":"Mesprit",
+            "regice":"Regice","regirock":"Regirock","registeel":"Registeel","terrakion":"Terrakion","thundurus":"Thundurus","tornadus":"Tornadus","uxie":"Uxie",
+            "virizion":"Virizion","phione":"Phione","megagarchomp":"Mega Garchomp","megametagross":"Mega Metagross","megasalamence":"Mega Salamence",
+            "megatyranitar":"Mega Tyranitar","megagyarados":"Mega Gyarados","megaswampert":"Mega Swampert","megacharizardx":"Mega Charizard X",
+            "megacharizardy":"Mega Charizard Y","megaaggron":"Mega Aggron","megablastoise":"Mega Blastoise","megablaziken":"Mega Blaziken","megasceptile":"Mega Sceptile",
+            "megalucario":"Mega Lucario","megavenusaur":"Mega Venusaur","megagardevoir":"Mega Gardevoir","megaaerodactyl":"Mega Aerodactyl",
+            "megaampharos":"Mega Ampharos","megasteelix":"Mega Steelix","megaalakazam":"Mega Alakazam","megagengar":"Mega Gengar","megahoundoom":"Mega Houndoom",
+            "megascizor":"Mega Scizor","megaabomasnow":"Mega Abomasnow","megaslowbro":"Mega Slowbro","megaglalie":"Mega Glalie","megapidgeot":"Mega Pidgeot",
+            "megamanectric":"Mega Manectric","megaabsol":"Mega Absol","megacamerupt":"Mega Camerupt","megaaudino":"Mega Audino","megamedicham":"Mega Medicham",
+            "megabeedrill":"Mega Beedrill","megamawile":"Mega Mawile","megasableye":"Mega Sableye"
+        });
+        Object.assign(PP_STATS_LABEL, { "pinsir":"Pinsir", "heracross":"Heracross", "misdreavus":"Misdreavus", "spiritomb":"Spiritomb" });
+
+        // =====================================================================
+        // 43-pokepedia-sistema.js — POKÉPÉDIA: conteúdo da aba Sistema
+        // =====================================================================
+        // Os textos de mecânica da Poképédia oficial (idlepokemoon.com.br/
+        // pokepedia/sistemas/*), reunidos como DADO estruturado — números,
+        // fórmulas e tabelas fiéis à fonte (extraídos 2026-09-08). Sem DOM: é
+        // uma lista de seções que o 41 desenha. Cada seção tem blocos, cada
+        // bloco um título e linhas (texto puro ou "rótulo|valor" pra virar
+        // tabela de duas colunas).
+        // =====================================================================
+
+        const PP_SISTEMA = [
+            {
+                id: 'combate', rot: 'Combate', icone: '⚔️',
+                resumo: 'Como o dano é calculado na caçada e os multiplicadores.',
+                blocos: [
+                    { h: 'Fórmula de dano', linhas: [
+                        'dano = poder do golpe × (seu ataque ÷ defesa do alvo) × vantagem de tipo × mesmo tipo × escala de nível × variação',
+                        'Dano mínimo: 1 · Variação: 0,90 a 1,05'
+                    ] },
+                    { h: 'Multiplicadores', tabela: [
+                        ['Mesmo tipo (STAB)', '×1,5'], ['Super eficaz', '×1,65'],
+                        ['Dupla fraqueza', '×2,72'], ['Pouco eficaz', '×0,5'],
+                        ['Dupla resistência', '×0,25'], ['Crítico', '×2 (chance 6,25%)'],
+                        ['Selvagem atacando', '×1,5'], ['Shiny', '×1,2 (todos atributos e vida)'],
+                        ['Clã', '+4% ou +8%']
+                    ] },
+                    { h: 'Diferença de nível', linhas: [
+                        'Alvo acima: −1,5% dano causado e +1,5% dano recebido POR nível',
+                        'Piso do dano causado: 20% · Dano recebido: sem limite'
+                    ] },
+                    { h: 'Velocidade', linhas: [
+                        'Divide a recarga dos golpes e o intervalo entre ataques',
+                        'Piso de recarga: 0,75s · Piso de intervalo: 0,5s · Intervalo base: 2,5s'
+                    ] },
+                    { h: 'Outros', linhas: [
+                        'Golpes de apoio duram 1 hora, no máximo ×2,2',
+                        'Física vs Especial é decidido pelo TIPO do golpe',
+                        'Batalha por turno (Ginásio/PvP) usa regime diferente'
+                    ] }
+                ]
+            },
+            {
+                id: 'golpes', rot: 'Golpes', icone: '💥',
+                resumo: 'Categorias, recarga, STAB e regras de TM.',
+                blocos: [
+                    { h: 'Categorias', linhas: [
+                        'Físicos: usam Ataque vs Defesa do alvo',
+                        'Especiais: usam Atq. Especial vs Def. Especial do alvo',
+                        'Status: dormir, envenenar, curar, mudar atributos'
+                    ] },
+                    { h: 'Quantos golpes', linhas: [
+                        'Caçada: automática — o pokémon usa todos os desbloqueados por nível',
+                        'Ginásio/PvP: você escolhe 4 golpes por pokémon'
+                    ] },
+                    { h: 'Recarga e PP', linhas: [
+                        'Recarga na caçada: 1,60s a 2,50s (inverso ao poder)',
+                        'Intervalo mínimo entre ataques: 1s · PP só existe em batalha de turno'
+                    ] },
+                    { h: 'STAB e TM', linhas: [
+                        'STAB: ×1,5 quando o golpe é do mesmo tipo do pokémon',
+                        'TM/HM adiciona golpe não aprendido naturalmente',
+                        'Desde 12/08/2026 o golpe de TM vale também na caçada',
+                        'TM tier SS (poder 225) é prêmio de Chefe Lendário'
+                    ] },
+                    { h: 'Números', tabela: [
+                        ['Poder natural', '20 a 200'], ['Especiais criados', '150'],
+                        ['Tier SS', '225'], ['Precisão dos criados', '100%']
+                    ] }
+                ]
+            },
+            {
+                id: 'growth', rot: 'Qualidade & Growth', icone: '🌱',
+                resumo: 'A raridade e as 6 notas que cada pokémon ganha ao nascer.',
+                blocos: [
+                    { h: 'Qualidade (raridade)', linhas: [
+                        'Multiplicador geral dos atributos, em 7 faixas:'
+                    ], tabela: [
+                        ['Fraca', 'abaixo de 1,00'], ['Comum', '1,00'], ['Incomum', '1,10'],
+                        ['Rara', '1,30'], ['Épica', '1,50'], ['Lendária', '1,70'], ['Mítica', '2,00']
+                    ] },
+                    { h: 'Growth', linhas: [
+                        '6 notas separadas (Vida, Ataque, Defesa, Atq.Esp, Def.Esp, Velocidade)',
+                        'Cada nota vai de 1 a 32 · cada ponto soma +2 na base do atributo'
+                    ] },
+                    { h: 'Fórmula de poder', linhas: [
+                        'Atributo = (base da espécie + 2 × nota do Growth) × nível ÷ 100 × Qualidade [× 1,2 se shiny] + 10',
+                        'A Qualidade entra duas vezes, então amplifica muito os raros'
+                    ] },
+                    { h: 'Peso do Growth', linhas: [
+                        'Base baixa (Diglett): até 6,2× entre nota 1 e 32',
+                        'Base alta (Mewtwo): só 1,4× entre nota 1 e 32'
+                    ] }
+                ]
+            },
+            {
+                id: 'natures', rot: 'Natures', icone: '🧭',
+                resumo: 'Sobe 10% de um atributo, desce 10% de outro. HP nunca é afetado.',
+                blocos: [
+                    { h: '25 naturezas (20 ativas + 5 neutras)', tabela: [
+                        ['Lonely', '+Ataque / −Defesa'], ['Brave', '+Ataque / −Velocidade'],
+                        ['Adamant', '+Ataque / −Atq.Esp'], ['Naughty', '+Ataque / −Def.Esp'],
+                        ['Bold', '+Defesa / −Ataque'], ['Relaxed', '+Defesa / −Velocidade'],
+                        ['Impish', '+Defesa / −Atq.Esp'], ['Lax', '+Defesa / −Def.Esp'],
+                        ['Timid', '+Velocidade / −Ataque'], ['Hasty', '+Velocidade / −Defesa'],
+                        ['Jolly', '+Velocidade / −Atq.Esp'], ['Naive', '+Velocidade / −Def.Esp'],
+                        ['Modest', '+Atq.Esp / −Ataque'], ['Mild', '+Atq.Esp / −Defesa'],
+                        ['Quiet', '+Atq.Esp / −Velocidade'], ['Rash', '+Atq.Esp / −Def.Esp'],
+                        ['Calm', '+Def.Esp / −Ataque'], ['Gentle', '+Def.Esp / −Defesa'],
+                        ['Sassy', '+Def.Esp / −Velocidade'], ['Careful', '+Def.Esp / −Atq.Esp'],
+                        ['Hardy · Docile · Serious · Bashful · Quirky', 'neutras']
+                    ] },
+                    { h: 'Regra', linhas: ['HP nunca é afetado por nenhuma nature.'] }
+                ]
+            },
+            {
+                id: 'habilidades', rot: 'Habilidades', icone: '✨',
+                resumo: 'Efeito passivo permanente. Uma por pokémon.',
+                blocos: [
+                    { h: 'O que são', linhas: [
+                        'Efeito passivo o tempo todo, sem gastar turno nem ocupar slot de golpe',
+                        'Cada pokémon tem 1 habilidade · 164 no total (gen 5), 144 ativas em algum motor'
+                    ] },
+                    { h: 'Obter e trocar', linhas: [
+                        'Revelação inicial: grátis, dá a habilidade canônica da espécie',
+                        'Espécie com duas canônicas: sorteia entre as duas',
+                        'Ocultas: só saem no giro (as mais raras)',
+                        'Giro de troca: 5.000.000 + 50 stones'
+                    ] },
+                    { h: 'Por motor', tabela: [
+                        ['Caçada', 'tempo contínuo, sem turnos'],
+                        ['Ginásio', 'por turno, status completo'],
+                        ['Boss', 'por turno, chefe imune a status/debuff'],
+                        ['Indicadores', '✅ completo · ⚠️ em parte · ⛔ nada']
+                    ] }
+                ]
+            },
+            {
+                id: 'pergaminho', rot: 'Pergaminho de IV', icone: '📜',
+                resumo: 'Regira a nota de um atributo. Só 2 atributos por pokémon, pra sempre.',
+                blocos: [
+                    { h: 'Regra', linhas: [
+                        'Cada pokémon nasce com nota 1 a 32 em cada um dos 6 atributos',
+                        'No máximo 2 atributos DIFERENTES girados na vida inteira',
+                        'Os outros 4 ficam definitivos — nenhum Pergaminho encosta neles',
+                        'Você vê o resultado antes de decidir (confirma com Ficar)'
+                    ] },
+                    { h: 'Chances da roleta', tabela: [
+                        ['1 a 10', '35%'], ['11 a 16', '30%'], ['17 a 22', '20%'],
+                        ['23 a 28', '10%'], ['29 a 31', '4%'], ['32', '1%']
+                    ] },
+                    { h: 'Custo', linhas: [
+                        'Consome o item ao girar · a vaga de reuso só se gasta ao confirmar',
+                        'Fonte: exclusivamente Chefes Lendários'
+                    ] }
+                ]
+            },
+            {
+                id: 'boost', rot: 'Boost', icone: '⬆️',
+                resumo: '+1 nível efetivo de força e vida por boost, até +100.',
+                blocos: [
+                    { h: 'Como funciona', linhas: [
+                        'Cada boost dá +1 nível efetivo de força e vida, até +100',
+                        'Golpe não entra: o boost não libera ataques mais cedo'
+                    ] },
+                    { h: 'Custo por faixa', tabela: [
+                        ['+1 a +25', 'grátis (0 💎)'], ['+26 a +100', '1 💎 por nível'],
+                        ['Gold', '1.000.000 a 5.000.000 por faixa'], ['Stones', '1-2 até 9-10 por faixa']
+                    ] },
+                    { h: 'Total +0 → +100', tabela: [
+                        ['Diamantes', '75 💎'], ['Gold', '300.000.000'], ['Stones', '550']
+                    ] }
+                ]
+            },
+            {
+                id: 'ginasio', rot: 'Ginásio', icone: '🥊',
+                resumo: '18 líderes, 6 faixas. Tudo em nível 100.',
+                blocos: [
+                    { h: 'Estrutura', linhas: [
+                        '18 líderes em 6 faixas de 3 · cada líder tem tipo temático e insígnia',
+                        'Progressão linear: só passa de faixa vencendo todos da atual'
+                    ] },
+                    { h: 'Requisitos', linhas: [
+                        'Pokémon nível 100 (piso) · treinador no nível da faixa (100/200/300/400/500/600)',
+                        'Time até 6, sem repetir espécie · Ditto proibido (inclusive shiny)',
+                        'Sem custo, tentativas ilimitadas'
+                    ] },
+                    { h: 'Batalha', tabela: [
+                        ['Nível', 'ambos em 100'], ['Vantagem de tipo', '×2 (×4 dupla)'],
+                        ['STAB', '×1,5'], ['Crítico', '6,25% · ×1,5'], ['Multiplicador geral', '×1,75']
+                    ] },
+                    { h: 'Recompensas', linhas: [
+                        '1ª vitória por líder: insígnia + 5 Chaves de Boss + 2 Pergaminhos + TM',
+                        'Fechar os 18: 15 Chaves de Boss + 5 Pergaminhos'
+                    ] },
+                    { h: 'Bônus das insígnias', tabela: [
+                        ['Chave de Boss', '+2% por insígnia (+36% com 18)'],
+                        ['TM', '×1,05 por insígnia (multiplicativo)']
+                    ] }
+                ]
+            },
+            {
+                id: 'clas', rot: 'Clãs', icone: '🛡️',
+                resumo: '9 clãs por afinidade de tipo. +8%/+4% força e velocidade.',
+                blocos: [
+                    { h: 'Regras', linhas: [
+                        '9 grupos fixos (diferente de guilda) · nível 80 pra entrar/trocar',
+                        'Primeira escolha grátis · trocar custa 10 💎',
+                        'Com pokémon ativo do tipo do clã: +8% força e +8% velocidade',
+                        'Sem tipo correspondente: +4% e +4% · não empilha (muda de patamar)'
+                    ] },
+                    { h: 'Os 9 clãs', tabela: [
+                        ['Seavell', 'Água, Gelo'], ['Naturia', 'Planta, Inseto, Venenoso'],
+                        ['Volcanic', 'Fogo'], ['Wingeon', 'Voador, Dragão'],
+                        ['Raibolt', 'Elétrico'], ['Orebound', 'Pedra, Terra, Aço'],
+                        ['Malefic', 'Fantasma, Sombrio, Venenoso'], ['Gardestrike', 'Lutador, Normal'],
+                        ['Psycraft', 'Psíquico, Fada']
+                    ] }
+                ]
+            },
+            {
+                id: 'guildas', rot: 'Guildas', icone: '🤝',
+                resumo: 'Criadas por jogadores. Até 25, +1% XP por nível (máx +40%).',
+                blocos: [
+                    { h: 'Criação', linhas: [
+                        'Fundar custa 10 💎, sem requisito de nível · nome até 24 letras',
+                        'TAG de 2-4 caracteres · limite 25 vagas'
+                    ] },
+                    { h: 'Cargos', tabela: [
+                        ['Líder', 'transfere, dissolve, muda cargos'],
+                        ['Oficial', 'convida, expulsa, brasão e TAG'],
+                        ['Membro', 'sem permissões']
+                    ] },
+                    { h: 'Benefícios e níveis', linhas: [
+                        '+1% de XP por nível da guilda (máx +40% no nível 40)',
+                        'TAG colorida, brasão próprio, rankings de poder e nível',
+                        'Progressão do nível 1 ao 40 por contribuição cumulativa'
+                    ] },
+                    { h: 'Contribuição', tabela: [
+                        ['Caçar', '1 ponto / 1.200.000 XP'], ['Shiny', '5.000 pontos'],
+                        ['Boss diário', '200 (derrota) / 400 (vitória)'],
+                        ['Doações semanais', 'até 10.000.000 gold ou 10 💎 por membro']
+                    ] }
+                ]
+            }
+        ];
 
 })();

@@ -191,21 +191,80 @@
                 return b;
             }
 
+            // ---------- Poképédia: SEMPRE o primeiro item do rail ----------
+            // Cravada à esquerda de tudo que o usuário fixou. Não entra na
+            // pinnedList (não é toggle, não some) e não participa do arrasto.
+            const PP_ICONE_POKEDEX =
+                '<svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block">'
+                + '<rect x="2" y="3" width="20" height="18" rx="3" fill="#e3350d" stroke="#7d1907" stroke-width="1"/>'
+                + '<path d="M2 6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v2H2z" fill="#c0290a"/>'
+                + '<circle cx="7" cy="6" r="2.1" fill="#8fd8ff" stroke="#fff" stroke-width=".7"/>'
+                + '<circle cx="6.4" cy="5.4" r=".6" fill="#eaffff"/>'
+                + '<circle cx="12.6" cy="6" r=".95" fill="#ffde59"/>'
+                + '<circle cx="15.6" cy="6" r=".95" fill="#7bed9f"/>'
+                + '<rect x="4.8" y="11.5" width="6.4" height="6.6" rx="1.1" fill="#2a1720"/>'
+                + '<rect x="13.2" y="12" width="5.2" height="1.7" rx=".85" fill="#2a1720"/>'
+                + '<rect x="13.2" y="15" width="5.2" height="1.7" rx=".85" fill="#2a1720"/>'
+                + '</svg>';
+
+            function criarBotaoPokepedia() {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'tb ic idle-pp-btn';
+                b.title = 'Poképédia — dex, mega, stats, itens, tipos e sistema (Clique para abrir)';
+                b.style.cssText = [
+                    'position:relative', 'display:flex', 'align-items:center', 'justify-content:center',
+                    'width:clamp(32px, 3.7vw, 52px)', 'height:clamp(32px, 3.7vw, 52px)',
+                    'padding:clamp(4px, .5vw, 7px)', 'border:none', 'border-radius:8px',
+                    'background:rgba(15,23,42,0.9)', 'color:#e2e8f0', 'cursor:pointer',
+                    'transition:all .15s ease', 'box-sizing:border-box',
+                    'box-shadow:0 2px 8px rgba(0,0,0,0.5)'
+                ].join(';');
+                b.innerHTML = '<span style="width:clamp(24px,2.9vw,36px);height:clamp(24px,2.9vw,36px);display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">' + PP_ICONE_POKEDEX + '</span>';
+                b.onmouseenter = () => { b.style.background = '#223047'; b.style.transform = 'translateY(-1px)'; };
+                b.onmouseleave = () => { b.style.background = 'rgba(15,23,42,0.9)'; b.style.transform = ''; };
+                b.onclick = () => { chamarFuncaoJogo('abrirPokepedia'); };
+                return b;
+            }
+
+            // ---------- Arrasto pra reordenar os itens fixados ----------
+            let _ppDragIdx = null;
+            function tornarArrastavel(botao, idx) {
+                botao.draggable = true;
+                botao.dataset.pinIdx = idx;
+                botao.addEventListener('dragstart', (e) => {
+                    _ppDragIdx = idx;
+                    botao.style.opacity = '0.4';
+                    try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch (er) {}
+                });
+                botao.addEventListener('dragend', () => { botao.style.opacity = ''; _ppDragIdx = null; });
+                botao.addEventListener('dragover', (e) => { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (er) {} });
+                botao.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const de = _ppDragIdx, para = idx;
+                    if (de == null || de === para) return;
+                    const [mov] = pinnedList.splice(de, 1);
+                    pinnedList.splice(para, 0, mov);
+                    salvarFixados();
+                    renderizarBarraFixada();
+                });
+            }
+
             function renderizarBarraFixada() {
                 rail.innerHTML = '';
-                if (!pinnedList.length) {
-                    rail.style.display = 'none';
-                    rail.style.visibility = 'hidden';
-                    rail.style.pointerEvents = 'none';
-                    return;
-                }
+                // A barra existe SEMPRE, por causa da Poképédia âncora.
                 rail.style.display = 'flex';
                 rail.style.visibility = 'visible';
                 rail.style.pointerEvents = 'auto';
+                try { rail.appendChild(criarBotaoPokepedia()); } catch (e) {}
                 // try/catch por item: um item com dado inesperado não pode derrubar
                 // o resto da barra no meio do forEach.
-                pinnedList.forEach(item => {
-                    try { rail.appendChild(criarBotaoFixado(item)); } catch(e) {}
+                pinnedList.forEach((item, idx) => {
+                    try {
+                        const b = criarBotaoFixado(item);
+                        tornarArrastavel(b, idx);
+                        rail.appendChild(b);
+                    } catch(e) {}
                 });
                 posicionarAoLadoDoHunt();
             }
@@ -362,7 +421,7 @@
             // Rede de segurança, bem mais espaçada (a injeção é idempotente/barata).
             setInterval(() => {
                 injetarPinsNosMenus();
-                if (pinnedList.length) posicionarAoLadoDoHunt();
+                posicionarAoLadoDoHunt(); // rail existe sempre (Poképédia âncora)
             }, 3000);
             window.addEventListener('resize', posicionarAoLadoDoHunt, { passive: true });
 
