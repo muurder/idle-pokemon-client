@@ -108,11 +108,18 @@
             let _deltaTotalPoke = 0;
             let _deltaTotalJog = 0;
 
+            let _cacheTrainerXpNextClient = new Map();
+            let _cacheTrainerXpRestanteClient = new Map();
+            let _liveEtaPokeClient = { segs: 0, ts: 0, restante: null };
+            let _liveEtaJogClient = { segs: 0, ts: 0, restante: null };
+
             function fmtNum(v) {
                 return Number(v || 0).toLocaleString('pt-BR');
             }
 
-            function fmtTempo(seg) {
+            function fmtTempo(seg, isMax = false, isPausado = false) {
+                if (isMax) return '⭐ Nível MAX';
+                if (isPausado) return '⏸️ Pausado';
                 if (!Number.isFinite(seg) || seg <= 0) return '--';
                 if (seg > 86400 * 3) return '> 72h';
                 seg = Math.round(seg);
@@ -124,15 +131,20 @@
                 return `${s}s`;
             }
 
-            function fmtTempoCurto(seg) {
-                if (!Number.isFinite(seg) || seg <= 0) return '';
+            function fmtTempoCurto(seg, isMax = false, isPausado = false) {
+                if (isMax) return 'MAX';
+                if (isPausado) return '⏸️';
+                if (!Number.isFinite(seg) || seg <= 0) return '—';
                 if (seg > 86400 * 3) return '> 72h';
                 seg = Math.round(seg);
-                const h = Math.floor(seg / 3600);
+                const d = Math.floor(seg / 86400);
+                const h = Math.floor((seg % 86400) / 3600);
                 const m = Math.floor((seg % 3600) / 60);
-                if (h > 0) return h + 'h';
-                if (m > 0) return m + 'm';
-                return (seg % 60) + 's';
+                const s = seg % 60;
+                if (d > 0) return `${d}d ${h}h`;
+                if (h > 0) return `${h}h ${m}m`;
+                if (m > 0) return `${m}m ${s}s`;
+                return `${s}s`;
             }
 
             function fmtFalta(restante, kills) {
@@ -155,11 +167,26 @@
             }
 
             function extrairDadosAtivos() {
-                const s = (w.K && typeof w.K === 'object' && Object.keys(w.K).length) ? w.K : _estadoCache;
+                let s = null;
+                try {
+                    const wWin = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+                    if (wWin.K && (wWin.K.player || wWin.K.active)) s = wWin.K;
+                    else if (wWin.S && (wWin.S.player || wWin.S.active)) s = wWin.S;
+                    else if (wWin.gameState && (wWin.gameState.player || wWin.gameState.active)) s = wWin.gameState;
+                } catch (e) { }
+                if (!s) {
+                    try { if (typeof K !== 'undefined' && K && (K.player || K.active)) s = K; } catch (e) { }
+                }
+                if (!s && typeof obterGameState === 'function') {
+                    try { s = obterGameState(); } catch (e) { }
+                }
+                if (!s) {
+                    s = (w.K && typeof w.K === 'object' && Object.keys(w.K).length) ? w.K : _estadoCache;
+                }
                 const root = (s && s.state && typeof s.state === 'object') ? s.state : (s || {});
                 const player = root.player || {};
                 const team = Array.isArray(root.team) ? root.team : [];
-                const active = root.active || team.find(x => x && x.active) || team[0] || {};
+                const active = root.active || (root.player && root.player.active) || team.find(x => x && (x.id === root.activeId || x.active)) || team[0] || {};
                 const hunt = root.hunt || {};
 
                 // Fallbacks no DOM se state ainda nao tiver populado campos visiveis
@@ -167,6 +194,8 @@
                 let domJogPct = null;
                 let domPokeName = null;
                 let domPokeLv = null;
+                let domJogName = null;
+                let domJogLv = null;
 
                 try {
                     const elLv = document.getElementById('pp-poke-lv');
@@ -182,37 +211,62 @@
                         const mJog = txt.match(/EXP\s*(\d+(?:\.\d+)?)\s*%/i);
                         if (mJog) domJogPct = parseFloat(mJog[1]);
                     }
+                    const elName = document.getElementById('pp-name');
+                    if (elName && elName.textContent.trim()) domJogName = elName.textContent.trim();
+                    const elSub = document.getElementById('pp-sub');
+                    if (elSub && elSub.textContent) {
+                        const mLv = elSub.textContent.match(/(\d+)/);
+                        if (mLv) domJogLv = parseInt(mLv[1], 10);
+                    }
                 } catch (e) { }
 
                 const pName = active.name || domPokeName || 'Pokémon';
-                const pLv = active.level || domPokeLv || '--';
+                const pLv = Number(active.level || domPokeLv || 1);
                 const pXp = Number(active.xp || active.exp || 0);
                 const pXpNext = Number(active.xpNext || active.expNext || 0);
-                const pXpRestante = pXpNext > 0 ? Math.max(0, pXpNext - pXp) : 0;
+                // Pokémon tem limite de nível até 1000
+                const isPokeMax = !!(active.xpCap || (pLv >= 1000 && (pXpNext <= 0 || (pXp > 0 && pXpNext > 0 && pXp >= pXpNext))));
+                const pXpRestante = (!isPokeMax && pXpNext > 0) ? Math.max(0, pXpNext - pXp) : 0;
                 const pPctCalculado = pXpNext > 0 ? Math.min(100, Math.round((pXp / pXpNext) * 100)) : 0;
-                const pPct = domPokePct !== null ? domPokePct : pPctCalculado;
+                const pPct = isPokeMax ? 100 : (domPokePct !== null ? domPokePct : pPctCalculado);
 
-                const jName = player.name || 'Treinador';
-                const jLv = player.level || '--';
+                const jName = player.name || domJogName || 'Treinador';
+                const jLv = Number(player.level || domJogLv || 1);
+                // Treinador no Idle Pokémon tem nível infinito (sem limite de nível)
+                const isJogMax = !!player.xpCap;
                 const jXp = Number(player.xp || 0);
-                const jXpNext = Number(player.xpNext || 0);
-                const jXpRestante = jXpNext > 0 ? Math.max(0, jXpNext - jXp) : 0;
-                const jPctCalculado = jXpNext > 0 ? Math.min(100, Math.round((jXp / jXpNext) * 100)) : (Number(player.xpPct) || 0);
-                const jPct = domJogPct !== null ? domJogPct : jPctCalculado;
+                let jXpNext = Number(player.xpNext || 0);
+                if (jXpNext > 0 && jLv) {
+                    _cacheTrainerXpNextClient.set(jLv, jXpNext);
+                } else if (!jXpNext && jLv && _cacheTrainerXpNextClient.has(jLv)) {
+                    jXpNext = _cacheTrainerXpNextClient.get(jLv);
+                }
+                const pctBaseJog = (domJogPct !== null ? domJogPct : Number(player.xpPct)) || 0;
+                let jXpRestante = (!isJogMax && jXpNext > 0 && jXp > 0 && jXpNext > jXp) ? (jXpNext - jXp) : 0;
+                if (!isJogMax && jXpRestante <= 0 && pctBaseJog > 0 && pctBaseJog < 100 && jXpNext > 0) {
+                    jXpRestante = Math.round(jXpNext * ((100 - pctBaseJog) / 100));
+                }
+                if (jXpRestante > 0 && jLv) {
+                    _cacheTrainerXpRestanteClient.set(jLv, jXpRestante);
+                } else if (!jXpRestante && jLv && _cacheTrainerXpRestanteClient.has(jLv)) {
+                    jXpRestante = _cacheTrainerXpRestanteClient.get(jLv);
+                }
+                const jPctCalculado = (jXpNext > 0 && jXp > 0 && jXpNext >= jXp) ? Math.min(100, Math.round((jXp / jXpNext) * 100)) : pctBaseJog;
+                const jPct = isJogMax ? 100 : (domJogPct !== null ? domJogPct : jPctCalculado);
 
                 return {
-                    s, player, active, hunt,
-                    poke: { name: pName, level: pLv, shiny: !!(active.shiny || active.isShiny), xp: pXp, xpNext: pXpNext, xpRestante: pXpRestante, pct: pPct },
-                    jog: { name: jName, level: jLv, xp: jXp, xpNext: jXpNext, xpRestante: jXpRestante, pct: jPct }
+                    s, player, active, hunt, isPokeMax, isJogMax,
+                    poke: { name: pName, level: pLv, shiny: !!(active.shiny || active.isShiny), xp: pXp, xpNext: pXpNext, xpRestante: pXpRestante, pct: pPct, xpCap: isPokeMax },
+                    jog: { name: jName, level: jLv, xp: jXp, xpNext: jXpNext, xpRestante: jXpRestante, pct: jPct, xpCap: isJogMax }
                 };
             }
 
             function atualizarStatusXpClient() {
                 decairTaxas();
-                const { hunt, poke, jog } = extrairDadosAtivos();
+                const { hunt, poke, jog, isPokeMax, isJogMax } = extrairDadosAtivos();
                 const agora = Date.now();
 
-                // 1. Atualizacao delta local de XP (por tick de batalha)
+                // 1. Atualizacao delta local de XP (somente quando há ganho efetivo de XP)
                 if (poke.xp > 0) {
                     if (_lastPokeXp !== null && poke.xp > _lastPokeXp) {
                         const delta = poke.xp - _lastPokeXp;
@@ -223,9 +277,9 @@
                         }
                         _localKillsPoke += 1;
                         _deltaTotalPoke += delta;
+                        _lastPokeTs = agora;
                     }
                     _lastPokeXp = poke.xp;
-                    _lastPokeTs = agora;
                 }
 
                 if (jog.xp > 0) {
@@ -238,20 +292,30 @@
                         }
                         _localKillsJog += 1;
                         _deltaTotalJog += delta;
+                        _lastJogTs = agora;
                     }
                     _lastJogXp = jog.xp;
-                    _lastJogTs = agora;
                 }
 
-                // 2. Taxas consolidadas (Prioridade: contador do servidor > delta local)
+                // 2. Taxas consolidadas com proteção contra taxa fantasma
+                const estaPausado = (typeof autoHuntPausado !== 'undefined' && autoHuntPausado) || (typeof emCidadeOuTransito !== 'undefined' && emCidadeOuTransito);
+                const ociosoPoke = _lastPokeTs ? (agora - _lastPokeTs > 45000) : false;
+                const ociosoJog = _lastJogTs ? (agora - _lastJogTs > 45000) : false;
+
                 const temHunt = hunt && Number(hunt.secs || 0) > 0;
                 const huntSecs = temHunt ? Number(hunt.secs) : 0;
                 const huntKills = temHunt ? Number(hunt.kills || 0) : _localKillsPoke;
-                const taxaPokeServ = (temHunt && Number(hunt.xp || 0) > 0) ? (Number(hunt.xp) / huntSecs) : 0;
-                const taxaJogServ = (temHunt && Number(hunt.pxp || 0) > 0) ? (Number(hunt.pxp) / huntSecs) : 0;
+                const taxaPokeServ = (temHunt && Number(hunt.xp || 0) > 0 && huntSecs > 0) ? (Number(hunt.xp) / huntSecs) : 0;
+                const taxaJogServ = (temHunt && Number(hunt.pxp || 0) > 0 && huntSecs > 0) ? (Number(hunt.pxp) / huntSecs) : 0;
 
-                const taxaPoke = taxaPokeServ > 0 ? taxaPokeServ : _taxaLocalPoke;
-                const taxaJog = taxaJogServ > 0 ? taxaJogServ : _taxaLocalJog;
+                let taxaPoke = 0;
+                if (!estaPausado) {
+                    taxaPoke = taxaPokeServ > 0 ? taxaPokeServ : (_taxaLocalPoke > 0 ? _taxaLocalPoke : 0);
+                }
+                let taxaJog = 0;
+                if (!estaPausado) {
+                    taxaJog = taxaJogServ > 0 ? taxaJogServ : (_taxaLocalJog > 0 ? _taxaLocalJog : 0);
+                }
 
                 const xpMedioPoke = (temHunt && huntKills > 0 && Number(hunt.xp || 0) > 0)
                     ? (Number(hunt.xp) / huntKills)
@@ -261,11 +325,73 @@
                     ? (Number(hunt.pxp) / huntKills)
                     : (_localKillsJog > 0 && _deltaTotalJog > 0 ? (_deltaTotalJog / _localKillsJog) : 0);
 
-                const faltaPokeKills = (poke.xpRestante > 0 && xpMedioPoke > 0) ? Math.ceil(poke.xpRestante / xpMedioPoke) : null;
-                const faltaJogKills = (jog.xpRestante > 0 && xpMedioJog > 0) ? Math.ceil(jog.xpRestante / xpMedioJog) : null;
+                const faltaPokeKills = (!isPokeMax && poke.xpRestante > 0 && xpMedioPoke > 0) ? Math.ceil(poke.xpRestante / xpMedioPoke) : null;
+                let faltaJogKills = (!isJogMax && jog.xpRestante > 0 && xpMedioJog > 0) ? Math.ceil(jog.xpRestante / xpMedioJog) : null;
+                if (!faltaJogKills && !isJogMax && jog.pct > 0 && jog.pct < 100) {
+                    const killsTotais = Number(hunt.kills || 0);
+                    const killsPor1Pct = killsTotais > 0 ? (killsTotais / Math.max(1, jog.pct)) : 20;
+                    faltaJogKills = Math.ceil(killsPor1Pct * (100 - jog.pct));
+                }
 
-                const segsPoke = (taxaPoke > 0 && poke.xpRestante > 0) ? (poke.xpRestante / taxaPoke) : Infinity;
-                const segsJog = (taxaJog > 0 && jog.xpRestante > 0) ? (jog.xpRestante / taxaJog) : Infinity;
+                // Live countdown interpolation
+                let segsPoke = Infinity;
+                if (isPokeMax) {
+                    segsPoke = 0;
+                    _liveEtaPokeClient.segs = 0;
+                    _liveEtaPokeClient.ts = agora;
+                    _liveEtaPokeClient.restante = 0;
+                } else if (estaPausado) {
+                    segsPoke = _liveEtaPokeClient.segs || (taxaPoke > 0 && poke.xpRestante > 0 ? Math.round(poke.xpRestante / taxaPoke) : Infinity);
+                } else if (taxaPoke > 0 && poke.xpRestante > 0) {
+                    const etaCalc = poke.xpRestante / taxaPoke;
+                    if (_liveEtaPokeClient.restante !== poke.xpRestante || !_liveEtaPokeClient.segs || !isFinite(_liveEtaPokeClient.segs) || Math.abs(agora - _liveEtaPokeClient.ts) > 15000) {
+                        _liveEtaPokeClient.segs = etaCalc;
+                        _liveEtaPokeClient.ts = agora;
+                        _liveEtaPokeClient.restante = poke.xpRestante;
+                        segsPoke = Math.max(1, Math.round(etaCalc));
+                    } else {
+                        const decorrido = Math.floor((agora - _liveEtaPokeClient.ts) / 1000);
+                        segsPoke = Math.max(1, Math.round(_liveEtaPokeClient.segs - decorrido));
+                    }
+                } else {
+                    _liveEtaPokeClient.segs = Infinity;
+                    _liveEtaPokeClient.restante = poke.xpRestante;
+                }
+
+                let segsJog = Infinity;
+                if (isJogMax) {
+                    segsJog = 0;
+                    _liveEtaJogClient.segs = 0;
+                    _liveEtaJogClient.ts = agora;
+                    _liveEtaJogClient.restante = 0;
+                } else if (estaPausado) {
+                    segsJog = _liveEtaJogClient.segs || (taxaJog > 0 && jog.xpRestante > 0 ? Math.round(jog.xpRestante / taxaJog) : Infinity);
+                } else if (taxaJog > 0 && jog.xpRestante > 0) {
+                    const etaCalc = jog.xpRestante / taxaJog;
+                    if (_liveEtaJogClient.restante !== jog.xpRestante || !_liveEtaJogClient.segs || !isFinite(_liveEtaJogClient.segs) || Math.abs(agora - _liveEtaJogClient.ts) > 15000) {
+                        _liveEtaJogClient.segs = etaCalc;
+                        _liveEtaJogClient.ts = agora;
+                        _liveEtaJogClient.restante = jog.xpRestante;
+                        segsJog = Math.max(1, Math.round(etaCalc));
+                    } else {
+                        const decorrido = Math.floor((agora - _liveEtaJogClient.ts) / 1000);
+                        segsJog = Math.max(1, Math.round(_liveEtaJogClient.segs - decorrido));
+                    }
+                } else if (taxaJog > 0 && faltaJogKills && xpMedioJog > 0) {
+                    const estXp = faltaJogKills * xpMedioJog;
+                    if (!_liveEtaJogClient.segs || !isFinite(_liveEtaJogClient.segs) || Math.abs(agora - _liveEtaJogClient.ts) > 15000) {
+                        segsJog = estXp / taxaJog;
+                        _liveEtaJogClient.segs = segsJog;
+                        _liveEtaJogClient.ts = agora;
+                        _liveEtaJogClient.restante = estXp;
+                    } else {
+                        const decorrido = Math.floor((agora - _liveEtaJogClient.ts) / 1000);
+                        segsJog = Math.max(1, Math.round(_liveEtaJogClient.segs - decorrido));
+                    }
+                } else {
+                    _liveEtaJogClient.segs = Infinity;
+                    _liveEtaJogClient.restante = jog.xpRestante;
+                }
 
                 // 3. Publicacao de window.__idleSuiteXpStatus para o Electron Shell
                 const statusObj = {
@@ -274,29 +400,36 @@
                         level: poke.level,
                         shiny: poke.shiny,
                         pct: poke.pct,
-                        pctText: Math.round(poke.pct) + '%',
-                        falta: fmtFalta(poke.xpRestante, faltaPokeKills),
-                        eta: fmtTempo(segsPoke),
+                        pctText: isPokeMax ? '100%' : (Math.round(poke.pct) + '%'),
+                        falta: isPokeMax ? '⭐ MAX' : fmtFalta(poke.xpRestante, faltaPokeKills),
+                        eta: fmtTempo(segsPoke, isPokeMax, estaPausado),
+                        segs: segsPoke,
                         xpRestante: poke.xpRestante,
                         xpNext: poke.xpNext,
-                        xp: poke.xp
+                        xp: poke.xp,
+                        xpCap: isPokeMax,
+                        pausado: estaPausado
                     },
                     jog: {
                         name: jog.name,
                         level: jog.level,
                         pct: jog.pct,
-                        pctText: Math.round(jog.pct) + '%',
-                        falta: fmtFalta(jog.xpRestante, faltaJogKills),
-                        eta: fmtTempo(segsJog),
+                        pctText: isJogMax ? '100%' : (Math.round(jog.pct) + '%'),
+                        falta: isJogMax ? '⭐ MAX' : fmtFalta(jog.xpRestante, faltaJogKills),
+                        eta: fmtTempo(segsJog, isJogMax, estaPausado),
+                        segs: segsJog,
                         xpRestante: jog.xpRestante,
                         xpNext: jog.xpNext,
-                        xp: jog.xp
+                        xp: jog.xp,
+                        xpCap: isJogMax,
+                        pausado: estaPausado
                     },
                     hunt: {
                         kills: huntKills,
                         secs: huntSecs,
                         taxaPoke: taxaPoke,
-                        taxaJog: taxaJog
+                        taxaJog: taxaJog,
+                        pausado: estaPausado
                     },
                     timestamp: agora
                 };
@@ -305,7 +438,11 @@
                 window.__idleSuiteXpStatus = statusObj;
 
                 // 4. Selos discretos no card oficial (#player-panel)
-                pintarEtaCardOficialClient(segsPoke, segsJog, faltaPokeKills, faltaJogKills);
+                pintarEtaCardOficialClient(segsPoke, segsJog, faltaPokeKills, faltaJogKills, {
+                    pokeMax: isPokeMax,
+                    jogMax: isJogMax,
+                    estaPausado: estaPausado
+                });
 
                 // 5. Atualiza a doca lateral se estiver aberta
                 atualizarConteudoDockXpClient(statusObj);
@@ -326,7 +463,7 @@
                 return el;
             }
 
-            function pintarEtaCardOficialClient(segPoke, segJog, killsPoke, killsJog) {
+            function pintarEtaCardOficialClient(segPoke, segJog, killsPoke, killsJog, opts = {}) {
                 let ligado = true;
                 try { ligado = localStorage.getItem('idleSuiteEtaNoCard') !== '0'; } catch (e) { }
                 if (!ligado) {
@@ -340,17 +477,29 @@
                 const sp = seloCard('idle-eta-poke', 'pp-poke-lv', '#4ade80', true);
                 if (sp) {
                     sp.title = 'Tempo e nº de pokémons estimados para o pokémon ativo subir de nível';
-                    const t = fmtTempoCurto(segPoke);
-                    const k = (killsPoke != null && killsPoke > 0) ? ` · ≈${fmtNum(killsPoke)}x` : '';
-                    sp.textContent = t ? '⏳ ' + t + k : '';
+                    if (opts.pokeMax) {
+                        sp.textContent = '⭐ MAX';
+                    } else if (opts.estaPausado) {
+                        sp.textContent = '⏸️ Pausado';
+                    } else {
+                        const t = fmtTempoCurto(segPoke, false, false);
+                        const k = (killsPoke != null && killsPoke > 0) ? ` · ≈${fmtNum(killsPoke)}x` : '';
+                        sp.textContent = (t !== '—' && t) ? ('⏳ ' + t + k) : '⏳ calculando...';
+                    }
                 }
 
                 const sj = seloCard('idle-eta-jog', 'pp-exp-pct', '#fbbf24', false);
                 if (sj) {
                     sj.title = 'Tempo e nº de pokémons estimados para você subir de nível';
-                    const t = fmtTempoCurto(segJog);
-                    const k = (killsJog != null && killsJog > 0) ? ` · ≈${fmtNum(killsJog)}x` : '';
-                    sj.textContent = t ? '· ⏳ ' + t + k : '';
+                    if (opts.jogMax) {
+                        sj.textContent = '· ⭐ MAX';
+                    } else if (opts.estaPausado) {
+                        sj.textContent = '· ⏸️ Pausado';
+                    } else {
+                        const t = fmtTempoCurto(segJog, false, false);
+                        const k = (killsJog != null && killsJog > 0) ? ` · ≈${fmtNum(killsJog)}x` : '';
+                        sj.textContent = (t !== '—' && t) ? ('· ⏳ ' + t + k) : '· ⏳ calculando...';
+                    }
                 }
             }
 
@@ -461,7 +610,19 @@
                     if (elPct) elPct.textContent = dado.pctText || (pct + '%');
                     if (elFill) elFill.style.width = pct + '%';
                     if (elFalta) elFalta.textContent = dado.falta || '—';
-                    if (elEta) elEta.textContent = (dado.eta && !dado.eta.includes('⏳')) ? '⏳ ' + dado.eta : (dado.eta || '⏳ --');
+                    if (elEta) {
+                        if (dado.xpCap) {
+                            elEta.textContent = '⭐ MAX';
+                        } else if (dado.pausado) {
+                            elEta.textContent = '⏸️ Pausado';
+                        } else if (dado.eta) {
+                            elEta.textContent = (dado.eta.indexOf('⏳') === 0 || dado.eta.indexOf('⭐') === 0 || dado.eta.indexOf('⏸️') === 0)
+                                ? dado.eta
+                                : (dado.eta === '--' ? '⏳ —' : '⏳ ' + dado.eta);
+                        } else {
+                            elEta.textContent = '⏳ —';
+                        }
+                    }
                 }
 
                 preencher('ppxp-dock-poke', s.poke);
