@@ -590,6 +590,23 @@
       return null;
     }
 
+    // BLOCO VAZIO NAO EXISTE NA SIDEBAR.
+    // O bloco do XP Tracker so tem conteudo quando o mini-view esta FIXADO nele
+    // (shell/21); no modo flutuante — o padrao — ele fica com um container
+    // `display:none` e mais nada. Vazio assim, a barra de titulo injetada aqui
+    // embaixo virava um "botao morto": rotulo "📊 XP Tracker", alca e ▲▼ sem
+    // nada debaixo pra recolher ou mover, comendo altura da lista de contas.
+    //
+    // A barra que ESTE modulo injeta nao conta como conteudo, senao o bloco se
+    // consideraria cheio por causa dela e a barra se sustentaria sozinha.
+    function blocoSidebarVazio(block) {
+      for (const filho of block.children) {
+        if (filho.classList.contains('sidebar-bloco-ctrl')) continue;
+        if (filho.children.length || (filho.textContent || '').trim()) return false;
+      }
+      return true;
+    }
+
     function criarBotoesMover(id) {
       const botoes = document.createElement('span');
       botoes.className = 'sidebar-bloco-acoes';
@@ -622,6 +639,17 @@
       container.querySelectorAll('.sidebar-modular-block').forEach(block => {
         const id = block.getAttribute('data-block-id') || '';
         if (!id) return;
+
+        // Some por classe, nunca por `style.display`: o bloco de contas carrega
+        // um `display:flex` inline no index.html e limpar o inline pra
+        // "reexibir" apagaria justamente esse flex.
+        const vazio = blocoSidebarVazio(block);
+        block.classList.toggle('sidebar-bloco-vazio', vazio);
+        if (vazio) {
+          const barraOrfa = block.querySelector(':scope > .sidebar-bloco-ctrl');
+          if (barraOrfa) barraOrfa.remove();
+          return;
+        }
 
         const cab = acharCabecalhoBloco(block);
 

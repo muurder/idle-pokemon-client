@@ -242,10 +242,17 @@
                     jXpNext = _cacheTrainerXpNextClient.get(jLv);
                 }
                 const pctBaseJog = (domJogPct !== null ? domJogPct : Number(player.xpPct)) || 0;
+                // O XP do treinador e ACUMULADO da carreira, e `xpNext` e o
+                // limiar acumulado do proximo nivel — nao o custo de um nivel.
+                // Entao `jXpNext - jXp` e a sobra certa, e so ela.
+                //
+                // O que saiu daqui: um `jXpNext * (100 - pct) / 100` de reserva.
+                // Ele so podia rodar quando `jXpNext <= jXp`, ou seja, com o
+                // xpNext velho de antes de um nivel subir — e ali media 3% da
+                // CARREIRA no lugar de 3% de um nivel. Era o ETA de "> 72h" pra
+                // subir um nivel. Sem ele a sobra vem do cache por nivel logo
+                // abaixo, que e um numero de UM nivel.
                 let jXpRestante = (!isJogMax && jXpNext > 0 && jXp > 0 && jXpNext > jXp) ? (jXpNext - jXp) : 0;
-                if (!isJogMax && jXpRestante <= 0 && pctBaseJog > 0 && pctBaseJog < 100 && jXpNext > 0) {
-                    jXpRestante = Math.round(jXpNext * ((100 - pctBaseJog) / 100));
-                }
                 if (jXpRestante > 0 && jLv) {
                     _cacheTrainerXpRestanteClient.set(jLv, jXpRestante);
                 } else if (!jXpRestante && jLv && _cacheTrainerXpRestanteClient.has(jLv)) {
@@ -569,6 +576,45 @@
                     + '</div>';
             }
 
+            // ── A DOCA FICA NO NIVEL DO CARD DO TREINADOR ──────────────
+            // `.doca` nasce em z-index 2147483000 (09b): acima de TUDO. Faz
+            // sentido pras docas que o usuario abre POR CIMA do jogo. Aqui
+            // nao: esta doca e um apendice do #player-panel, e ficar acima de
+            // tudo a punha na frente do Time & Box, da Pokedex e dos outros
+            // popups do jogo — abrir uma janela do jogo com a doca aberta
+            // deixava a doca boiando na frente dela.
+            //
+            // `docaCederAoJogo` (09c) ja resolve isso, mas so pros overlays
+            // que ele conhece (`.hd-ov, .hb-bg, .hb-sub-bg`) e so enquanto
+            // eles estao na tela. Em vez de sair listando cada popup do jogo
+            // aqui, a doca passa a valer o MESMO que o card ao qual ela esta
+            // colada: o que passa por cima do card passa por cima dela
+            // tambem, sem lista nenhuma pra manter.
+            //
+            // O nivel do card e o do ancestral posicionado mais proximo com
+            // z-index numerico — e o que de fato empilha o card na pagina do
+            // jogo. Nenhum: `auto`, e a doca empilha por ordem de documento,
+            // que ja e o comportamento certo pra um elemento no fim do <body>.
+            function nivelDoCardTreinador() {
+                let el = document.getElementById('player-panel');
+                while (el && el !== document.body && el !== document.documentElement) {
+                    const cs = getComputedStyle(el);
+                    const z = parseInt(cs.zIndex, 10);
+                    if (!isNaN(z) && cs.position !== 'static') return z;
+                    el = el.parentElement;
+                }
+                return null;
+            }
+
+            function nivelarDockComCardTreinador() {
+                if (!_dockXpTreinador) return;
+                const z = nivelDoCardTreinador();
+                // Sem `!important`: o inline ja vence a regra `.doca`, e deixar
+                // a regra `.doca-atras-do-jogo` (09c, com !important) continuar
+                // podendo baixar a doca mais ainda e exatamente o que se quer.
+                _dockXpTreinador.el.style.zIndex = (z == null ? 'auto' : String(z));
+            }
+
             function garantirDockXpTreinador() {
                 if (_dockXpTreinador) return _dockXpTreinador;
                 if (typeof docaCriar !== 'function') return null;
@@ -579,6 +625,7 @@
                 _dockXpTreinador.corpo.innerHTML =
                     linhaXpDock('ppxp-dock-poke', '🐾', '#4ade80') +
                     linhaXpDock('ppxp-dock-jog', '🧑', '#fbbf24');
+                nivelarDockComCardTreinador();
                 return _dockXpTreinador;
             }
 
@@ -588,6 +635,9 @@
                 const abrir = !d.aberta();
                 d.mostrar(abrir, true);
                 pintarBotaoDockXpTreinador(abrir);
+                // Relido a cada abertura: o card do jogo e redesenhado (troca
+                // de tela, troca de conta) e pode voltar num nivel diferente.
+                if (abrir) nivelarDockComCardTreinador();
                 if (abrir && w.__idleSuiteXpStatus) {
                     atualizarConteudoDockXpClient(w.__idleSuiteXpStatus);
                 }
@@ -713,6 +763,9 @@
             // Loop de atualizacao continua de XP e UI (1s)
             setInterval(() => {
                 garantirBotaoDockXpTreinador();
+                // So com a doca aberta: fechada nao ha o que empilhar, e o
+                // getComputedStyle nao precisa rodar de graca a cada segundo.
+                if (_dockXpTreinador && _dockXpTreinador.aberta()) nivelarDockComCardTreinador();
                 atualizarStatusXpClient();
             }, 1000);
 
