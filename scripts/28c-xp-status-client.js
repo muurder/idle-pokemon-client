@@ -101,8 +101,6 @@
             let _lastJogXp = null;
             let _lastPokeTs = null;
             let _lastJogTs = null;
-            let _taxaLocalPoke = 0;
-            let _taxaLocalJog = 0;
             let _localKillsPoke = 0;
             let _localKillsJog = 0;
             let _deltaTotalPoke = 0;
@@ -110,8 +108,129 @@
 
             let _cacheTrainerXpNextClient = new Map();
             let _cacheTrainerXpRestanteClient = new Map();
-            let _liveEtaPokeClient = { segs: 0, ts: 0, restante: null };
-            let _liveEtaJogClient = { segs: 0, ts: 0, restante: null };
+
+            // ---------- 3b. ESTIMADOR DE TAXA E ETA (cópia local) ----------
+            // Mesma lógica de scripts/01b-taxa-eta.js, mas própria: este módulo
+            // é o único tracker de XP do CLIENT, onde 01b não existe. Chamar as
+            // funções de lá daria ReferenceError com o jogo do usuário rodando
+            // (não no build). Por isso a duplicação é deliberada.
+            const MEIA_VIDA_TAXA_MS_CLI = 90000;
+
+            function criarTaxaCli() { return { valor: 0, desvio: 0, ts: 0, n: 0 }; }
+
+            // Peso vindo do TEMPO decorrido, não da contagem de chamadas: antes
+            // o decaimento era `*= 0.85` por chamada, e como esta função roda em
+            // vários intervalos ao mesmo tempo, a taxa caía mais rápido quanto
+            // mais painel estivesse aberto — inflando o ETA sozinho.
+            function alimentarTaxaCli(t, deltaXp, agora) {
+                if (!t || !(deltaXp > 0)) return;
+                if (!t.ts) { t.ts = agora; return; }
+                const dtMs = agora - t.ts;
+                if (dtMs <= 0 || dtMs > 60000) { t.ts = agora; return; }
+                const inst = deltaXp / (dtMs / 1000);
+                if (!t.valor) {
+                    t.valor = inst;
+                    t.desvio = 0;
+                } else {
+                    const peso = Math.max(1 - Math.pow(0.5, dtMs / MEIA_VIDA_TAXA_MS_CLI),
+                                          1 / Math.min(t.n + 1, 20));
+                    const erro = inst - t.valor;
+                    t.valor += erro * peso;
+                    t.desvio += (Math.abs(erro) - t.desvio) * peso;
+                }
+                t.ts = agora;
+                t.n++;
+            }
+
+            // Idempotente: só lê, nunca escreve.
+            function lerTaxaCli(t, agora) {
+                if (!t || !(t.valor > 0) || !t.ts) return 0;
+                // Ocioso demais para afirmar ritmo nenhum: acima de ~4 meias-vidas
+                // (~6 min sem XP) a taxa deixa de existir em vez de virar um numero
+                // minusculo que o ETA transformaria num "1d 10h" sem sentido.
+                const fator = Math.pow(0.5, (agora - t.ts) / MEIA_VIDA_TAXA_MS_CLI);
+                if (fator < 0.05) return 0;
+                const v = t.valor * fator;
+                return v < 0.05 ? 0 : v;
+            }
+
+            function bandaTaxaCli(t, agora) {
+                if (!t || t.n < 8 || !(t.desvio > 0)) return null;
+                const taxa = lerTaxaCli(t, agora);
+                if (!(taxa > 0)) return null;
+                const alta = taxa + t.desvio;
+                const baixa = Math.max(taxa * 0.15, taxa - t.desvio);
+                if (!(alta > 0) || !(baixa > 0) || alta <= baixa) return null;
+                return { alta: alta, baixa: baixa };
+            }
+
+            function criarPrazoCli() { return { alvo: 0, base: 0 }; }
+
+            // Guarda o INSTANTE-ALVO, não a duração. O código anterior guardava
+            // `segs` e re-ancorava sempre que `restante` mudasse — isto é, em
+            // todo abate — e o contador tremia. Aqui o relógio desce sozinho e
+            // só corrige quando a estimativa diverge >20% DA ÂNCORA (comparar
+            // com o relógio faria o próprio avanço do tempo disparar a
+            // re-ancoragem, e o número saltaria pra trás a cada 20% andado).
+            function etaSegundosCli(prazo, restante, taxa, agora) {
+                if (!prazo) return Infinity;
+                if (!(taxa > 0) || !(restante > 0)) {
+                    prazo.alvo = 0;
+                    prazo.base = 0;
+                    return Infinity;
+                }
+                const bruto = restante / taxa;
+                const faltaRelogio = prazo.alvo ? (prazo.alvo - agora) / 1000 : 0;
+                const divergiu = !prazo.base || Math.abs(bruto - prazo.base) / prazo.base > 0.20;
+                if (!prazo.alvo || faltaRelogio <= 0 || divergiu) {
+                    prazo.alvo = agora + bruto * 1000;
+                    prazo.base = bruto;
+                    return Math.max(1, bruto);
+                }
+                return Math.max(1, faltaRelogio);
+            }
+
+            function pausarPrazoCli(prazo, agora) {
+                if (!prazo || !prazo.alvo) return Infinity;
+                const falta = (prazo.alvo - agora) / 1000;
+                return falta > 0 ? falta : Infinity;
+            }
+
+            const _taxaXpPokeCli = criarTaxaCli();
+            const _taxaXpJogCli = criarTaxaCli();
+            // Ritmo de ABATES, mesma meia-vida das taxas de XP. Existe por causa
+            // do "faltam 486 pokes" com a barra em 99%: a contagem de abates
+            // saia de `hunt.xp / hunt.kills`, a media VITALICIA da cacada — o
+            // mesmo defeito que tirou `hunt.xp / hunt.secs` do calculo da taxa,
+            // so que do outro lado da divisao. Numa cacada longa que passou por
+            // zonas de XP diferente, ou depois de um bonus entrar, o XP por
+            // abate de agora nao tem relacao com o dos ultimos 120 minutos, e o
+            // ETA (que ja usa a taxa recente) discordava da contagem de abates
+            // impressa na mesma linha.
+            const _taxaKillsCli = criarTaxaCli();
+            let _ultKillsCli = null;
+            const _prazoPokeCli = criarPrazoCli();
+            const _prazoJogCli = criarPrazoCli();
+
+            // Dividir a taxa de XP pela taxa de abates da o XP por abate
+            // RECENTE, e as duas decaem com a mesma meia-vida. A propriedade que
+            // importa e que o ETA e a contagem de abates nao podem mais
+            // discordar: como
+            //
+            //     kills = restante / (taxaXp / taxaKills) = (restante / taxaXp) * taxaKills
+            //
+            // a contagem vira exatamente "o ETA vezes o ritmo de abates".
+            // `medioVitalicio` fica de reserva para os primeiros segundos, antes
+            // de a amostra existir: ali um numero grosseiro ainda e melhor que
+            // um traco.
+            function xpPorAbateCli(taxaXp, agora, medioVitalicio) {
+                const kps = lerTaxaCli(_taxaKillsCli, agora);
+                if (_taxaKillsCli.n >= 8 && kps > 0 && taxaXp > 0) {
+                    const v = taxaXp / kps;
+                    if (isFinite(v) && v > 0) return v;
+                }
+                return (medioVitalicio > 0) ? medioVitalicio : 0;
+            }
 
             function fmtNum(v) {
                 return Number(v || 0).toLocaleString('pt-BR');
@@ -154,18 +273,6 @@
             }
 
             // Suaviza a taxa se nao houver ganhos por mais de 5s
-            function decairTaxas() {
-                const agora = Date.now();
-                if (_lastPokeTs && agora - _lastPokeTs > 5000 && _taxaLocalPoke > 0) {
-                    _taxaLocalPoke *= 0.85;
-                    if (_taxaLocalPoke < 0.1) _taxaLocalPoke = 0;
-                }
-                if (_lastJogTs && agora - _lastJogTs > 5000 && _taxaLocalJog > 0) {
-                    _taxaLocalJog *= 0.85;
-                    if (_taxaLocalJog < 0.1) _taxaLocalJog = 0;
-                }
-            }
-
             function extrairDadosAtivos() {
                 let s = null;
                 try {
@@ -215,7 +322,12 @@
                     if (elName && elName.textContent.trim()) domJogName = elName.textContent.trim();
                     const elSub = document.getElementById('pp-sub');
                     if (elSub && elSub.textContent) {
-                        const mLv = elSub.textContent.match(/(\d+)/);
+                        // Item 7: pegar o primeiro numero de #pp-sub acerta em
+                        // "Lv 5" e erra em "Rota 3 . Lv 5" (captura o 3). Tenta
+                        // o rotulo de nivel primeiro; o numero solto so vale
+                        // como ultimo recurso.
+                        const txtSub = elSub.textContent;
+                        const mLv = txtSub.match(/Lv\.?\s*(\d+)/i) || txtSub.match(/N[ivn]{0,2}\.?\s*(\d+)/i) || txtSub.match(/(\d+)\s*$/) || txtSub.match(/(\d+)/);
                         if (mLv) domJogLv = parseInt(mLv[1], 10);
                     }
                 } catch (e) { }
@@ -269,7 +381,6 @@
             }
 
             function atualizarStatusXpClient() {
-                decairTaxas();
                 const { hunt, poke, jog, isPokeMax, isJogMax } = extrairDadosAtivos();
                 const agora = Date.now();
 
@@ -277,11 +388,7 @@
                 if (poke.xp > 0) {
                     if (_lastPokeXp !== null && poke.xp > _lastPokeXp) {
                         const delta = poke.xp - _lastPokeXp;
-                        const dt = _lastPokeTs ? (agora - _lastPokeTs) / 1000 : 1;
-                        if (dt > 0.3 && dt < 60) {
-                            const inst = delta / dt;
-                            _taxaLocalPoke = _taxaLocalPoke > 0 ? (_taxaLocalPoke * 0.6 + inst * 0.4) : inst;
-                        }
+                        alimentarTaxaCli(_taxaXpPokeCli, delta, agora);
                         _localKillsPoke += 1;
                         _deltaTotalPoke += delta;
                         _lastPokeTs = agora;
@@ -292,11 +399,7 @@
                 if (jog.xp > 0) {
                     if (_lastJogXp !== null && jog.xp > _lastJogXp) {
                         const delta = jog.xp - _lastJogXp;
-                        const dt = _lastJogTs ? (agora - _lastJogTs) / 1000 : 1;
-                        if (dt > 0.3 && dt < 60) {
-                            const inst = delta / dt;
-                            _taxaLocalJog = _taxaLocalJog > 0 ? (_taxaLocalJog * 0.6 + inst * 0.4) : inst;
-                        }
+                        alimentarTaxaCli(_taxaXpJogCli, delta, agora);
                         _localKillsJog += 1;
                         _deltaTotalJog += delta;
                         _lastJogTs = agora;
@@ -304,10 +407,13 @@
                     _lastJogXp = jog.xp;
                 }
 
-                // 2. Taxas consolidadas com proteção contra taxa fantasma
+                // 2. Taxa consolidada — estimador único, meia-vida de 90s.
+                // O que saiu daqui: `hunt.xp / hunt.secs`, média vitalícia da
+                // caçada. `hunt.secs` conta desde que o servidor começou, então
+                // troca de mapa, troca de pokémon e horas paradas pesavam igual
+                // ao último minuto. Agora ela só serve de partida enquanto o
+                // estimador não tem amostra própria.
                 const estaPausado = (typeof autoHuntPausado !== 'undefined' && autoHuntPausado) || (typeof emCidadeOuTransito !== 'undefined' && emCidadeOuTransito);
-                const ociosoPoke = _lastPokeTs ? (agora - _lastPokeTs > 45000) : false;
-                const ociosoJog = _lastJogTs ? (agora - _lastJogTs > 45000) : false;
 
                 const temHunt = hunt && Number(hunt.secs || 0) > 0;
                 const huntSecs = temHunt ? Number(hunt.secs) : 0;
@@ -315,14 +421,25 @@
                 const taxaPokeServ = (temHunt && Number(hunt.xp || 0) > 0 && huntSecs > 0) ? (Number(hunt.xp) / huntSecs) : 0;
                 const taxaJogServ = (temHunt && Number(hunt.pxp || 0) > 0 && huntSecs > 0) ? (Number(hunt.pxp) / huntSecs) : 0;
 
-                let taxaPoke = 0;
-                if (!estaPausado) {
-                    taxaPoke = taxaPokeServ > 0 ? taxaPokeServ : (_taxaLocalPoke > 0 ? _taxaLocalPoke : 0);
+                // Ritmo de abates. `hunt.kills` e a contagem boa quando existe:
+                // vem do servidor e ja traz o lote inteiro quando o tick mata
+                // mais de um. Sem hunt sobra `_localKillsPoke`, que conta um
+                // abate por ganho de XP — aproximado, mas e o que ha.
+                if (huntKills > 0) {
+                    if (_ultKillsCli !== null && huntKills > _ultKillsCli) {
+                        alimentarTaxaCli(_taxaKillsCli, huntKills - _ultKillsCli, agora);
+                    }
+                    _ultKillsCli = huntKills;
                 }
+
+                let taxaPoke = 0;
                 let taxaJog = 0;
                 if (!estaPausado) {
-                    taxaJog = taxaJogServ > 0 ? taxaJogServ : (_taxaLocalJog > 0 ? _taxaLocalJog : 0);
+                    taxaPoke = lerTaxaCli(_taxaXpPokeCli, agora) || taxaPokeServ;
+                    taxaJog = lerTaxaCli(_taxaXpJogCli, agora) || taxaJogServ;
                 }
+                const bandaPokeCli = estaPausado ? null : bandaTaxaCli(_taxaXpPokeCli, agora);
+                const bandaJogCli = estaPausado ? null : bandaTaxaCli(_taxaXpJogCli, agora);
 
                 const xpMedioPoke = (temHunt && huntKills > 0 && Number(hunt.xp || 0) > 0)
                     ? (Number(hunt.xp) / huntKills)
@@ -332,73 +449,73 @@
                     ? (Number(hunt.pxp) / huntKills)
                     : (_localKillsJog > 0 && _deltaTotalJog > 0 ? (_deltaTotalJog / _localKillsJog) : 0);
 
-                const faltaPokeKills = (!isPokeMax && poke.xpRestante > 0 && xpMedioPoke > 0) ? Math.ceil(poke.xpRestante / xpMedioPoke) : null;
-                let faltaJogKills = (!isJogMax && jog.xpRestante > 0 && xpMedioJog > 0) ? Math.ceil(jog.xpRestante / xpMedioJog) : null;
+                // O divisor e o XP por abate RECENTE, nao `hunt.xp / hunt.kills`.
+                // A media vitalicia era a causa do "faltam 486 pokes" com a
+                // barra em 99%; com o divisor vindo da mesma dupla de
+                // estimadores que o ETA, a contagem vira `ETA x ritmo de
+                // abates` e as duas nao podem mais divergir.
+                const xpPorKillPokeCli = xpPorAbateCli(taxaPoke, agora, xpMedioPoke);
+                const xpPorKillJogCli = xpPorAbateCli(taxaJog, agora, xpMedioJog);
+
+                const faltaPokeKills = (!isPokeMax && poke.xpRestante > 0 && xpPorKillPokeCli > 0) ? Math.ceil(poke.xpRestante / xpPorKillPokeCli) : null;
+                let faltaJogKills = (!isJogMax && jog.xpRestante > 0 && xpPorKillJogCli > 0) ? Math.ceil(jog.xpRestante / xpPorKillJogCli) : null;
                 if (!faltaJogKills && !isJogMax && jog.pct > 0 && jog.pct < 100) {
                     const killsTotais = Number(hunt.kills || 0);
                     const killsPor1Pct = killsTotais > 0 ? (killsTotais / Math.max(1, jog.pct)) : 20;
                     faltaJogKills = Math.ceil(killsPor1Pct * (100 - jog.pct));
                 }
 
-                // Live countdown interpolation
+                // ETA ancorado em PRAZO. O bloco anterior guardava a DURAÇÃO e
+                // re-ancorava sempre que `restante` mudasse — ou seja, em todo
+                // abate — e o contador tremia.
                 let segsPoke = Infinity;
                 if (isPokeMax) {
+                    _prazoPokeCli.alvo = 0;
+                    _prazoPokeCli.base = 0;
                     segsPoke = 0;
-                    _liveEtaPokeClient.segs = 0;
-                    _liveEtaPokeClient.ts = agora;
-                    _liveEtaPokeClient.restante = 0;
                 } else if (estaPausado) {
-                    segsPoke = _liveEtaPokeClient.segs || (taxaPoke > 0 && poke.xpRestante > 0 ? Math.round(poke.xpRestante / taxaPoke) : Infinity);
-                } else if (taxaPoke > 0 && poke.xpRestante > 0) {
-                    const etaCalc = poke.xpRestante / taxaPoke;
-                    if (_liveEtaPokeClient.restante !== poke.xpRestante || !_liveEtaPokeClient.segs || !isFinite(_liveEtaPokeClient.segs) || Math.abs(agora - _liveEtaPokeClient.ts) > 15000) {
-                        _liveEtaPokeClient.segs = etaCalc;
-                        _liveEtaPokeClient.ts = agora;
-                        _liveEtaPokeClient.restante = poke.xpRestante;
-                        segsPoke = Math.max(1, Math.round(etaCalc));
-                    } else {
-                        const decorrido = Math.floor((agora - _liveEtaPokeClient.ts) / 1000);
-                        segsPoke = Math.max(1, Math.round(_liveEtaPokeClient.segs - decorrido));
-                    }
+                    segsPoke = pausarPrazoCli(_prazoPokeCli, agora);
                 } else {
-                    _liveEtaPokeClient.segs = Infinity;
-                    _liveEtaPokeClient.restante = poke.xpRestante;
+                    segsPoke = etaSegundosCli(_prazoPokeCli, poke.xpRestante, taxaPoke, agora);
+                }
+
+                // Sem `xpRestante` absoluto do treinador, o restante é
+                // extrapolado dos abates que faltam. É estimativa, e sai
+                // marcada com `~`.
+                let jogRestanteEstimado = false;
+                let jogRestanteXp = jog.xpRestante;
+                if (!isJogMax && !(jogRestanteXp > 0) && faltaJogKills > 0 && xpMedioJog > 0) {
+                    jogRestanteXp = faltaJogKills * xpMedioJog;
+                    jogRestanteEstimado = true;
                 }
 
                 let segsJog = Infinity;
                 if (isJogMax) {
+                    _prazoJogCli.alvo = 0;
+                    _prazoJogCli.base = 0;
                     segsJog = 0;
-                    _liveEtaJogClient.segs = 0;
-                    _liveEtaJogClient.ts = agora;
-                    _liveEtaJogClient.restante = 0;
                 } else if (estaPausado) {
-                    segsJog = _liveEtaJogClient.segs || (taxaJog > 0 && jog.xpRestante > 0 ? Math.round(jog.xpRestante / taxaJog) : Infinity);
-                } else if (taxaJog > 0 && jog.xpRestante > 0) {
-                    const etaCalc = jog.xpRestante / taxaJog;
-                    if (_liveEtaJogClient.restante !== jog.xpRestante || !_liveEtaJogClient.segs || !isFinite(_liveEtaJogClient.segs) || Math.abs(agora - _liveEtaJogClient.ts) > 15000) {
-                        _liveEtaJogClient.segs = etaCalc;
-                        _liveEtaJogClient.ts = agora;
-                        _liveEtaJogClient.restante = jog.xpRestante;
-                        segsJog = Math.max(1, Math.round(etaCalc));
-                    } else {
-                        const decorrido = Math.floor((agora - _liveEtaJogClient.ts) / 1000);
-                        segsJog = Math.max(1, Math.round(_liveEtaJogClient.segs - decorrido));
-                    }
-                } else if (taxaJog > 0 && faltaJogKills && xpMedioJog > 0) {
-                    const estXp = faltaJogKills * xpMedioJog;
-                    if (!_liveEtaJogClient.segs || !isFinite(_liveEtaJogClient.segs) || Math.abs(agora - _liveEtaJogClient.ts) > 15000) {
-                        segsJog = estXp / taxaJog;
-                        _liveEtaJogClient.segs = segsJog;
-                        _liveEtaJogClient.ts = agora;
-                        _liveEtaJogClient.restante = estXp;
-                    } else {
-                        const decorrido = Math.floor((agora - _liveEtaJogClient.ts) / 1000);
-                        segsJog = Math.max(1, Math.round(_liveEtaJogClient.segs - decorrido));
-                    }
+                    segsJog = pausarPrazoCli(_prazoJogCli, agora);
                 } else {
-                    _liveEtaJogClient.segs = Infinity;
-                    _liveEtaJogClient.restante = jog.xpRestante;
+                    segsJog = etaSegundosCli(_prazoJogCli, jogRestanteXp, taxaJog, agora);
                 }
+
+                // Banda de confiança a partir do desvio da taxa (8+ amostras).
+                const faixaPokeCli = (!isPokeMax && bandaPokeCli && poke.xpRestante > 0)
+                    ? { min: poke.xpRestante / bandaPokeCli.alta, max: poke.xpRestante / bandaPokeCli.baixa } : null;
+                const faixaJogCli = (!isJogMax && bandaJogCli && jogRestanteXp > 0)
+                    ? { min: jogRestanteXp / bandaJogCli.alta, max: jogRestanteXp / bandaJogCli.baixa } : null;
+
+                const fmtEtaRicoCli = (segs, isMax, isPausado, estimado, faixa) => {
+                    const base = fmtTempo(segs, isMax, isPausado);
+                    if (isMax || isPausado || base === '--') return base;
+                    let banda = '';
+                    if (faixa && isFinite(faixa.min) && isFinite(faixa.max)
+                        && faixa.min > 0 && faixa.max / faixa.min > 1.15 && faixa.max < 86400 * 3) {
+                        banda = ` (${fmtTempoCurto(faixa.min)}–${fmtTempoCurto(faixa.max)})`;
+                    }
+                    return (estimado ? '~' : '') + base + banda;
+                };
 
                 // 3. Publicacao de window.__idleSuiteXpStatus para o Electron Shell
                 const statusObj = {
@@ -409,7 +526,7 @@
                         pct: poke.pct,
                         pctText: isPokeMax ? '100%' : (Math.round(poke.pct) + '%'),
                         falta: isPokeMax ? '⭐ MAX' : fmtFalta(poke.xpRestante, faltaPokeKills),
-                        eta: fmtTempo(segsPoke, isPokeMax, estaPausado),
+                        eta: fmtEtaRicoCli(segsPoke, isPokeMax, estaPausado, false, faixaPokeCli),
                         segs: segsPoke,
                         xpRestante: poke.xpRestante,
                         xpNext: poke.xpNext,
@@ -422,8 +539,8 @@
                         level: jog.level,
                         pct: jog.pct,
                         pctText: isJogMax ? '100%' : (Math.round(jog.pct) + '%'),
-                        falta: isJogMax ? '⭐ MAX' : fmtFalta(jog.xpRestante, faltaJogKills),
-                        eta: fmtTempo(segsJog, isJogMax, estaPausado),
+                        falta: isJogMax ? '⭐ MAX' : (jogRestanteEstimado ? '~' : '') + fmtFalta(jogRestanteXp, faltaJogKills),
+                        eta: fmtEtaRicoCli(segsJog, isJogMax, estaPausado, jogRestanteEstimado, faixaJogCli),
                         segs: segsJog,
                         xpRestante: jog.xpRestante,
                         xpNext: jog.xpNext,
@@ -712,8 +829,11 @@
                 try {
                     const { s, player, active, hunt, poke, jog } = extrairDadosAtivos();
                     const temHunt = hunt && Number(hunt.secs || 0) > 0;
-                    const taxaPoke = temHunt && Number(hunt.xp || 0) > 0 ? Number(hunt.xp) / Number(hunt.secs) : _taxaLocalPoke;
-                    const taxaJog = temHunt && Number(hunt.pxp || 0) > 0 ? Number(hunt.pxp) / Number(hunt.secs) : _taxaLocalJog;
+                    const _agoraTx = Date.now();
+                    const taxaPoke = lerTaxaCli(_taxaXpPokeCli, _agoraTx)
+                        || (temHunt && Number(hunt.xp || 0) > 0 ? Number(hunt.xp) / Number(hunt.secs) : 0);
+                    const taxaJog = lerTaxaCli(_taxaXpJogCli, _agoraTx)
+                        || (temHunt && Number(hunt.pxp || 0) > 0 ? Number(hunt.pxp) / Number(hunt.secs) : 0);
                     const segsPoke = taxaPoke > 0 && poke.xpRestante > 0 ? poke.xpRestante / taxaPoke : null;
                     const segsJog = taxaJog > 0 && jog.xpRestante > 0 ? jog.xpRestante / taxaJog : null;
 

@@ -2,8 +2,30 @@ import os
 import datetime
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(SCRIPTS_DIR, 'dist')
-OUT = os.path.join(OUT_DIR, 'game-injector.js')
+PROJ_DIR = os.path.dirname(SCRIPTS_DIR)
+
+# ---------------------------------------------------------------------------
+# ONDE ESTE BUILD TEM QUE ESCREVER, E POR QUE NAO E MAIS scripts/dist/
+# ---------------------------------------------------------------------------
+# O arquivo que o app de fato INJETA na webview e este, na raiz: e o primeiro
+# da lista de caminhos de `get-tamper-script` (main.js) e o unico da familia
+# citado na allowlist `build.files` do package.json -- ou seja, e tambem o
+# unico que entra no .exe.
+#
+# Ate 08/09/2026 este builder escrevia em scripts/dist/game-injector.js, que
+# NAO esta em nenhum dos dois lugares. Ninguem lia esse arquivo. O
+# bug-test-suite.client.js ficou parado em 06/09 porque seu unico gerador era
+# o build_client.py do dev, que esta obsoleto e proibido de rodar.
+#
+# O efeito era silencioso e caro: todo modulo adotado em scripts/ desde entao
+# -- berry no card do treinador, botao de esconder o mapa, Pokepedia, doca de
+# equipe, correcao de ETA -- existia no fonte, entrava no bundle, passava no
+# `node -c`, e nunca chegava ao jogo rodando. Build limpo, feature invisivel.
+#
+# Escrevendo direto no arquivo injetado, "buildou" e "chegou no app" voltam a
+# ser a mesma coisa.
+OUT = os.path.join(PROJ_DIR, 'bug-test-suite.client.js')
+OUT_DIR = PROJ_DIR
 
 # Carimbo do build: entra no bundle e vai pro log do Auto Hunt, pra dar pra
 # saber QUAL build produziu um log (webview com script antigo em memoria e
