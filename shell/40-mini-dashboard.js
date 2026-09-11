@@ -75,6 +75,10 @@
       if (overlay) overlay.style.display = 'none';
       miniDashAberto = false;
       if (miniDashTimer) { clearInterval(miniDashTimer); miniDashTimer = null; }
+      // Matar o timer da casca nao bastava: a sonda de batimento vive DENTRO de
+      // cada webview (shell/13) e continuava rodando nas 13 contas depois de
+      // fechar o painel. Agora o fechamento desliga as duas pontas.
+      try { if (typeof pararSondasMiniDash === 'function') pararSondasMiniDash(); } catch (e) {}
     }
 
     function toggleMiniDashboard() {

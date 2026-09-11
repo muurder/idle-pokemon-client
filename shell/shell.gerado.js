@@ -1644,6 +1644,38 @@
     // ================================================================
     let mdDiagPrev = {};
 
+    // SONDA DE "CONTA ACORDADA" — ciclo de vida explicito.
+    //
+    // A versao anterior injetava, dentro de CADA webview, um setInterval de
+    // 200ms mais um laco requestAnimationFrame auto-recursivo — e nao havia
+    // clearInterval nem cancelAnimationFrame em lugar nenhum do repositorio.
+    // Bastava abrir o mini dashboard uma vez para deixar 13 laços rAF girando
+    // a 60Hz pelo resto da sessao, so para pintar um ponto verde num painel
+    // quase sempre fechado.
+    //
+    // Piorava porque css/05 empilha as contas com visibility:hidden, e nao
+    // display:none: o Chromium nao marca o guest como oculto, entao o rAF de
+    // TODAS as contas continuava no ritmo cheio, mantendo o processo de GPU
+    // acordado para 13 superficies.
+    //
+    // A pergunta real e "a thread desta conta responde?", nao "quantos quadros
+    // ela pintou". Um batimento de 500ms responde isso com 2 despertares por
+    // segundo em vez de 60, e agora desliga quando o painel fecha.
+    const MD_ACORDADA_MIN = 1.5;        // batimentos/s para considerar acordada
+
+    function pararSondasMiniDash() {
+      try {
+        const lista = (typeof webviews !== 'undefined' && Array.isArray(webviews)) ? webviews : [];
+        lista.forEach(wv => {
+          if (!wv || typeof wv.executeJavaScript !== 'function') return;
+          wv.executeJavaScript(
+            'try{ typeof window.__mdPararSonda === "function" && window.__mdPararSonda(); }catch(e){}'
+          ).catch(() => {});
+        });
+      } catch (e) {}
+      mdDiagPrev = {};                  // zera a base do calculo de taxa
+    }
+
     function fmtNum(n) {
       n = Number(n || 0);
       if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
@@ -1687,8 +1719,15 @@
                 for (var k in b) { out.balls += Number(b[k] || 0); out.ballsObj[k] = Number(b[k] || 0); }
                 var diag = { vis: (document.visibilityState || (document.hidden ? 'hidden' : 'visible')), hidden: !!document.hidden };
                 try {
-                  if (!window.__mdHb) { window.__mdHb = 0; window.__mdHbT = setInterval(function(){ window.__mdHb++; }, 200); window.__mdRaf = 0; (function lp(){ window.__mdRaf++; requestAnimationFrame(lp); })(); }
-                  diag.hb = window.__mdHb || 0; diag.raf = window.__mdRaf || 0;
+                  if (!window.__mdSonda) {
+                    window.__mdSonda = { hb: 0, t: 0 };
+                    window.__mdSonda.t = setInterval(function(){ window.__mdSonda.hb++; }, 500);
+                    window.__mdPararSonda = function(){
+                      if (window.__mdSonda) { clearInterval(window.__mdSonda.t); window.__mdSonda = null; }
+                      window.__mdPararSonda = null;
+                    };
+                  }
+                  diag.hb = (window.__mdSonda && window.__mdSonda.hb) || 0;
                 } catch(e3) {}
                 out.diag = diag;
                 return out;
@@ -1702,7 +1741,7 @@
             mdDiagPrev[i] = { hb: d.hb || 0, t: Date.now() };
             vis = d.vis || (st ? 'visible' : 'hidden');
             visIcon = vis === 'visible' ? '🟢' : (vis === 'hidden' ? '🟡' : '🔴');
-            awake = hbRate >= 3;
+            awake = hbRate >= MD_ACORDADA_MIN;
           } catch (e2) {}
         }
 
@@ -5025,36 +5064,49 @@
       }
     }
 
-    const contasConectadas = [false, false, false, false];
+    // MONITOR DE CONEXAO — ele existe para avisar que as contas subiram, e
+    // depois sair de cena.
+    //
+    // A versao anterior parava em `conectadasAgora === 4`, com o 4 cravado (e um
+    // array de estado de tamanho fixo 4). Com qualquer numero de contas
+    // diferente de 4 — e o app aceita ate 16 — a condicao nunca era verdadeira:
+    // o intervalo de 1.5s seguia varrendo TODAS as contas com executeJavaScript
+    // pelo resto da sessao. Nao vazava memoria, vazava trabalho.
+    //
+    // Agora o alvo e totalContas, o estado e um Set (sem tamanho fixo) e a
+    // varredura e paralela: N sondas independentes nao precisam de fila.
+    const contasConectadas = new Set();
     let todasConectadasNotificadas = false;
     let monitorTimer = null;
 
+    const SONDA_EM_JOGO = '(function(){' +
+      'return Boolean(window.K && (window.K.player || window.K.connected) ||' +
+      ' (document.getElementById("topbar") && document.getElementById("topbar").offsetHeight > 0));' +
+      '})()';
+
     async function monitorarConexaoContas() {
-      let conectadasAgora = 0;
-      for (let i = 0; i < totalContas; i++) {
-        const wv = webviews[i];
-        if (!wv) continue;
-        try {
-          const inGame = await wv.executeJavaScript(`
-            (function() {
-              return Boolean(window.K && (window.K.player || window.K.connected) || (document.getElementById('topbar') && document.getElementById('topbar').offsetHeight > 0));
-            })()
-          `);
-          if (inGame) {
-            conectadasAgora++;
-            if (!contasConectadas[i]) {
-              contasConectadas[i] = true;
-              mostrarToast(`Conta <b>${nomesAbas[i] || (i+1)}</b> conectou e está pronta!`, '🟢', 'normal', 3000);
-            }
-          }
-        } catch(e) {}
+      const alvo = totalContas;
+      const resultados = await Promise.allSettled(
+        Array.from({ length: alvo }, (_, i) => {
+          const wv = webviews[i];
+          if (!wv || typeof wv.executeJavaScript !== 'function') return Promise.reject();
+          return wv.executeJavaScript(SONDA_EM_JOGO).then(emJogo => ({ i, emJogo }));
+        })
+      );
+
+      for (const r of resultados) {
+        if (r.status !== 'fulfilled' || !r.value.emJogo) continue;
+        const i = r.value.i;
+        if (contasConectadas.has(i)) continue;
+        contasConectadas.add(i);
+        mostrarToast(`Conta <b>${nomesAbas[i] || (i + 1)}</b> conectou e está pronta!`, '🟢', 'normal', 3000);
       }
 
-      if (conectadasAgora === 4 && !todasConectadasNotificadas) {
+      if (contasConectadas.size >= alvo && !todasConectadasNotificadas) {
         todasConectadasNotificadas = true;
-        mostrarToast('🎉 Todas as 4 Contas Conectadas e Operando a 100%!', '🚀', 'toast-success', 6000);
+        mostrarToast(`🎉 Todas as ${alvo} contas conectadas e operando a 100%!`, '🚀', 'toast-success', 6000);
         if (monitorTimer) {
-          clearInterval(monitorTimer);
+          clearInterval(monitorTimer);   // agora ACONTECE, com qualquer N
           monitorTimer = null;
         }
       }
@@ -6933,6 +6985,10 @@
       if (overlay) overlay.style.display = 'none';
       miniDashAberto = false;
       if (miniDashTimer) { clearInterval(miniDashTimer); miniDashTimer = null; }
+      // Matar o timer da casca nao bastava: a sonda de batimento vive DENTRO de
+      // cada webview (shell/13) e continuava rodando nas 13 contas depois de
+      // fechar o painel. Agora o fechamento desliga as duas pontas.
+      try { if (typeof pararSondasMiniDash === 'function') pararSondasMiniDash(); } catch (e) {}
     }
 
     function toggleMiniDashboard() {

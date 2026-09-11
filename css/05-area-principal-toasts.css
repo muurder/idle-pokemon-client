@@ -35,6 +35,11 @@
   position: absolute; inset: 0;
   visibility: hidden; opacity: 1; pointer-events: none;
   width: 100%; height: 100%;
+  /* `size` alem do `layout paint style` que toda .webview-wrapper ja tem: a
+     aba de fundo passa a ter tamanho fixado pelo proprio wrapper, e o que
+     acontece dentro do jogo escondido nao pede recalculo aqui fora. So vale no
+     modo abas, onde a aba inativa fica empilhada e ninguem a ve. */
+  contain: layout paint size;
 }
 
 #views-container.mode-tabs .webview-wrapper.active {
